@@ -4,9 +4,10 @@ An AI-powered application that helps create and schedule TikTok and Instagram co
 
 ## Features
 
-- **AI Content Generation**: Generate scripts and captions using OpenAI GPT-4o
+- **Monthly Content Schedule**: Generate 30 days of content ideas following TikTok playbook best practices
+- **AI Content Generation**: Generate scripts and captions using OpenAI GPT-4o with Unicity compliance rules
 - **Stock Video Search**: Find and select video clips from Pexels
-- **Video Rendering**: Assemble videos using Creatomate
+- **Video/Image Rendering**: Assemble videos or images using Creatomate templates
 - **Social Scheduling**: Schedule posts to TikTok and Instagram via Ayrshare
 
 ## Tech Stack
@@ -90,6 +91,10 @@ npm run dev
 cp .env.example .env
 # Edit .env with your API keys
 
+# Create frontend .env file
+cp frontend/.env.example frontend/.env
+# Edit frontend/.env if needed (defaults should work for local dev)
+
 # Run with docker-compose
 docker-compose -f deploy/docker-compose.yml up --build
 ```
@@ -144,8 +149,9 @@ docker-compose -f deploy/docker-compose.yml up --build
 
 - `GET /health` - Health check
 - `POST /api/content/plan` - Generate content plan
+- `POST /api/schedule/monthly` - Generate monthly content schedule (30 days)
 - `GET /api/assets/search` - Search stock videos
-- `POST /api/video/render` - Start video rendering
+- `POST /api/video/render` - Start video/image rendering
 - `GET /api/video/render/{job_id}/status` - Check render status
 - `POST /api/social/schedule` - Schedule social media post
 
