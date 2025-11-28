@@ -106,8 +106,8 @@ HASHTAGS:
 - You may add up to {hashtags.get('maxExtraPerPost', 5)} additional relevant hashtags per post
 
 DISCLAIMERS:
-- Health disclaimer (MUST include at end of caption): "{disclaimers.get('health', '')}"
-- General disclaimer: "{disclaimers.get('general', '')}"
+- Health disclaimer (MUST include at end of caption): {disclaimers.get('health', '')}
+- General disclaimer: {disclaimers.get('general', '')}
 
 OUTPUT FORMAT:
 You must return ONLY valid JSON matching this exact schema:
@@ -120,14 +120,14 @@ You must return ONLY valid JSON matching this exact schema:
       "duration_seconds": 4
     }}
   ]
-}
+}}
 
 CAPTION REQUIREMENTS:
 - Start with an engaging hook about a common pain point (energy crashes, cravings, habit struggles)
 - Include 1-3 sentences explaining the topic simply
 - Add a soft CTA (e.g., "If you're curious, here's more info: [link]")
 - Include core hashtags plus up to {hashtags.get('maxExtraPerPost', 5)} relevant additional ones
-- ALWAYS end with the health disclaimer: "{disclaimers.get('health', '')}"
+- ALWAYS end with the health disclaimer: {disclaimers.get('health', '')}
 
 SHOT PLAN REQUIREMENTS:
 - Create 3-6 shot descriptions

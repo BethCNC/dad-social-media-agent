@@ -1,6 +1,12 @@
 """Application configuration and settings management."""
 from functools import lru_cache
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Find project root (where .env file is located)
+# This file is in backend/app/core/, so go up 3 levels to project root
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -21,7 +27,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(ENV_FILE) if ENV_FILE.exists() else ".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
     )
