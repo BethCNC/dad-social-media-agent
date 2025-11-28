@@ -11,7 +11,7 @@ import { ScheduleCalendar } from '../components/schedule/ScheduleCalendar';
 import { ContentPreviewModal } from '../components/schedule/ContentPreviewModal';
 import { type GeneratedPlan } from '../lib/contentApi';
 import { type MonthlySchedule, type ScheduledContentItem } from '../lib/scheduleApi';
-import { searchAssets, type AssetResult } from '../lib/assetsApi';
+import { searchAssets, searchAssetsContextual, type AssetResult } from '../lib/assetsApi';
 import { renderVideo, type VideoRenderRequest } from '../lib/videoApi';
 import { type ScheduleResponse } from '../lib/socialApi';
 import { Button } from '@/components/ui/button';
@@ -78,10 +78,13 @@ export const NewPostWizard = () => {
     setCurrentStep(2);
   };
 
-  // Auto-search when entering step 3
+  // Auto-search when entering step 3 using contextual search
   useEffect(() => {
-    if (currentStep === 3 && generatedPlan && assets.length === 0) {
-      // Extract keywords from shot plan descriptions
+    if (currentStep === 3 && generatedPlan && assets.length === 0 && script && caption) {
+      // Use contextual search for better relevance
+      handleContextualSearch();
+    } else if (currentStep === 3 && generatedPlan && assets.length === 0) {
+      // Fallback: extract keywords from shot plan if contextual search not ready
       const keywords = generatedPlan.shot_plan
         .map((shot) => shot.description)
         .join(' ')
@@ -94,7 +97,7 @@ export const NewPostWizard = () => {
         handleSearch(keywords);
       }
     }
-  }, [currentStep, generatedPlan]);
+  }, [currentStep, generatedPlan, script, caption]);
 
   // Auto-start render when entering step 4
   useEffect(() => {
@@ -102,6 +105,46 @@ export const NewPostWizard = () => {
       startRender();
     }
   }, [currentStep]);
+
+  const handleContextualSearch = async () => {
+    if (!generatedPlan || !script || !caption) return;
+
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      // Use contextual search for better relevance
+      const results = await searchAssetsContextual({
+        topic: '', // We don't have topic in wizard, use first shot description
+        hook: caption.split('\n')[0] || '', // First line is usually hook
+        script: script,
+        shot_plan: generatedPlan.shot_plan,
+        content_pillar: 'education', // Default, could be enhanced
+        suggested_keywords: [],
+        max_results: 12,
+      });
+      setAssets(results);
+    } catch (err: any) {
+      // Fallback to simple search
+      const keywords = generatedPlan.shot_plan
+        .map((shot) => shot.description)
+        .join(' ')
+        .split(' ')
+        .slice(0, 5)
+        .join(' ');
+      if (keywords) {
+        await handleSearch(keywords);
+      } else {
+        setSearchError(
+          err.response?.data?.detail ||
+          'We couldn\'t search for videos. Please try again.'
+        );
+        setIsSearching(false);
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleSearch = async (query?: string) => {
     const searchTerm = query || searchQuery;

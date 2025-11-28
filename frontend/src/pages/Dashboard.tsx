@@ -66,7 +66,11 @@ export const Dashboard = () => {
   };
 
   const handlePostClick = (post: WeeklyPost) => {
-    setSelectedPost(post);
+    if (post.id) {
+      navigate(`/posts/${post.id}`);
+    } else {
+      setSelectedPost(post);
+    }
   };
 
   const handlePostUpdate = (updatedPost: WeeklyPost) => {

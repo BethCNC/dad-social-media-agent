@@ -11,14 +11,14 @@ PEXELS_API_BASE = "https://api.pexels.com/videos"
 
 async def search_videos(query: str, max_results: int = 10) -> list[AssetResult]:
     """
-    Search for stock videos on Pexels.
+    Search for stock videos on Pexels, excluding people and faces.
     
     Args:
         query: Search query string
         max_results: Maximum number of results to return (default 10)
         
     Returns:
-        List of AssetResult objects
+        List of AssetResult objects (filtered to exclude people/faces)
         
     Raises:
         Exception: If API call fails
@@ -27,9 +27,19 @@ async def search_videos(query: str, max_results: int = 10) -> list[AssetResult]:
         "Authorization": settings.PEXELS_API_KEY,
     }
     
+    # Modify query to exclude people, faces, and human subjects (HEADLESS ACCOUNT - NO PEOPLE)
+    # Add comprehensive exclusion terms to the query
+    exclusion_terms = [
+        " -person", " -people", " -face", " -faces", " -human", " -woman", " -man", 
+        " -men", " -women", " -girl", " -boy", " -child", " -children", " -adult",
+        " -hands", " -hand", " -portrait", " -headshot", " -crowd", " -group",
+        " -person's", " -people's", " -family", " -couple", " -individual"
+    ]
+    modified_query = query + "".join(exclusion_terms)
+    
     params = {
-        "query": query,
-        "per_page": min(max_results, 80),  # Pexels max is 80 per page
+        "query": modified_query,
+        "per_page": min(max_results * 2, 80),  # Request more to account for filtering
     }
     
     try:
@@ -43,7 +53,26 @@ async def search_videos(query: str, max_results: int = 10) -> list[AssetResult]:
             data = response.json()
             
             assets = []
-            for video in data.get("videos", [])[:max_results]:
+            # Comprehensive keywords that indicate people/faces in video titles or descriptions
+            # HEADLESS ACCOUNT - STRICT FILTERING FOR NO PEOPLE
+            people_keywords = [
+                "person", "people", "face", "faces", "human", "woman", "man", 
+                "men", "women", "girl", "boy", "child", "children", "adult",
+                "portrait", "headshot", "crowd", "group", "individual", "person's",
+                "people's", "family", "couple", "teen", "teenager", "elderly",
+                "senior", "young", "old", "baby", "infant", "toddler", "kid", "kids"
+            ]
+            
+            for video in data.get("videos", []):
+                # Filter out videos with people-related keywords in title or description
+                video_title = video.get("url", "").lower() + " " + str(video.get("id", "")).lower()
+                video_description = video.get("alt", "").lower() if video.get("alt") else ""
+                video_text = video_title + " " + video_description
+                
+                # Skip if video contains people-related keywords
+                if any(keyword in video_text for keyword in people_keywords):
+                    continue
+                
                 # Get the best quality video file (prefer HD, fallback to SD)
                 video_files = video.get("video_files", [])
                 if not video_files:
@@ -65,6 +94,10 @@ async def search_videos(query: str, max_results: int = 10) -> list[AssetResult]:
                         duration_seconds=video.get("duration", 0),
                     )
                 )
+                
+                # Stop once we have enough results
+                if len(assets) >= max_results:
+                    break
             
             return assets
             
