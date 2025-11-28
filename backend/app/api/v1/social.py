@@ -20,7 +20,8 @@ async def schedule_post(request: ScheduleRequest) -> ScheduleResponse:
     try:
         return await schedule_content(request)
     except Exception as e:
+        error_message = str(e) if str(e) else "We couldn't schedule this post. Please try again."
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=error_message
         ) from e
