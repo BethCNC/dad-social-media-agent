@@ -36,12 +36,27 @@ The following environment variables are required:
 OPENAI_API_KEY=your_openai_api_key
 PEXELS_API_KEY=your_pexels_api_key
 CREATOMATE_API_KEY=your_creatomate_api_key
+CREATOMATE_IMAGE_TEMPLATE_ID=your_image_template_id_here
+CREATOMATE_VIDEO_TEMPLATE_ID=your_video_template_id_here
 AYRSHARE_API_KEY=your_ayrshare_api_key
 
 # Application Settings
 FRONTEND_URL=http://localhost:5173  # For development
 ENV=development  # or production
+PORT=8000  # Optional, defaults to 8000
+LOG_LEVEL=INFO  # Optional, defaults to INFO
 ```
+
+### Creatomate Template Setup
+
+Before using the app, you need to create both an image and video template in Creatomate. See [docs/creatomate-setup.md](docs/creatomate-setup.md) for detailed instructions.
+
+**Quick Setup:**
+1. Create a vertical 9:16 (1080x1920) video template in Creatomate
+2. Create a vertical 9:16 (1080x1920) image template in Creatomate
+3. Both templates should use element names like `Background-1`, `Background-2`, `Text-1`, `Text-2`, etc.
+4. Copy your template IDs and add them to `CREATOMATE_IMAGE_TEMPLATE_ID` and `CREATOMATE_VIDEO_TEMPLATE_ID` in your `.env` file
+5. Users can choose between image or video when creating content
 
 ## Local Development
 
@@ -89,9 +104,13 @@ docker-compose -f deploy/docker-compose.yml up --build
    - `OPENAI_API_KEY`
    - `PEXELS_API_KEY`
    - `CREATOMATE_API_KEY`
+   - `CREATOMATE_IMAGE_TEMPLATE_ID` (your Creatomate image template ID)
+   - `CREATOMATE_VIDEO_TEMPLATE_ID` (your Creatomate video template ID)
    - `AYRSHARE_API_KEY`
    - `ENV=production`
    - `FRONTEND_URL` (your production URL)
+   - `PORT=8000` (optional)
+   - `LOG_LEVEL=INFO` (optional)
 
 3. **Configure health check**:
    - Endpoint: `GET /health`

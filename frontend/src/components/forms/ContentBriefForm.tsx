@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { generatePlan, type ContentBrief, type GeneratedPlan } from '../../lib/contentApi';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ContentBriefFormProps {
-  onPlanGenerated: (plan: GeneratedPlan) => void;
+  onPlanGenerated: (plan: GeneratedPlan, templateType: string) => void;
 }
 
 export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => {
@@ -18,6 +18,7 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
   const [tone, setTone] = useState('friendly');
   const [platforms, setPlatforms] = useState<string[]>(['TikTok']);
   const [lengthSeconds, setLengthSeconds] = useState<number | null>(null);
+  const [templateType, setTemplateType] = useState<string>('video');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,10 +52,11 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
         platforms,
         tone,
         length_seconds: lengthSeconds || null,
+        template_type: templateType,
       };
 
       const plan = await generatePlan(brief);
-      onPlanGenerated(plan);
+      onPlanGenerated(plan, templateType);
     } catch (err: any) {
       setError(
         err.response?.data?.detail ||
@@ -91,6 +93,24 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
             />
             <p id="idea-description" className="text-sm text-muted-foreground">
               Be as detailed as possible. The AI will use this to create your script and caption.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="templateType" className="text-base font-semibold">
+              Content Type
+            </Label>
+            <Select value={templateType} onValueChange={setTemplateType}>
+              <SelectTrigger id="templateType" className="text-base h-11">
+                <SelectValue placeholder="Select content type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="video">Video</SelectItem>
+                <SelectItem value="image">Image</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              Choose whether to create a video or static image post
             </p>
           </div>
 

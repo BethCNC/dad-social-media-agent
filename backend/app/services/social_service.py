@@ -6,7 +6,7 @@ from app.services.ayrshare_client import schedule_post
 logger = logging.getLogger(__name__)
 
 
-def schedule_content(request: ScheduleRequest) -> ScheduleResponse:
+async def schedule_content(request: ScheduleRequest) -> ScheduleResponse:
     """
     Schedule social media content.
     
@@ -20,7 +20,7 @@ def schedule_content(request: ScheduleRequest) -> ScheduleResponse:
         HTTPException: If scheduling fails
     """
     try:
-        return schedule_post(request)
+        return await schedule_post(request)
     except Exception as e:
         logger.error(f"Social scheduling error: {type(e).__name__}: {e}")
         raise

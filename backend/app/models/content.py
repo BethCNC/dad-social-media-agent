@@ -6,8 +6,9 @@ class ContentBrief(BaseModel):
     """Input brief for content generation."""
     idea: str
     platforms: list[str]
-    tone: str
+    tone: str = "friendly"
     length_seconds: int | None = None
+    template_type: str = "video"  # "image" or "video"
 
 
 class ShotInstruction(BaseModel):
