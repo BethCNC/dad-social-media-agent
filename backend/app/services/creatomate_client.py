@@ -6,15 +6,15 @@ from app.models.video import VideoRenderRequest, RenderJob
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-CREATOMATE_API_BASE = "https://rest.creatomate.com/v1"
+CREATOMATE_API_BASE = "https://api.creatomate.com/v2"
 
 
-def start_render(request: VideoRenderRequest) -> RenderJob:
+async def start_render(request: VideoRenderRequest) -> RenderJob:
     """
-    Start a video rendering job with Creatomate.
+    Start a video or image rendering job with Creatomate using a pre-defined template.
     
     Args:
-        request: Video render request with assets, script, and optional title
+        request: Render request with assets, script, template_type, and optional title
         
     Returns:
         RenderJob with job_id and initial status
@@ -27,55 +27,49 @@ def start_render(request: VideoRenderRequest) -> RenderJob:
         "Content-Type": "application/json",
     }
     
-    # Build Creatomate template structure
-    # Using a simple vertical video template (9:16 aspect ratio)
-    elements = []
+    # Select template based on template_type
+    template_type = request.template_type.lower() if request.template_type else "video"
+    if template_type == "image":
+        template_id = settings.CREATOMATE_IMAGE_TEMPLATE_ID
+    else:
+        template_id = settings.CREATOMATE_VIDEO_TEMPLATE_ID
     
-    # Add video clips
-    for i, asset in enumerate(request.assets):
-        elements.append({
-            "type": "video",
-            "source": asset.id,  # This should be the video URL from Pexels
-            "x": "0%",
-            "y": "0%",
-            "width": "100%",
-            "height": "100%",
-            "time": f"{i * 3}s",  # Stagger clips
-            "duration": asset.end_at - asset.start_at if asset.end_at and asset.start_at else 3,
-        })
+    # Build modifications to pass to the template
+    # Creatomate uses dot notation: "ElementName.property" to modify template elements
+    # Extract video/image URLs from assets
+    asset_urls = [asset.id for asset in request.assets]
     
-    # Add text overlay for script
+    # Build modifications object using dot notation
+    # Based on template structure: Background-1, Background-2, Text-1, Text-2, etc.
+    modifications = {}
+    
+    # Map assets to Background elements (Background-1, Background-2, etc.)
+    # Templates typically have Background-1, Background-2, Background-3, etc.
+    if asset_urls:
+        for i, url in enumerate(asset_urls, start=1):
+            element_name = f"Background-{i}.source"
+            modifications[element_name] = url
+    
+    # Map script text to Text elements
+    # For now, we'll put the full script in Text-1
+    # If the template has multiple text elements, you might want to split the script
     if request.script:
-        elements.append({
-            "type": "text",
-            "text": request.script,
-            "x": "50%",
-            "y": "80%",
-            "width": "90%",
-            "font_family": "Arial",
-            "font_size": "24px",
-            "font_weight": "600",
-            "fill_color": "#ffffff",
-            "stroke_color": "#000000",
-            "stroke_width": "2px",
-            "text_align": "center",
-        })
+        # Put script in first text element
+        modifications["Text-1.text"] = request.script
+        # If you want to split script across multiple text elements, you could do:
+        # script_parts = split_script_into_parts(request.script, num_parts=2)
+        # for i, part in enumerate(script_parts, start=1):
+        #     modifications[f"Text-{i}.text"] = part
     
-    template = {
-        "output_format": "mp4",
-        "width": 1080,
-        "height": 1920,  # 9:16 vertical format
-        "elements": elements,
-    }
-    
+    # Build payload with template_id and modifications
     payload = {
-        "template_id": None,  # Using inline template
-        "modifications": template,
+        "template_id": template_id,
+        "modifications": modifications,
     }
     
     try:
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
                 f"{CREATOMATE_API_BASE}/renders",
                 headers=headers,
                 json=payload,
@@ -83,17 +77,35 @@ def start_render(request: VideoRenderRequest) -> RenderJob:
             response.raise_for_status()
             data = response.json()
             
+            # Creatomate v2 API response structure
+            # Response can be a single object or an array with one object
+            if isinstance(data, list) and len(data) > 0:
+                data = data[0]
+            
+            job_id = data.get("id", "")
+            status = data.get("status", "pending")
+            # Video URL might be in 'url' or 'preview_url' field
+            video_url = data.get("url") or data.get("preview_url")
+            
             return RenderJob(
-                job_id=data.get("id", ""),
-                status=data.get("status", "pending"),
-                video_url=data.get("url") if data.get("status") == "succeeded" else None,
+                job_id=job_id,
+                status=status,
+                video_url=video_url if status == "succeeded" else None,
             )
             
     except httpx.HTTPStatusError as e:
         logger.error(f"Creatomate API HTTP error: {e.response.status_code}")
         if e.response.status_code == 401:
             raise Exception("Invalid API key. Please check your Creatomate configuration.") from e
-        raise Exception("Could not start video rendering. Please try again.") from e
+        if e.response.status_code == 404:
+            raise Exception("Template not found. Please check your CREATOMATE_TEMPLATE_ID.") from e
+        error_detail = ""
+        try:
+            error_data = e.response.json()
+            error_detail = error_data.get("message", "")
+        except:
+            pass
+        raise Exception(f"Could not start video rendering. {error_detail}".strip()) from e
     except httpx.RequestError as e:
         logger.error(f"Creatomate API request error: {type(e).__name__}")
         raise Exception("Could not connect to video rendering service. Please try again.") from e
@@ -102,7 +114,7 @@ def start_render(request: VideoRenderRequest) -> RenderJob:
         raise Exception("An error occurred while starting video rendering.") from e
 
 
-def get_render_status(job_id: str) -> RenderJob:
+async def get_render_status(job_id: str) -> RenderJob:
     """
     Get the status of a video rendering job.
     
@@ -120,18 +132,29 @@ def get_render_status(job_id: str) -> RenderJob:
     }
     
     try:
-        with httpx.Client(timeout=10.0) as client:
-            response = client.get(
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
                 f"{CREATOMATE_API_BASE}/renders/{job_id}",
                 headers=headers,
             )
             response.raise_for_status()
             data = response.json()
             
+            # Creatomate v2 API response structure
+            # Response can be a single object or an array with one object
+            if isinstance(data, list) and len(data) > 0:
+                data = data[0]
+            
+            # Creatomate status values: pending, rendering, succeeded, failed
+            status = data.get("status", "unknown")
+            video_url = None
+            if status == "succeeded":
+                video_url = data.get("url") or data.get("preview_url")
+            
             return RenderJob(
                 job_id=data.get("id", job_id),
-                status=data.get("status", "unknown"),
-                video_url=data.get("url") if data.get("status") == "succeeded" else None,
+                status=status,
+                video_url=video_url,
             )
             
     except httpx.HTTPStatusError as e:

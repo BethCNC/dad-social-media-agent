@@ -18,10 +18,11 @@ class AssetSelection(BaseModel):
 
 
 class VideoRenderRequest(BaseModel):
-    """Request to render a video."""
+    """Request to render a video or image."""
     assets: list[AssetSelection]
     script: str
     title: str | None = None
+    template_type: str = "video"  # "image" or "video"
 
 
 class RenderJob(BaseModel):
