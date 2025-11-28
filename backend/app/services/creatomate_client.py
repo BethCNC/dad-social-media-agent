@@ -105,7 +105,7 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
             error_detail = error_data.get("message", "")
         except:
             pass
-        raise Exception(f"Could not start video rendering. {error_detail}".strip()) from e
+        raise Exception(f"Video rendering is taking longer than expected. Please try again in a few minutes.") from e
     except httpx.RequestError as e:
         logger.error(f"Creatomate API request error: {type(e).__name__}")
         raise Exception("Could not connect to video rendering service. Please try again.") from e

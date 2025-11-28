@@ -20,9 +20,10 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     try:
         return await render_video(request)
     except Exception as e:
+        error_message = str(e) if str(e) else "We couldn't start video rendering. Please try again."
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=error_message
         ) from e
 
 
@@ -40,7 +41,8 @@ async def get_render_status(job_id: str) -> RenderJob:
     try:
         return await check_render_status(job_id)
     except Exception as e:
+        error_message = str(e) if str(e) else "We couldn't check render status. Please try again."
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=error_message
         ) from e
