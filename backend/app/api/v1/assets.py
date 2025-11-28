@@ -24,7 +24,8 @@ async def search_assets(
     try:
         return await search_videos(query, max_results)
     except Exception as e:
+        error_message = str(e) if str(e) else "We couldn't search for videos. Please try again."
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=error_message
         ) from e
