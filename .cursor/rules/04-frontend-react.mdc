@@ -1,0 +1,84 @@
+# Frontend Guidelines – React + Vite + Tailwind
+
+## Stack
+
+- React 18+
+- TypeScript
+- Vite
+- Tailwind CSS
+- Lucide React for icons
+- Axios for HTTP → FastAPI
+
+## File Structure
+
+```text
+frontend/src/
+  main.tsx
+  App.tsx
+  pages/
+    Dashboard.tsx
+    NewPostWizard.tsx
+  components/
+    layout/
+      Shell.tsx
+      Sidebar.tsx
+    forms/
+      ContentBriefForm.tsx
+    planning/
+      ScriptPreview.tsx
+      CaptionPreview.tsx
+    assets/
+      AssetGrid.tsx
+    video/
+      RenderStatusCard.tsx
+    social/
+      ScheduleForm.tsx
+  lib/
+    api.ts
+    contentApi.ts
+    videoApi.ts
+    socialApi.ts
+```
+
+## Core UX Flow (NewPostWizard)
+
+1. **Brief Step**
+   - Form collects:
+     - Idea / topic
+     - Tone
+     - Platforms (TikTok, Instagram)
+     - Optional length in seconds
+   - On submit, call `contentApi.generatePlan`.
+
+2. **Script & Caption Step**
+   - Display generated script and caption.
+   - Allow inline editing.
+
+3. **Assets Step**
+   - Call `assetsApi.search` with keywords from brief or shot plan.
+   - Display `AssetGrid` with thumbnails, durations, and a checkbox/toggle for selection.
+
+4. **Render Step**
+   - Send selected assets + script to `videoApi.render`.
+   - Display `RenderStatusCard` that polls render status until complete.
+   - Show preview URL or embedded player.
+
+5. **Schedule Step**
+   - Show final video preview + caption.
+   - `ScheduleForm` collects date/time and platforms.
+   - Call `socialApi.schedule` and show confirmation.
+
+## Axios API Layer
+
+- Create a shared Axios instance in `lib/api.ts`:
+  - Base URL from `VITE_API_BASE_URL` env.
+  - Global timeout and basic interceptors.
+
+- Wrap each backend group in a separate module (e.g. `contentApi.ts`, `videoApi.ts`).
+
+## UI Principles for Older User
+
+- Large, readable typography.
+- Clear steps with titles like “Step 1: Describe Your Video”.
+- Simple primary call-to-action per step.
+- Avoid clutter and unnecessary advanced options in MVP.

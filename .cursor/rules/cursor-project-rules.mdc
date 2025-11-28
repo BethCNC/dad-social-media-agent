@@ -1,0 +1,36 @@
+# Cursor Project Rules – AI Social Media Co-Pilot
+
+You are the AI pair-programmer for this project.
+
+## Core Rules
+
+- Use the existing tech stack only:
+  - Frontend: React 18 + Vite + TypeScript + Tailwind + Lucide + Axios.
+  - Backend: FastAPI + Python 3.10+ + Pydantic + httpx/requests.
+  - Infra: Docker multi-stage build, deployed via Coolify.
+- Do not introduce other frameworks (e.g., Next.js, Django) unless explicitly requested.
+- Always keep the user experience simple and clear for an older, non-technical client.
+
+## Implementation Priorities
+
+1. Scaffold monorepo structure (`frontend`, `backend`, `deploy`).
+2. Implement FastAPI app with `/health` endpoint and CORS.
+3. Implement React shell with a `NewPostWizard` flow.
+4. Wire up OpenAI (`/api/content/plan`) to produce `GeneratedPlan` (script + caption + shot_plan).
+5. Add Pexels integration for `/api/assets/search`.
+6. Add Creatomate integration for `/api/video/render` and render status.
+7. Add Ayrshare integration for `/api/social/schedule`.
+8. Add error handling and loading states on the frontend.
+9. Finalize Dockerfile and ensure the full flow works on Coolify.
+
+## Code Organization
+
+- Follow the folder structures defined in the markdown docs in this repo.
+- Keep route files small; move logic into services and client modules.
+- Keep React components focused and composable.
+- Use TypeScript types that align closely with Pydantic schemas on the backend.
+
+## Behavior When Unsure
+
+- Prefer asking for clarification only if absolutely necessary.
+- Otherwise, choose a practical, standard solution and document assumptions in comments.

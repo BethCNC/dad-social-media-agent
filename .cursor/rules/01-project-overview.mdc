@@ -1,0 +1,24 @@
+---
+alwaysApply: true
+---
+
+# AI Social Media Co-Pilot – Project Overview
+
+This project is an **AI Social Media Co-Pilot** that helps an older, non-technical client plan and publish TikTok and Instagram content.
+
+The app should:
+- Turn simple ideas or prompts into **scripts + captions**.
+- Suggest and assemble **stock video clips**.
+- Trigger basic **short-form video renders**.
+- Prepare and optionally **schedule posts** via APIs.
+
+## Core Goals
+
+- Keep the UX **simple and forgiving** for an older user.
+- Centralize all logic in a **React + FastAPI** app.
+- Use external APIs for:
+  - AI text generation (OpenAI `gpt-4o`)
+  - Stock video (Pexels)
+  - Video rendering (Creatomate)
+  - Social publishing (Ayrshare)
+- Package everything in a **single Docker image** and deploy via **Coolify**.

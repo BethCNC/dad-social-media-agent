@@ -1,0 +1,64 @@
+{
+    "clientId": "dad-unicity",
+    "brandName": "Unicity Wellness (Dad)",
+    "defaultReferralUrl": "https://YOUR-DAD-PRIMARY-UNICITY-LINK",
+    "tone": {
+      "overall": "friendly, educational, supportive, not hypey",
+      "readingLevel": "9th grade",
+      "personPerspective": "first person or first-person plural, conversational"
+    },
+    "compliance": {
+      "sources": [
+        "https://www.unicity.com/usa/en",
+        "https://www.unicity.com/usa/en/compliance"
+      ],
+      "rules": {
+        "noDiseaseClaims": true,
+        "noGuaranteedIncome": true,
+        "alwaysIncludeHealthDisclaimer": true,
+        "avoidCopyingOfficialTextVerbatim": true
+      }
+    },
+    "products": {
+      "feel_great": {
+        "label": "Feel Great System",
+        "primaryUrl": "https://YOUR-DAD-FEEL-GREAT-LINK",
+        "focus": [
+          "supporting metabolic health",
+          "making intermittent-fasting-style routines more doable",
+          "helping manage appetite and energy as part of a healthy lifestyle"
+        ]
+      },
+      "unimate": {
+        "label": "Unimate",
+        "primaryUrl": "https://YOUR-DAD-UNIMATE-LINK",
+        "focus": [
+          "supporting energy and mental clarity",
+          "supporting mood and focus",
+          "helping manage appetite in daily routines"
+        ]
+      },
+      "balance": {
+        "label": "Balance",
+        "primaryUrl": "https://YOUR-DAD-BALANCE-LINK",
+        "focus": [
+          "supporting digestion and satiety",
+          "slowing carbohydrate absorption",
+          "providing fiber and nutrients as part of balanced meals"
+        ]
+      }
+    },
+    "hashtags": {
+      "general": [
+        "#metabolichealth",
+        "#healthyliving",
+        "#unicity"
+      ],
+      "maxExtraPerPost": 5
+    },
+    "disclaimers": {
+      "health": "These products are intended to support a healthy lifestyle. This is not medical advice. Talk to your healthcare provider before making changes to your routine. Results vary.",
+      "general": "This content is for educational purposes only and does not replace professional medical or financial advice."
+    }
+  }
+  
