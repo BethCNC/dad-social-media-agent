@@ -1,0 +1,49 @@
+# OpenAI Prompting & JSON Schemas
+
+The OpenAI integration is the “brain” of the app. It should output **structured JSON** that maps directly into Pydantic models.
+
+## Target Model
+
+Use the `gpt-4o` model.
+
+## Desired Output Shape
+
+Map to `GeneratedPlan`:
+
+```jsonc
+{
+  "script": "string - spoken script for the video",
+  "caption": "string - social media caption including relevant hashtags",
+  "shot_plan": [
+    {
+      "description": "string - what the shot should show",
+      "duration_seconds": 4
+    }
+  ]
+}
+```
+
+## Prompting Guidelines
+
+- System message should explain:
+  - You are helping create **short-form vertical videos** for TikTok and Instagram.
+  - The client is an older, non-technical person who needs simple, clear language.
+  - Responses must be JSON only, matching the specified schema.
+- User message should include:
+  - The content brief (idea/topic).
+  - Tone (friendly, educational, inspiring, etc.).
+  - Target platforms.
+  - Approximate length if provided.
+
+Example high-level instructions to the model (not exact prompt text):
+
+- “Write a short, conversational script that can be spoken in 20–40 seconds.”
+- “Make the caption friendly and clear. Include 3–5 relevant hashtags.”
+- “Create 3–6 shot descriptions that a stock video search engine could understand.”
+
+## Error Handling
+
+- Use `response_format` or explicit instructions to force JSON.
+- If parsing fails:
+  - Log the raw response (without secrets).
+  - Return a 500 error with a clear message to the frontend.

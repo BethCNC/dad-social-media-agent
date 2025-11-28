@@ -1,0 +1,430 @@
+---
+alwaysApply: true
+---
+# Product Requirements Document (PRD)  
+**Project:** AI Social Media Co-Pilot  
+**Owner:** Beth  
+**Tech Stack:** React (Vite) + FastAPI + Docker + Coolify  
+**External APIs:** OpenAI, Pexels, Creatomate, Ayrshare  
+
+---
+
+## 1. Product Summary
+
+The **AI Social Media Co-Pilot** is a web app that helps non-technical, often older clients create and publish TikTok and Instagram content with minimal friction.
+
+The app turns a simple idea (“I want a short tip about X”) into:
+
+1. A short **video script** and **caption**.
+2. A set of **stock clip suggestions**.
+3. An automatically **rendered vertical video**.
+4. A **scheduled post** on TikTok and Instagram via Ayrshare.
+
+The app runs as a single Dockerized service (React + FastAPI) deployed to a Coolify server.
+
+---
+
+## 2. Problem Statement & Goals
+
+### 2.1 Problem
+
+- Many small business owners / older clients:
+  - Don’t understand social media flows.
+  - Are overwhelmed by editing tools.
+  - Struggle to turn ideas into consistent posts.
+- Existing tools (CapCut, Canva, etc.) still expect:
+  - Comfort with editing timelines.
+  - Frequent context switching between apps.
+  - Manual copy–paste for captions and scheduling.
+
+### 2.2 Goals
+
+1. **Reduce friction** from idea → published post.
+2. Provide a **guided wizard** that hides complexity:
+   - No exposed timelines, layers, export settings.
+3. Centralize logic in a **single web app**:
+   - AI scripting (OpenAI),
+   - Stock footage (Pexels),
+   - Video render (Creatomate),
+   - Scheduling (Ayrshare).
+4. Ship a **production-ready MVP** that works reliably for:
+   - Your own accounts first, then extend to client accounts.
+
+### 2.3 Non-Goals (MVP)
+
+- No multi-tenant dashboard with separate logins for many clients.
+- No advanced video editing (manual cut, zooms, complex transitions).
+- No full analytics or performance dashboards.
+- No mobile native app (web app only; responsive layout is a “nice to have”).
+
+---
+
+## 3. Target Users & Personas
+
+### Persona A – “Older Small Business Owner” (Primary)
+
+- Age: 45–70  
+- Comfort with tech: low–medium  
+- Pain:
+  - Feels pressured to “show up on social” but doesn’t know how.
+  - Finds editing tools intimidating.
+- Needs:
+  - Type a simple explanation of what they want to share.
+  - Get a ready-to-post video with minimal decisions.
+
+### Persona B – “Social-Media Helper / Assistant” (You or a VA)
+
+- More comfortable with tools.
+- Uses the app to produce batches of content for a client.
+- Wants:
+  - Repeatable workflow.
+  - Minimal manual editing.
+  - Ability to quickly schedule multiple posts.
+
+---
+
+## 4. Core User Journeys
+
+### Journey 1 – Create & Schedule a Single Post
+
+1. User opens the app and clicks **“Create New Post”**.
+2. **Step 1 – Brief:**  
+   - Enters topic (e.g., “3 tips for first-time home buyers”).  
+   - Chooses tone (friendly, educational).  
+   - Selects platforms (TikTok, Instagram).  
+   - (Optional) Desired length (e.g., 30 sec).
+3. **Step 2 – Script & Caption:**  
+   - App shows AI-generated script and caption (with hashtags).  
+   - User tweaks script/caption if desired.
+4. **Step 3 – Assets:**  
+   - App shows relevant stock clips from Pexels.  
+   - User selects 3–5 clips.
+5. **Step 4 – Render:**  
+   - App sends data to Creatomate.  
+   - Shows “Rendering…” state and then a preview URL.
+6. **Step 5 – Schedule:**  
+   - User selects “Post now” or a date/time.  
+   - App posts via Ayrshare to TikTok + Instagram.
+7. Confirmation screen with:
+   - Status from Ayrshare.
+   - Links to posts (where available).
+
+### Journey 2 – Save as Draft (Future Phase)
+
+- Same as Journey 1, but user saves the plan (script, caption, asset choices) without rendering or scheduling.  
+- MVP: **Out of scope** (no persistent DB).
+
+---
+
+## 5. Scope & Assumptions (MVP)
+
+**In scope:**
+
+- Single user (you) posting to:
+  - Your social accounts (linked in Ayrshare).
+  - A client’s accounts (linked under the same Ayrshare profile).
+- Simple wizard UI with 5 steps.
+- Basic error handling & messaging.
+- Single Creatomate template (vertical 9:16).
+
+**Out of scope for MVP:**
+
+- User management / authentication.
+- Multiple Ayrshare profiles or complex “clients” system.
+- Local storage of project history or analytics.
+
+**Assumptions:**
+
+- Ayrshare Basic Plan is sufficient for initial posting needs.
+- Creatomate template is designed/managed in their UI; app only passes variables (text, asset URLs).
+- Stock clips are royalty-free for use via Pexels API within Creatomate outputs.
+
+---
+
+## 6. Functional Requirements
+
+### 6.1 Frontend – React Application
+
+#### 6.1.1 Pages / Routes
+
+1. **Dashboard (`/`)**
+   - Shows:
+     - Button: **“Create New Post”**.
+     - (Future) list of recent posts or render history.
+
+2. **New Post Wizard (`/new`)**
+   - 5 steps:
+     1. Brief
+     2. Script & Caption
+     3. Assets
+     4. Render
+     5. Schedule
+
+3. **404 Page**
+   - Simple “Page not found” message with a link back to Dashboard.
+
+#### 6.1.2 Components (Key)
+
+- `ContentBriefForm`
+- `ScriptPreview`
+- `CaptionPreview`
+- `AssetGrid` (selectable cards with thumbnails + duration)
+- `RenderStatusCard` (status + preview)
+- `ScheduleForm` (date/time/platforms)
+- Basic layout components: `Shell`, `Sidebar`, `TopBar`.
+
+#### 6.1.3 Behavior Requirements
+
+- Show clear step labels: “Step 1 of 5”, etc.
+- Buttons:
+  - `Next`, `Back`, `Generate Script`, `Search Clips`, `Render Video`, `Schedule Post`.
+- Disable submit buttons while API calls are in progress.
+- Display user-friendly error messages per step:
+  - “We couldn’t generate a script right now. Please try again.”
+  - “Video rendering is taking longer than expected; please try again in a few minutes.”
+- Use large, readable typography and high contrast for accessibility.
+
+---
+
+### 6.2 Backend – FastAPI
+
+All endpoints prefixed with `/api`.
+
+#### 6.2.1 Endpoints Overview
+
+| Endpoint                 | Method | Description                                          |
+|--------------------------|--------|------------------------------------------------------|
+| `/health`                | GET    | Health check                                         |
+| `/api/content/plan`      | POST   | Generate script + caption + shot plan (OpenAI)      |
+| `/api/assets/search`     | POST   | Search stock videos (Pexels)                        |
+| `/api/video/render`      | POST   | Start Creatomate render                             |
+| `/api/video/status/{id}` | GET    | Check render job status                             |
+| `/api/social/schedule`   | POST   | Schedule/post video via Ayrshare                    |
+
+#### 6.2.2 Request/Response Schemas (High-Level)
+
+**`POST /api/content/plan`**
+
+- Request: `ContentBrief`
+  - `idea: string`
+  - `platforms: string[]`
+  - `tone: string`
+  - `length_seconds?: number`
+
+- Response: `GeneratedPlan`
+  - `script: string`
+  - `caption: string`
+  - `shot_plan: ShotInstruction[]`
+
+**`POST /api/assets/search`**
+
+- Request:
+  - `query: string`
+  - `max_results?: number`
+
+- Response:
+  - `results: AssetResult[]`
+
+**`POST /api/video/render`**
+
+- Request: `VideoRenderRequest`
+  - `assets: AssetSelection[]`
+  - `script: string`
+  - `title?: string`
+
+- Response:
+  - `job_id: string`
+  - `status: "queued" | "processing" | "finished" | "error"`
+  - `video_url?: string`
+
+**`GET /api/video/status/{id}`**
+
+- Response: `RenderJob`
+  - `job_id: string`
+  - `status: string`
+  - `video_url?: string`
+
+**`POST /api/social/schedule`**
+
+- Request: `ScheduleRequest`
+  - `video_url: string`
+  - `caption: string`
+  - `platforms: string[]`  (e.g. `["instagram", "tiktok"]`)
+  - `scheduled_time?: string` (ISO timestamp; if empty = post now)
+
+- Response: `ScheduleResponse`
+  - `provider_status: string` (e.g. “success”)
+  - `provider_ids?: string[]`
+  - `external_links?: string[]`
+
+---
+
+## 7. External Integrations – Requirements
+
+### 7.1 OpenAI
+
+- Model: `gpt-4o`.
+- Server-side only.
+- Must output JSON that conforms to `GeneratedPlan`:
+  - `script: string`
+  - `caption: string`
+  - `shot_plan: ShotInstruction[]`
+- Prompt must:
+  - Explain audience + platform.
+  - Enforce friendly, simple language.
+  - Ask for script, caption (with hashtags), and shot descriptions.
+
+Error handling:
+
+- If JSON parse fails → return 500 with a clear, generic message.
+- Log the raw response (sanitized) for debugging.
+
+---
+
+### 7.2 Pexels
+
+- Use Videos API.
+- Search based on:
+  - `idea` plus `shot_plan` descriptions.
+- Normalize to `AssetResult` shape:
+  - `id`, `thumbnail_url`, `video_url`, `duration_seconds`.
+
+Error handling:
+
+- On failure, return empty list with warning to user: “We couldn’t load stock clips right now.”
+
+---
+
+### 7.3 Creatomate
+
+- Use a single predefined vertical template, configured in the Creatomate dashboard.
+- Backend passes:
+  - List of clip URLs.
+  - Optional text overlays (e.g., script chunks or title).
+- Returns:
+  - `renderId` → mapped to `job_id`.
+- Polling:
+  - Frontend calls `/api/video/status/{job_id}` every few seconds until complete.
+
+Error handling:
+
+- If render fails:
+  - Mark `status = "error"`.
+  - Frontend shows: “We couldn’t finish rendering your video. Please try again or adjust your clips.”
+
+---
+
+### 7.4 Ayrshare
+
+- Use `/post` endpoint with:
+  - `post` = caption text.
+  - `platforms` = user selected.
+  - `mediaUrls` = `[video_url]`.
+  - Optionally `scheduleDate` for future times.
+
+- Include header:
+  - `Authorization: Bearer <AYRSHARE_API_KEY>`.
+
+Assume a single profile (your account) for MVP.
+
+Error handling:
+
+- If Ayrshare returns an error, respond with a clean message:
+  - “We couldn’t schedule this post. Please check your Ayrshare connection and try again.”
+
+---
+
+## 8. Configuration & Environment
+
+### 8.1 Backend `.env` keys
+
+- `ENV`
+- `PORT`
+- `FRONTEND_URL`
+- `OPENAI_API_KEY`
+- `PEXELS_API_KEY`
+- `CREATOMATE_API_KEY`
+- `CREATOMATE_PROJECT_ID`
+- `CREATOMATE_TEMPLATE_ID`
+- `AYRSHARE_API_KEY`
+- `AYRSHARE_PROFILE_KEY` (optional)
+- `LOG_LEVEL`
+
+### 8.2 Frontend `.env`
+
+- `VITE_API_BASE_URL`
+
+---
+
+## 9. Data Model & Persistence
+
+### MVP
+
+- No database required.
+- All data is transient:
+  - Brief, generated script, caption, selected assets, etc. live in frontend state for the session.
+- External systems hold the “permanent” artifacts:
+  - Creatomate: rendered video file.
+  - Ayrshare: scheduled / published post record.
+
+### Future
+
+- Add a lightweight DB (Postgres/Supabase) to store:
+  - Projects (brief, script, caption, chosen assets).
+  - Render jobs.
+  - Post status / links.
+- Enable history, searching, and reuse.
+
+---
+
+## 10. Non-Functional Requirements
+
+- **Performance**
+  - Frontend should remain responsive; all heavy work on backend / external APIs.
+- **Reliability**
+  - Handle external API failures gracefully.
+  - Health check endpoint for Coolify.
+- **Security**
+  - All secrets in environment variables; never in frontend.
+  - Use HTTPS in production.
+- **Accessibility**
+  - Large, legible fonts and clear buttons.
+  - High-contrast and simple layouts suitable for older users.
+
+---
+
+## 11. Success Metrics (Initial)
+
+- **Time to create a post**:  
+  Target: < 10 minutes from idea to scheduled post (for you as power user).
+- **Error rate on publishing**:  
+  < 5% of attempts fail due to integration errors in steady state.
+- **User feedback (qualitative)** from client:
+  - They feel it is “simple” and “doable”.
+  - They can independently walk through the wizard after a short walkthrough.
+
+---
+
+## 12. Release Plan
+
+### Phase 1 – Technical MVP
+
+- All 5 steps of the wizard working end-to-end:
+  - Content plan (OpenAI).
+  - Asset search (Pexels).
+  - Render (Creatomate).
+  - Schedule (Ayrshare).
+- Deployed to Coolify.
+- Used by you only.
+
+### Phase 2 – Client Pilot
+
+- Link client’s accounts in Ayrshare.
+- Have client use the app with you on Zoom to observe pain points.
+- Adjust UX copy, defaults, and error messages.
+
+### Phase 3 – Enhancements
+
+- Add “Save as Draft” and simple history using a DB.
+- Add reusable templates (tone, style presets).
+- Explore multi-client profiles (Ayrshare User Profiles or Business plan).
