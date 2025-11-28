@@ -65,6 +65,16 @@ export const updatePost = async (
 };
 
 /**
+ * Get a single post by ID.
+ */
+export const getPostById = async (
+  postId: number
+): Promise<WeeklyPost> => {
+  const response = await api.get<WeeklyPost>(`/api/weekly/posts/${postId}`);
+  return response.data;
+};
+
+/**
  * Regenerate text content for a post using content database.
  */
 export const regeneratePostText = async (

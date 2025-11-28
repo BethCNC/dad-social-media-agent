@@ -60,6 +60,52 @@ async def get_week(
         ) from e
 
 
+@router.get("/posts/{post_id}", response_model=WeeklyPost)
+async def get_post(
+    post_id: int,
+    db: Session = Depends(get_db)
+) -> WeeklyPost:
+    """
+    Get a single post by ID.
+    """
+    try:
+        post_db = db.query(ScheduledPostDB).filter(ScheduledPostDB.id == post_id).first()
+        
+        if not post_db:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        # Convert to WeeklyPost
+        shot_plan = [
+            ShotInstruction(**shot) for shot in (post_db.shot_plan or [])
+        ]
+        
+        return WeeklyPost(
+            id=post_db.id,
+            post_date=post_db.post_date,
+            post_time=post_db.post_time,
+            content_pillar=post_db.content_pillar,
+            series_name=post_db.series_name,
+            topic=post_db.topic,
+            hook=post_db.hook,
+            script=post_db.script,
+            caption=post_db.caption,
+            template_type=post_db.template_type,
+            shot_plan=shot_plan,
+            suggested_keywords=post_db.suggested_keywords or [],
+            status=post_db.status,
+            media_url=post_db.media_url,
+        )
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"API error getting post: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve post. Please try again."
+        ) from e
+
+
 @router.put("/posts/{post_id}", response_model=WeeklyPost)
 async def update_post(
     post_id: int,
@@ -183,9 +229,17 @@ Content Pillar: {post_db.content_pillar}
 Template Type: {post_db.template_type}
 
 Generate:
-1. A new script (15-45 seconds) that maintains the hook but refreshes the content
-2. A new caption with hook, body, CTA, hashtags, and health disclaimer
-3. Keep the same shot_plan structure (you can adjust descriptions if needed)
+1. A new script (15-45 seconds) following TikTok structure: Hook (1-3s) → Context/Empathy → Value Steps → Soft CTA
+   - Include on-screen text suggestions (especially first 3 seconds with main keyword)
+   - Ensure main keyword is spoken near the start
+2. A new caption with:
+   - Hook (first line, attention-grabbing)
+   - Body (1-3 sentences)
+   - Soft CTA (e.g., "link's in my bio if you're curious")
+   - Hashtags: 1-2 specific + 1-2 broad (3-5 total)
+   - Health disclaimer at end
+3. Keep the same shot_plan structure (you can adjust descriptions if needed, but MUST EXCLUDE people, faces, and human subjects)
+4. Include suggested keywords for TikTok SEO (main keyword phrase + hashtag keywords)
 
 Use the Unicity quotes provided in the system message as inspiration for authentic language."""
         

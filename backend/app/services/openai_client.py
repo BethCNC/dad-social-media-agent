@@ -120,7 +120,7 @@ You must return ONLY valid JSON matching this exact schema:
   "caption": "string - social media caption with hook, body, CTA, hashtags, and health disclaimer at the end",
   "shot_plan": [
     {{
-      "description": "string - clear visual description for stock video search (e.g., 'person drinking morning coffee', 'healthy meal preparation')",
+      "description": "string - clear visual description for stock video search WITHOUT people or faces (e.g., 'coffee cup on table', 'healthy meal on plate', 'sunrise nature scene')",
       "duration_seconds": 4
     }}
   ]
@@ -133,64 +133,177 @@ CAPTION REQUIREMENTS:
 - Include core hashtags plus up to {hashtags.get('maxExtraPerPost', 5)} relevant additional ones
 - ALWAYS end with the health disclaimer: {disclaimers.get('health', '')}
 
-SHOT PLAN REQUIREMENTS:
-- Create 3-6 shot descriptions
-- Each description should be clear enough for stock video search
+SHOT PLAN REQUIREMENTS (CRITICAL FOR RELEVANT ASSET SEARCH):
+- Create 3-6 shot descriptions that are OPTIMIZED for stock video/image search engines
+- Each description must be SPECIFIC and SEARCHABLE - use concrete, visual keywords
 - Total duration should align with script length (typically 20-40 seconds)
 - Focus on lifestyle, wellness, and relatable everyday moments
 
-TIKTOK PLAYBOOK BEST PRACTICES (2025-2026):
+SEARCH OPTIMIZATION FOR SHOT DESCRIPTIONS (UNICITY WELLNESS THEMES):
+- Use SPECIFIC, CONCRETE keywords that stock libraries use, ALIGNED WITH UNICITY WELLNESS THEMES:
+  * Colors: "golden sunrise", "green smoothie", "white coffee cup", "fresh vegetables", "healthy meal"
+  * Actions: "pouring", "stirring", "steaming", "slicing", "arranging", "preparing", "serving"
+  * Settings: "wooden table", "marble counter", "outdoor patio", "kitchen counter", "peaceful morning", "cozy evening"
+  * Mood/Time: "morning light", "warm lighting", "sunset", "cozy", "peaceful", "energizing"
+  * Composition: "close-up", "overhead view", "side angle", "aerial"
+- UNICITY-SPECIFIC WELLNESS KEYWORDS to include when relevant:
+  * Metabolic health themes: "healthy meal", "balanced plate", "fresh ingredients", "whole foods", "nutritious"
+  * Energy themes: "morning routine", "sunrise", "coffee", "green smoothie", "energizing drink"
+  * Routine themes: "morning setup", "evening preparation", "meal prep", "kitchen scene", "peaceful environment"
+  * Wellness lifestyle: "nature scenes", "outdoor wellness", "healthy lifestyle objects", "wellness products"
+- Combine multiple searchable terms: "healthy breakfast bowl on wooden table morning light"
+- Match shot descriptions to script content - if script mentions "coffee", shot should show coffee-related visuals
+- Align with content pillar:
+  * Education: abstract wellness concepts, nature metaphors, healthy food close-ups, metabolic health visuals
+  * Routine: morning/evening scenes, objects in use, peaceful environments, meal preparation
+  * Story: before/after objects, transformation visuals, relatable wellness scenes
+  * Product: product close-ups, product in context, lifestyle integration, wellness products
 
-CONTENT MIX DISTRIBUTION:
+CRITICAL: NEVER include people, faces, or human subjects in shot descriptions
+- Use descriptions like: "coffee cup on wooden table morning light", "healthy meal on white plate overhead view", "sunrise over mountains time-lapse", "hands preparing vegetables close-up", "workout equipment gym floor", "nature scenes forest path", "product close-up on marble surface"
+- Avoid: "person doing X", "woman/man", "people", "face", "hands holding" (unless hands are the only visible part)
+- Focus on objects, nature, food, products, environments, and abstract lifestyle scenes
+
+EXAMPLE HIGH-QUALITY SHOT DESCRIPTIONS (UNICITY WELLNESS ALIGNED):
+- "coffee cup steam rising morning light wooden table peaceful"
+- "healthy breakfast bowl overhead view colorful fresh ingredients"
+- "sunrise over mountains time-lapse golden hour nature"
+- "fresh vegetables arranged on cutting board kitchen counter morning light"
+- "green smoothie in glass jar marble background healthy drink"
+- "evening routine candles warm lighting peaceful bedroom"
+- "wellness product bottle close-up white background studio lighting"
+- "balanced meal plate colorful vegetables whole foods"
+- "morning routine objects arranged wooden table natural light"
+- "peaceful nature scene forest path morning light"
+- "healthy meal prep ingredients fresh vegetables kitchen"
+- "energizing drink glass jar morning light counter"
+
+TIKTOK ALGORITHM OPTIMIZATION (2025-2026):
+TikTok is a personalized recommendation engine that test-drives every video in stages. The algorithm rewards:
+
+1. WATCH TIME / COMPLETION RATE (MOST IMPORTANT):
+   - Videos watched to the end (or replayed) are far more likely to be pushed
+   - Short, high-retention videos beat long, boring ones
+   - Completion rate beats raw length - prioritize retention over duration
+   - Target: 15-45 seconds for most videos (sweet spot)
+   - Experiment with 45-60 seconds only for deeper stories
+
+2. EARLY ENGAGEMENT:
+   - Likes, comments, shares, saves in the first "test batch" viewers matter most
+   - Encourage engagement: "save this for later", "send to someone who needs this"
+
+3. TOPIC CLARITY:
+   - Caption + on-screen text + spoken keyword helps TikTok know WHO to show it to
+   - Use clear, searchable keywords throughout
+
+CONTENT STRATEGY & PILLARS:
+
+CONTENT MIX DISTRIBUTION (2025-2026):
 - 60-70% pure value content (education, routines, stories without product mention)
 - 20-30% value + soft product integration (product appears naturally in routine)
 - <10% direct CTA content (still compliant, not MLM-y)
+This keeps the account from feeling like an infomercial and aligns with algorithm rewards.
 
 CONTENT PILLARS:
 1. Education ("why") - Short explanations about energy, cravings, routines, habits. Simple metaphors/visuals, no clinical promises.
 2. Routines & Habits ("how") - Morning/evening routines, habit stacks, "what I do before bed" type content.
-3. Story-based ("me too" connection) - Brief before/after feelings (not medical transformations), relatable struggles.
+3. Story-based ("me too" connection) - Brief before/after FEELINGS (not medical transformations), relatable struggles.
 4. Soft Product Integration - Product shows up inside routine naturally (e.g., drink during morning walk, supplement as part of meal).
 
-VIDEO STRUCTURE (CRITICAL):
-- Hook (0-3 seconds): Must grab attention immediately or viewers scroll. Use pain points: "If you crash every day at 3pm, watch this."
-- Context/Empathy (3-8 seconds): "I used to feel wiped by mid-afternoon..."
-- Value Steps (8-30 seconds): Tip 1, 2, 3 with B-roll of daily life.
-- Soft CTA (last 3-5 seconds): "If this was helpful, save this for later" or "If you're curious what I use, link's in my bio."
-
-VIDEO LENGTH:
-- Sweet spot: 15-45 seconds for most videos
-- Experiment with 45-60 seconds for deeper stories
-- Completion rate beats raw length - prioritize retention
-
-HOOK REQUIREMENTS:
-- Must hook in first 1-3 seconds or viewers scroll
-- Focus on high retention, not clickbait
-- Use common pain points: energy crashes, cravings, habit struggles
-- Make it clear what value the video provides
-
-TIKTOK SEO (Search Engine Optimization):
-- TikTok is now a search engine - keywords matter as much as FYP
-- Place main keyword in:
-  * On-screen text in first 3 seconds (e.g., "3 tips to reduce afternoon energy crashes")
-  * Spoken audio near the start
-  * Caption with natural language + key phrase
-  * Hashtags: Mix 1-2 specific (#metabolichealth, #bloodsugartips) + 1-2 broad (#wellness, #healthyliving)
-- Suggested keyword themes: "how to feel more stable energy", "evening routine for better sleep", "how to build healthier snack habits", "what I eat for more stable energy"
-- Stick to behavior/lifestyle keywords, not disease names
-
-SERIES THINKING:
-- Create 3-5 recurring series (e.g., "Energy Tip Tuesday", "Evening Reset Routines", "My 40+ Wellness Check-in")
-- Series help algorithm understand niche and create anticipation
-- Distribute series across the month for consistency
-
-CONTENT PILLAR DISTRIBUTION (for monthly schedules):
+CONTENT PILLAR DISTRIBUTION (for schedules):
 - Education: ~40-50% of posts
 - Routines & Habits: ~20-30% of posts
 - Story-based: ~10-15% of posts
 - Soft Product Integration: ~20-30% of posts
 
-Remember: Keep everything simple, supportive, and compliant. No medical claims, no income promises. Optimize for watch time, hooks, and clarity."""
+VIDEO STRUCTURE (CRITICAL - MUST FOLLOW):
+
+1. HOOK (0-3 seconds) - ABSOLUTELY CRITICAL:
+   - MUST grab attention in first 1-3 seconds or viewers scroll
+   - Use pain points: "If you crash every day at 3pm, watch this."
+   - Examples: "Here are 3 things I changed about my mornings after 40."
+   - Focus on high retention, not clickbait
+   - Make it clear what value the video provides
+   - Common pain points: energy crashes, cravings, habit struggles
+
+2. CONTEXT/EMPATHY (3-8 seconds):
+   - Build connection: "I used to feel wiped by mid-afternoon..."
+   - Create "me too" moment
+
+3. VALUE STEPS (8-30 seconds):
+   - Tip 1, 2, 3 with clear structure
+   - Show B-roll of daily life (via shot plan)
+   - Keep it actionable and simple
+
+4. SOFT CTA (last 3-5 seconds):
+   - "If this was helpful, save this for later."
+   - "If you're curious what I use in my routine, the link's in my bio."
+   - NEVER use: "DM me to join my team", "Make $X a month", "This cures X"
+
+TIKTOK SEO (Search Engine Optimization) - CRITICAL:
+
+TikTok has become a search engine. SEO matters as much as FYP. Users search: "how to...", "best...", "does X help with...", "daily routine for..."
+
+KEYWORD PLACEMENT (MUST include main keyword in ALL of these):
+1. ON-SCREEN TEXT in first 3 seconds:
+   - Text overlay: "3 tips to reduce afternoon energy crashes"
+   - Reinforce hook visually
+   - Highlight step numbers
+   - Add key phrases for SEO
+
+2. SPOKEN AUDIO:
+   - Say the main keyword phrase once near the start of the script
+   - Natural integration, not forced
+
+3. CAPTION:
+   - Short, natural language + key phrase
+   - Example: "Feeling that 3pm crash? Here are 3 habits that helped me stabilize my energy (no crazy hacks)."
+
+4. HASHTAGS:
+   - Mix of 1-2 SPECIFIC (#metabolichealth, #bloodsugartips) + 1-2 BROAD (#wellness, #healthyliving)
+   - Total: 3-5 hashtags per post
+
+5. SUGGESTED KEYWORD THEMES (for this niche):
+   - "how to feel more stable energy"
+   - "evening routine for better sleep"
+   - "how to build healthier snack habits"
+   - "what I eat for more stable energy"
+   - Stick to BEHAVIOR/LIFESTYLE keywords, NOT disease names
+
+COMPLIANCE & SAFETY (CRITICAL):
+
+TikTok BANS MLM promotion and restricts medical claims. ALWAYS:
+
+FORBIDDEN LANGUAGE:
+- "Join my team", "DM me to learn how to make $$$", "Make $X a month"
+- "This cures X", "This will fix your [diagnosed condition]"
+- Disease names in claims context
+- Income or business opportunity promises
+
+SAFE POSITIONING:
+- Focus on education, lifestyle, and "supporting wellness"
+- Stories, routines, tips, habits
+- Soft CTA → "learn more" (link in bio), NOT "join my downline"
+- Use "supports", "helps with", "can make it easier to" - NOT "fixes" or "cures"
+
+SERIES THINKING:
+
+Create 3-5 recurring series (e.g., "Energy Tip Tuesday", "Evening Reset Routines", "My 40+ Wellness Check-in")
+- Series help algorithm understand niche
+- Create anticipation
+- Distribute across schedule for consistency
+- Think in series, not one-offs
+
+OUTPUT REQUIREMENTS:
+
+For each content piece, you MUST provide:
+1. Script with clear hook (1-3 seconds), context, value steps, soft CTA
+2. Caption with hook, body, soft CTA, hashtags (3-5 total), health disclaimer
+3. Shot plan (3-6 shots, NO people/faces)
+4. Suggested keywords for on-screen text (include in script as notes or separate field)
+5. Main keyword phrase that should be spoken and appear in caption
+
+Remember: Optimize for WATCH TIME, HOOK, and CLARITY. Keep everything simple, supportive, and compliant. No medical claims, no income promises."""
     
     return system_message
 
@@ -234,10 +347,36 @@ Tone: {brief.tone}
 Platforms: {', '.join(brief.platforms)}
 {length_hint}
 
+CRITICAL REQUIREMENTS:
+1. HOOK (first 1-3 seconds): Must grab attention immediately with a pain point or clear value promise
+2. SCRIPT STRUCTURE: Hook → Context/Empathy (3-8s) → Value Steps (8-30s) → Soft CTA (last 3-5s)
+3. TIKTOK SEO: Identify the main keyword phrase and ensure it appears in:
+   - On-screen text suggestion (for first 3 seconds)
+   - Spoken audio (near start of script)
+   - Caption (natural integration)
+   - Hashtags (1-2 specific + 1-2 broad, total 3-5)
+4. COMPLIANCE: No MLM language, no medical claims, no income promises. Use soft CTAs only.
+
 Generate:
-1. A conversational script that matches the tone and can be spoken in the target length
-2. A social media caption with hook, body, CTA, relevant hashtags (including core Unicity hashtags), and the required health disclaimer at the end
-3. A shot plan with 3-6 clear visual descriptions suitable for stock video search"""
+1. A conversational script (15-45 seconds) following the structure above
+   - Include notes for on-screen text overlays (especially in first 3 seconds with main keyword)
+   - Ensure main keyword is spoken near the start
+2. A social media caption with:
+   - Hook (first line, attention-grabbing)
+   - Body (1-3 sentences explaining value)
+   - Soft CTA (e.g., "If you're curious, link's in my bio")
+   - Hashtags: Core Unicity hashtags + 1-2 specific + 1-2 broad (3-5 total)
+   - Health disclaimer at the end
+3. A shot plan with 3-6 clear visual descriptions optimized for stock video/image search
+   - Each description should be SPECIFIC and SEARCHABLE with concrete keywords
+   - ALIGN WITH UNICITY WELLNESS THEMES: Include wellness, healthy lifestyle, metabolic health, energy, routine keywords
+   - Include: colors, actions, settings, lighting, composition (e.g., "golden sunrise over mountains time-lapse", "green smoothie in glass jar marble counter morning light healthy")
+   - Match shot descriptions to script content - if script mentions coffee, show coffee-related visuals
+   - CRITICAL: All shot descriptions must EXCLUDE people, faces, and human subjects (HEADLESS ACCOUNT)
+   - Focus on: healthy meals, fresh ingredients, wellness objects, peaceful environments, nature scenes, routine objects, products
+   - Total duration should align with script length
+   - Use 4-6 specific keywords per shot description including wellness/healthy terms for better search results
+   - Examples: "healthy breakfast bowl colorful fresh ingredients morning light", "peaceful nature scene forest path wellness", "wellness product bottle close-up white background"""
 
     try:
         response = await client.chat.completions.create(
@@ -320,13 +459,22 @@ Requirements:
 - Content mix: 60-70% pure value, 20-30% value + product, <10% direct CTA
 - Create 3-5 recurring series (e.g., "Energy Tip Tuesday", "Evening Reset Routines", "My 40+ Wellness Check-in")
 - Each post must include:
-  - Hook (1-3 seconds, high retention focus, must grab attention immediately)
-  - Full script (15-45 seconds, following structure: Hook → Context → Value Steps → Soft CTA)
-  - Caption with TikTok SEO keywords (keywords in caption, hashtags mix of specific + broad)
-  - Shot plan (3-6 shots, clear visual descriptions for stock video search)
-  - Suggested keywords for on-screen text and spoken audio (TikTok SEO)
+  - Hook (1-3 seconds, MUST grab attention immediately or viewers scroll - use pain points)
+  - Full script (15-45 seconds, following structure: Hook → Context/Empathy → Value Steps → Soft CTA)
+    * Include on-screen text suggestions (especially for first 3 seconds with main keyword)
+    * Main keyword must be spoken near the start
+  - Caption with TikTok SEO:
+    * Hook (first line)
+    * Body (1-3 sentences)
+    * Soft CTA (e.g., "link's in my bio if you're curious")
+    * Hashtags: 1-2 specific + 1-2 broad (3-5 total)
+    * Health disclaimer at end
+  - Shot plan (3-6 shots, clear visual descriptions for stock video search - MUST EXCLUDE people, faces, and human subjects)
+  - Suggested keywords for TikTok SEO:
+    * Main keyword phrase (for on-screen text, spoken audio, caption)
+    * Additional keywords for hashtags
   - Content pillar assignment (education, routine, story, product_integration)
-  - Series name if part of a recurring series
+  - Series name if part of a recurring series (create 3-5 series like "Energy Tip Tuesday", "Evening Reset Routines")
 
 Distribute content pillars:
 - Education: ~40-50% of posts
@@ -343,7 +491,7 @@ For each post, return a JSON object with:
 - hook: the 1-3 second hook text
 - script: full script (15-45 seconds)
 - caption: full caption with hook, body, CTA, hashtags, and health disclaimer
-- shot_plan: array of {{"description": "...", "duration_seconds": N}} objects
+- shot_plan: array of {{"description": "...", "duration_seconds": N}} objects (descriptions must EXCLUDE people, faces, and human subjects)
 - suggested_keywords: array of keywords for TikTok SEO (on-screen text, audio, caption)
 - template_type: "video" (default)
 
@@ -430,6 +578,10 @@ Return ONLY a JSON object with this structure:
 
 def build_system_message_with_quotes(profile: dict, quotes: List[str]) -> str:
     """
+    Build system message with quotes, using the same TikTok playbook best practices.
+    This is used for regenerating post text while maintaining TikTok optimization.
+    """
+    """
     Build system message with content database quotes injected.
     
     Args:
@@ -510,13 +662,27 @@ Requirements:
   * Use "video" for: Education tips (better for explanation), Routines (showing actions), Story-based content
   * Use "image" for: Product showcases (static product shots), Quotes/inspiration (text overlay on image), Simple tips
 - Each post must include:
-  - Hook (1-3 seconds, high retention focus, must grab attention immediately)
-  - Full script (15-45 seconds, following structure: Hook → Context → Value Steps → Soft CTA)
-  - Caption with TikTok SEO keywords (keywords in caption, hashtags mix of specific + broad)
-  - Shot plan (3-6 shots, clear visual descriptions for stock video/image search)
-  - Suggested keywords for on-screen text and spoken audio (TikTok SEO)
+  - Hook (1-3 seconds, MUST grab attention immediately or viewers scroll - use pain points)
+  - Full script (15-45 seconds, following structure: Hook → Context/Empathy → Value Steps → Soft CTA)
+    * Include on-screen text suggestions (especially for first 3 seconds with main keyword)
+    * Main keyword must be spoken near the start
+  - Caption with TikTok SEO:
+    * Hook (first line, attention-grabbing)
+    * Body (1-3 sentences explaining value)
+    * Soft CTA (e.g., "link's in my bio if you're curious")
+    * Hashtags: 1-2 specific + 1-2 broad (3-5 total)
+    * Health disclaimer at end
+  - Shot plan (3-6 shots, clear visual descriptions optimized for stock video/image search)
+    * ALIGN WITH UNICITY WELLNESS THEMES: Include wellness, healthy lifestyle, metabolic health keywords
+    * Each description: 4-6 specific keywords including wellness/healthy terms
+    * Examples: "healthy breakfast bowl colorful fresh ingredients morning light", "peaceful nature scene forest path wellness"
+    * CRITICAL: MUST EXCLUDE people, faces, and human subjects (HEADLESS ACCOUNT)
+    * Focus on: healthy meals, fresh ingredients, wellness objects, peaceful environments, nature, routine objects, products
+  - Suggested keywords for TikTok SEO:
+    * Main keyword phrase (for on-screen text, spoken audio, caption)
+    * Additional keywords for hashtags
   - Content pillar assignment (education, routine, story, product_integration)
-  - Series name if part of a recurring series
+  - Series name if part of a recurring series (create 2-3 series like "Energy Tip Tuesday", "Evening Reset Routines")
   - template_type: "image" or "video" (AI decides based on content type)
 
 For each post, return a JSON object with:
@@ -528,7 +694,7 @@ For each post, return a JSON object with:
 - hook: the 1-3 second hook text
 - script: full script (15-45 seconds)
 - caption: full caption with hook, body, CTA, hashtags, and health disclaimer
-- shot_plan: array of {{"description": "...", "duration_seconds": N}} objects
+- shot_plan: array of {{"description": "...", "duration_seconds": N}} objects (descriptions must EXCLUDE people, faces, and human subjects)
 - suggested_keywords: array of keywords for TikTok SEO (on-screen text, audio, caption)
 - template_type: "image" or "video" (AI decides based on content type)
 
