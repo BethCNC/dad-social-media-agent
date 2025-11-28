@@ -6,7 +6,11 @@ import { CaptionPreview } from '../components/planning/CaptionPreview';
 import { AssetGrid } from '../components/assets/AssetGrid';
 import { RenderStatusCard } from '../components/video/RenderStatusCard';
 import { ScheduleForm } from '../components/social/ScheduleForm';
+import { ScheduleGenerator } from '../components/schedule/ScheduleGenerator';
+import { ScheduleCalendar } from '../components/schedule/ScheduleCalendar';
+import { ContentPreviewModal } from '../components/schedule/ContentPreviewModal';
 import { type GeneratedPlan } from '../lib/contentApi';
+import { type MonthlySchedule, type ScheduledContentItem } from '../lib/scheduleApi';
 import { searchAssets, type AssetResult } from '../lib/assetsApi';
 import { renderVideo, type VideoRenderRequest } from '../lib/videoApi';
 import { type ScheduleResponse } from '../lib/socialApi';
@@ -15,10 +19,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
-type WizardStep = 1 | 2 | 3 | 4 | 5;
+type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
 
 export const NewPostWizard = () => {
-  const [currentStep, setCurrentStep] = useState<WizardStep>(1);
+  const [currentStep, setCurrentStep] = useState<WizardStep>(0);
+  const [monthlySchedule, setMonthlySchedule] = useState<MonthlySchedule | null>(null);
+  const [selectedScheduleItem, setSelectedScheduleItem] = useState<ScheduledContentItem | null>(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);
   const [templateType, setTemplateType] = useState<string>('video');
   const [script, setScript] = useState<string>('');
@@ -32,6 +39,36 @@ export const NewPostWizard = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
+
+  const handleScheduleGenerated = (schedule: MonthlySchedule) => {
+    setMonthlySchedule(schedule);
+  };
+
+  const handleDayClick = (item: ScheduledContentItem) => {
+    setSelectedScheduleItem(item);
+    setShowScheduleModal(true);
+  };
+
+  const handleUseScheduleContent = (item: ScheduledContentItem) => {
+    // Pre-fill the plan from schedule item
+    const plan: GeneratedPlan = {
+      script: item.script,
+      caption: item.caption,
+      shot_plan: item.shot_plan,
+    };
+    
+    setGeneratedPlan(plan);
+    setTemplateType(item.template_type);
+    setScript(item.script);
+    setCaption(item.caption);
+    setShowScheduleModal(false);
+    setSelectedScheduleItem(null);
+    setCurrentStep(2); // Skip to step 2 (review script & caption)
+  };
+
+  const handleSkipSchedule = () => {
+    setCurrentStep(1);
+  };
 
   const handlePlanGenerated = (plan: GeneratedPlan, templateTypeFromForm: string) => {
     setGeneratedPlan(plan);
@@ -169,6 +206,7 @@ export const NewPostWizard = () => {
   };
 
   const stepTitles = [
+    'Step 0: Monthly Schedule (Optional)',
     'Step 1: Describe Your Content',
     'Step 2: Review Script & Caption',
     'Step 3: Select Assets',
@@ -178,6 +216,32 @@ export const NewPostWizard = () => {
 
   const renderStepContent = () => {
     switch (currentStep) {
+      case 0:
+        return (
+          <div className="space-y-6">
+            {!monthlySchedule ? (
+              <ScheduleGenerator onScheduleGenerated={handleScheduleGenerated} />
+            ) : (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold">Your Monthly Schedule</h2>
+                  <Button variant="outline" onClick={() => setMonthlySchedule(null)}>
+                    Generate New Schedule
+                  </Button>
+                </div>
+                <ScheduleCalendar
+                  schedule={monthlySchedule}
+                  onDayClick={handleDayClick}
+                />
+                <div className="flex gap-2">
+                  <Button onClick={handleSkipSchedule} variant="outline">
+                    Skip to Manual Content Creation
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
       case 1:
         return <ContentBriefForm onPlanGenerated={handlePlanGenerated} />;
       case 2:
@@ -351,11 +415,11 @@ export const NewPostWizard = () => {
     <div className="max-w-4xl mx-auto">
       <Card>
         <CardHeader className="space-y-4">
-          <CardTitle className="text-3xl font-bold">
-            {stepTitles[currentStep - 1]}
+            <CardTitle className="text-3xl font-bold">
+            {stepTitles[currentStep]}
           </CardTitle>
-          <div className="flex items-center gap-2" role="progressbar" aria-valuenow={currentStep} aria-valuemin={1} aria-valuemax={5} aria-label={`Step ${currentStep} of 5`}>
-            {[1, 2, 3, 4, 5].map((step) => (
+          <div className="flex items-center gap-2" role="progressbar" aria-valuenow={currentStep} aria-valuemin={0} aria-valuemax={5} aria-label={`Step ${currentStep} of 5`}>
+            {[0, 1, 2, 3, 4, 5].map((step) => (
               <div
                 key={step}
                 className={cn(
@@ -377,7 +441,7 @@ export const NewPostWizard = () => {
           <div className="flex justify-between items-center pt-6 border-t border-border">
             <Button
               onClick={handlePrevious}
-              disabled={currentStep === 1}
+              disabled={currentStep === 0}
               variant="outline"
               size="lg"
               aria-label="Go to previous step"
@@ -385,23 +449,45 @@ export const NewPostWizard = () => {
               <ChevronLeft className="w-5 h-5" aria-hidden="true" />
               Previous
             </Button>
-            <Button
-              onClick={handleNext}
-              disabled={
-                currentStep === 5 ||
-                (currentStep >= 2 && !generatedPlan) ||
-                (currentStep === 3 && selectedAssetIds.size === 0) ||
-                (currentStep === 4 && !videoUrl)
-              }
-              size="lg"
-              aria-label="Go to next step"
-            >
-              Next
-              <ChevronRight className="w-5 h-5" aria-hidden="true" />
-            </Button>
+            {currentStep === 0 ? (
+              <Button
+                onClick={handleSkipSchedule}
+                size="lg"
+                aria-label="Skip to manual content creation"
+              >
+                Skip to Manual Content
+                <ChevronRight className="w-5 h-5 ml-2" aria-hidden="true" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleNext}
+                disabled={
+                  currentStep === 5 ||
+                  (currentStep >= 2 && !generatedPlan) ||
+                  (currentStep === 3 && selectedAssetIds.size === 0) ||
+                  (currentStep === 4 && !videoUrl)
+                }
+                size="lg"
+                aria-label="Go to next step"
+              >
+                Next
+                <ChevronRight className="w-5 h-5" aria-hidden="true" />
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
+      
+      {showScheduleModal && selectedScheduleItem && (
+        <ContentPreviewModal
+          item={selectedScheduleItem}
+          onClose={() => {
+            setShowScheduleModal(false);
+            setSelectedScheduleItem(null);
+          }}
+          onUseContent={handleUseScheduleContent}
+        />
+      )}
     </div>
   );
 };

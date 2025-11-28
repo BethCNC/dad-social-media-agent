@@ -5,6 +5,8 @@ from pathlib import Path
 from openai import AsyncOpenAI
 from app.core.config import get_settings
 from app.models.content import ContentBrief, GeneratedPlan, ShotInstruction
+from app.models.schedule import ScheduleRequest, ScheduledContentItem
+from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -135,7 +137,58 @@ SHOT PLAN REQUIREMENTS:
 - Total duration should align with script length (typically 20-40 seconds)
 - Focus on lifestyle, wellness, and relatable everyday moments
 
-Remember: Keep everything simple, supportive, and compliant. No medical claims, no income promises."""
+TIKTOK PLAYBOOK BEST PRACTICES (2025-2026):
+
+CONTENT MIX DISTRIBUTION:
+- 60-70% pure value content (education, routines, stories without product mention)
+- 20-30% value + soft product integration (product appears naturally in routine)
+- <10% direct CTA content (still compliant, not MLM-y)
+
+CONTENT PILLARS:
+1. Education ("why") - Short explanations about energy, cravings, routines, habits. Simple metaphors/visuals, no clinical promises.
+2. Routines & Habits ("how") - Morning/evening routines, habit stacks, "what I do before bed" type content.
+3. Story-based ("me too" connection) - Brief before/after feelings (not medical transformations), relatable struggles.
+4. Soft Product Integration - Product shows up inside routine naturally (e.g., drink during morning walk, supplement as part of meal).
+
+VIDEO STRUCTURE (CRITICAL):
+- Hook (0-3 seconds): Must grab attention immediately or viewers scroll. Use pain points: "If you crash every day at 3pm, watch this."
+- Context/Empathy (3-8 seconds): "I used to feel wiped by mid-afternoon..."
+- Value Steps (8-30 seconds): Tip 1, 2, 3 with B-roll of daily life.
+- Soft CTA (last 3-5 seconds): "If this was helpful, save this for later" or "If you're curious what I use, link's in my bio."
+
+VIDEO LENGTH:
+- Sweet spot: 15-45 seconds for most videos
+- Experiment with 45-60 seconds for deeper stories
+- Completion rate beats raw length - prioritize retention
+
+HOOK REQUIREMENTS:
+- Must hook in first 1-3 seconds or viewers scroll
+- Focus on high retention, not clickbait
+- Use common pain points: energy crashes, cravings, habit struggles
+- Make it clear what value the video provides
+
+TIKTOK SEO (Search Engine Optimization):
+- TikTok is now a search engine - keywords matter as much as FYP
+- Place main keyword in:
+  * On-screen text in first 3 seconds (e.g., "3 tips to reduce afternoon energy crashes")
+  * Spoken audio near the start
+  * Caption with natural language + key phrase
+  * Hashtags: Mix 1-2 specific (#metabolichealth, #bloodsugartips) + 1-2 broad (#wellness, #healthyliving)
+- Suggested keyword themes: "how to feel more stable energy", "evening routine for better sleep", "how to build healthier snack habits", "what I eat for more stable energy"
+- Stick to behavior/lifestyle keywords, not disease names
+
+SERIES THINKING:
+- Create 3-5 recurring series (e.g., "Energy Tip Tuesday", "Evening Reset Routines", "My 40+ Wellness Check-in")
+- Series help algorithm understand niche and create anticipation
+- Distribute series across the month for consistency
+
+CONTENT PILLAR DISTRIBUTION (for monthly schedules):
+- Education: ~40-50% of posts
+- Routines & Habits: ~20-30% of posts
+- Story-based: ~10-15% of posts
+- Soft Product Integration: ~20-30% of posts
+
+Remember: Keep everything simple, supportive, and compliant. No medical claims, no income promises. Optimize for watch time, hooks, and clarity."""
     
     return system_message
 
@@ -220,5 +273,155 @@ Generate:
 
     except Exception as e:
         logger.error(f"OpenAI API error: {type(e).__name__}: {str(e)}")
+        raise
+
+
+async def generate_monthly_schedule(request: ScheduleRequest) -> list[ScheduledContentItem]:
+    """
+    Generate a monthly schedule with full content for each posting day.
+    
+    Args:
+        request: ScheduleRequest with start_date, platforms, posts_per_week
+        
+    Returns:
+        List of ScheduledContentItem with full content for each posting day
+        
+    Raises:
+        FileNotFoundError: If client profile cannot be loaded
+        ValueError: If OpenAI response is invalid
+        Exception: If OpenAI API call fails
+    """
+    # Load client profile
+    try:
+        client_profile = load_client_profile()
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to load client profile: {e}")
+        raise
+    
+    # Build enhanced system message with TikTok playbook rules
+    system_message = build_system_message(client_profile)
+    
+    # Calculate posting days (approximately posts_per_week posts per week)
+    # For a month, we'll generate content for the specified number of days
+    # The actual day selection will be handled by the schedule service
+    total_posts = int((request.posts_per_week / 7) * 30)  # Approximate posts for 30 days
+    
+    # Calculate end date (30 days from start)
+    end_date = request.start_date + timedelta(days=29)
+    
+    # Build user message for schedule generation
+    user_message = f"""Generate a monthly posting schedule for {request.start_date} to {end_date}.
+
+Requirements:
+- {request.posts_per_week} posts per week ({total_posts} posts total for the month)
+- Platforms: {', '.join(request.platforms)}
+- Content mix: 60-70% pure value, 20-30% value + product, <10% direct CTA
+- Create 3-5 recurring series (e.g., "Energy Tip Tuesday", "Evening Reset Routines", "My 40+ Wellness Check-in")
+- Each post must include:
+  - Hook (1-3 seconds, high retention focus, must grab attention immediately)
+  - Full script (15-45 seconds, following structure: Hook → Context → Value Steps → Soft CTA)
+  - Caption with TikTok SEO keywords (keywords in caption, hashtags mix of specific + broad)
+  - Shot plan (3-6 shots, clear visual descriptions for stock video search)
+  - Suggested keywords for on-screen text and spoken audio (TikTok SEO)
+  - Content pillar assignment (education, routine, story, product_integration)
+  - Series name if part of a recurring series
+
+Distribute content pillars:
+- Education: ~40-50% of posts
+- Routines & Habits: ~20-30% of posts
+- Story-based: ~10-15% of posts
+- Soft Product Integration: ~20-30% of posts
+
+For each post, return a JSON object with:
+- date: ISO date string (YYYY-MM-DD)
+- day_of_week: day name (Monday, Tuesday, etc.)
+- content_pillar: one of "education", "routine", "story", "product_integration"
+- series_name: series name if applicable (e.g., "Energy Tip Tuesday"), null otherwise
+- topic: brief topic description
+- hook: the 1-3 second hook text
+- script: full script (15-45 seconds)
+- caption: full caption with hook, body, CTA, hashtags, and health disclaimer
+- shot_plan: array of {{"description": "...", "duration_seconds": N}} objects
+- suggested_keywords: array of keywords for TikTok SEO (on-screen text, audio, caption)
+- template_type: "video" (default)
+
+Return ONLY a JSON object with this structure:
+{{
+  "items": [
+    // Array of {total_posts} objects matching the ScheduledContentItem structure
+  ]
+}}"""
+
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.8,  # Slightly higher for more creative series ideas
+        )
+
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError("Empty response from OpenAI")
+
+        # Parse JSON response
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse OpenAI JSON response: {e}")
+            logger.error(f"Raw response: {content[:500]}")
+            raise ValueError("Invalid JSON response from AI") from e
+
+        # The response should have an "items" key with the array
+        items_data = []
+        if isinstance(data, list):
+            items_data = data
+        elif "items" in data:
+            items_data = data["items"]
+        elif "schedule" in data:
+            items_data = data["schedule"]
+        else:
+            # Try to find any array in the response
+            for key, value in data.items():
+                if isinstance(value, list):
+                    items_data = value
+                    break
+        
+        if not items_data:
+            raise ValueError("No schedule items found in response")
+
+        # Validate and construct ScheduledContentItem objects
+        schedule_items = []
+        for item_data in items_data:
+            # Parse date
+            item_date = date.fromisoformat(item_data.get("date", ""))
+            
+            # Parse shot_plan
+            shot_plan = [
+                ShotInstruction(**shot) for shot in item_data.get("shot_plan", [])
+            ]
+            
+            schedule_item = ScheduledContentItem(
+                date=item_date,
+                day_of_week=item_data.get("day_of_week", ""),
+                content_pillar=item_data.get("content_pillar", "education"),
+                series_name=item_data.get("series_name"),
+                topic=item_data.get("topic", ""),
+                hook=item_data.get("hook", ""),
+                script=item_data.get("script", ""),
+                caption=item_data.get("caption", ""),
+                shot_plan=shot_plan,
+                suggested_keywords=item_data.get("suggested_keywords", []),
+                template_type=item_data.get("template_type", "video"),
+            )
+            schedule_items.append(schedule_item)
+
+        return schedule_items
+
+    except Exception as e:
+        logger.error(f"OpenAI API error in schedule generation: {type(e).__name__}: {str(e)}")
         raise
 
