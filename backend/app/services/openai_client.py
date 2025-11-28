@@ -2,10 +2,12 @@
 import json
 import logging
 from pathlib import Path
+from typing import List, Optional
 from openai import AsyncOpenAI
 from app.core.config import get_settings
 from app.models.content import ContentBrief, GeneratedPlan, ShotInstruction
 from app.models.schedule import ScheduleRequest, ScheduledContentItem
+from app.models.weekly_schedule import WeeklyScheduleRequest, WeeklyPost
 from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
@@ -423,5 +425,202 @@ Return ONLY a JSON object with this structure:
 
     except Exception as e:
         logger.error(f"OpenAI API error in schedule generation: {type(e).__name__}: {str(e)}")
+        raise
+
+
+def build_system_message_with_quotes(profile: dict, quotes: List[str]) -> str:
+    """
+    Build system message with content database quotes injected.
+    
+    Args:
+        profile: Client profile dictionary
+        quotes: List of quote texts from content database
+        
+    Returns:
+        Enhanced system message with quotes
+    """
+    base_message = build_system_message(profile)
+    
+    # Add quotes section
+    quotes_section = "\n\nUNICITY CONTENT DATABASE QUOTES (Use as inspiration for language and messaging):\n"
+    for i, quote in enumerate(quotes[:15], 1):  # Limit to 15 quotes to avoid token limits
+        quotes_section += f"{i}. {quote}\n"
+    
+    quotes_section += "\nUse these quotes as inspiration for authentic Unicity language, but create original content. Don't copy verbatim."
+    
+    return base_message + quotes_section
+
+
+async def generate_weekly_schedule(
+    request: WeeklyScheduleRequest,
+    quotes: Optional[List[str]] = None
+) -> List[WeeklyPost]:
+    """
+    Generate a weekly schedule with 7 posts (one per day).
+    
+    AI decides image vs video template type based on content:
+    - Education tips → Video (better for explanation)
+    - Product showcases → Image (static product shots)
+    - Routines → Video (showing actions)
+    - Quotes/inspiration → Image (text overlay on image)
+    
+    Args:
+        request: WeeklyScheduleRequest with week_start_date and platforms
+        quotes: Optional list of quote texts from content database
+        
+    Returns:
+        List of WeeklyPost with full content for each day
+        
+    Raises:
+        FileNotFoundError: If client profile cannot be loaded
+        ValueError: If OpenAI response is invalid
+        Exception: If OpenAI API call fails
+    """
+    # Load client profile
+    try:
+        client_profile = load_client_profile()
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to load client profile: {e}")
+        raise
+    
+    # Build system message with quotes if provided
+    if quotes:
+        system_message = build_system_message_with_quotes(client_profile, quotes)
+    else:
+        system_message = build_system_message(client_profile)
+    
+    # Calculate week dates (Monday to Sunday)
+    week_start = request.week_start_date
+    # Ensure it's Monday (0 = Monday)
+    days_since_monday = week_start.weekday()
+    if days_since_monday != 0:
+        week_start = week_start - timedelta(days=days_since_monday)
+    
+    week_end = week_start + timedelta(days=6)
+    
+    # Build user message for weekly generation
+    user_message = f"""Generate a weekly posting schedule for {week_start} to {week_end} (7 days, one post per day).
+
+Requirements:
+- Generate exactly 7 posts (one for each day: Monday through Sunday)
+- Platforms: {', '.join(request.platforms)}
+- Content mix: ~40% education, ~30% routine, ~15% story, ~15% product_integration
+- Create 2-3 recurring series (e.g., "Energy Tip Tuesday", "Evening Reset Routines", "My 40+ Wellness Check-in")
+- AI must decide template_type for each post:
+  * Use "video" for: Education tips (better for explanation), Routines (showing actions), Story-based content
+  * Use "image" for: Product showcases (static product shots), Quotes/inspiration (text overlay on image), Simple tips
+- Each post must include:
+  - Hook (1-3 seconds, high retention focus, must grab attention immediately)
+  - Full script (15-45 seconds, following structure: Hook → Context → Value Steps → Soft CTA)
+  - Caption with TikTok SEO keywords (keywords in caption, hashtags mix of specific + broad)
+  - Shot plan (3-6 shots, clear visual descriptions for stock video/image search)
+  - Suggested keywords for on-screen text and spoken audio (TikTok SEO)
+  - Content pillar assignment (education, routine, story, product_integration)
+  - Series name if part of a recurring series
+  - template_type: "image" or "video" (AI decides based on content type)
+
+For each post, return a JSON object with:
+- post_date: ISO date string (YYYY-MM-DD)
+- post_time: null (no specific time)
+- content_pillar: one of "education", "routine", "story", "product_integration"
+- series_name: series name if applicable (e.g., "Energy Tip Tuesday"), null otherwise
+- topic: brief topic description
+- hook: the 1-3 second hook text
+- script: full script (15-45 seconds)
+- caption: full caption with hook, body, CTA, hashtags, and health disclaimer
+- shot_plan: array of {{"description": "...", "duration_seconds": N}} objects
+- suggested_keywords: array of keywords for TikTok SEO (on-screen text, audio, caption)
+- template_type: "image" or "video" (AI decides based on content type)
+
+Return ONLY a JSON object with this structure:
+{{
+  "posts": [
+    // Array of exactly 7 objects, one for each day Monday-Sunday
+  ]
+}}"""
+
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_message},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.8,  # Higher for creative series ideas
+        )
+
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError("Empty response from OpenAI")
+
+        # Parse JSON response
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse OpenAI JSON response: {e}")
+            logger.error(f"Raw response: {content[:500]}")
+            raise ValueError("Invalid JSON response from AI") from e
+
+        # Extract posts array
+        posts_data = []
+        if isinstance(data, list):
+            posts_data = data
+        elif "posts" in data:
+            posts_data = data["posts"]
+        else:
+            # Try to find any array in the response
+            for key, value in data.items():
+                if isinstance(value, list):
+                    posts_data = value
+                    break
+        
+        if not posts_data:
+            raise ValueError("No posts found in response")
+        
+        if len(posts_data) != 7:
+            logger.warning(f"Expected 7 posts, got {len(posts_data)}")
+
+        # Validate and construct WeeklyPost objects
+        weekly_posts = []
+        for i, post_data in enumerate(posts_data[:7]):  # Ensure max 7 posts
+            # Calculate post date (Monday + i days)
+            post_date = week_start + timedelta(days=i)
+            
+            # Parse shot_plan
+            shot_plan = [
+                ShotInstruction(**shot) for shot in post_data.get("shot_plan", [])
+            ]
+            
+            # Get template type (AI decides)
+            template_type = post_data.get("template_type", "video").lower()
+            if template_type not in ["image", "video"]:
+                # Default based on content pillar
+                pillar = post_data.get("content_pillar", "education")
+                if pillar in ["education", "routine", "story"]:
+                    template_type = "video"
+                else:
+                    template_type = "image"
+            
+            weekly_post = WeeklyPost(
+                post_date=post_date,
+                post_time=None,  # No specific time for now
+                content_pillar=post_data.get("content_pillar", "education"),
+                series_name=post_data.get("series_name"),
+                topic=post_data.get("topic", ""),
+                hook=post_data.get("hook", ""),
+                script=post_data.get("script", ""),
+                caption=post_data.get("caption", ""),
+                template_type=template_type,
+                shot_plan=shot_plan,
+                suggested_keywords=post_data.get("suggested_keywords", []),
+                status="draft",
+            )
+            weekly_posts.append(weekly_post)
+
+        return weekly_posts
+
+    except Exception as e:
+        logger.error(f"OpenAI API error in weekly schedule generation: {type(e).__name__}: {str(e)}")
         raise
 
