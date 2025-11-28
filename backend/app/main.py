@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 
 from app.core.config import get_settings
 from app.api.v1 import api_router
+from app.database.database import init_db
 
 settings = get_settings()
 
@@ -15,6 +16,12 @@ app = FastAPI(
     description="Backend API for AI Social Media Co-Pilot",
     version="1.0.0",
 )
+
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on application startup."""
+    init_db()
 
 # CORS configuration
 app.add_middleware(

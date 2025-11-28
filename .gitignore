@@ -32,3 +32,8 @@ venv/
 .env.example.test.local
 .env.example.production.local.env
 .env
+
+.env
+content.db
+__pycache__/
+*.pyc
