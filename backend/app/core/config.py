@@ -10,11 +10,15 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     PEXELS_API_KEY: str
     CREATOMATE_API_KEY: str
+    CREATOMATE_IMAGE_TEMPLATE_ID: str
+    CREATOMATE_VIDEO_TEMPLATE_ID: str
     AYRSHARE_API_KEY: str
     
     # Application settings
     FRONTEND_URL: str = "http://localhost:5173"
     ENV: str = "development"
+    PORT: int = 8000
+    LOG_LEVEL: str = "INFO"
     
     model_config = SettingsConfigDict(
         env_file=".env",

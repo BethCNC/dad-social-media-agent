@@ -9,7 +9,7 @@ settings = get_settings()
 PEXELS_API_BASE = "https://api.pexels.com/videos"
 
 
-def search_videos(query: str, max_results: int = 10) -> list[AssetResult]:
+async def search_videos(query: str, max_results: int = 10) -> list[AssetResult]:
     """
     Search for stock videos on Pexels.
     
@@ -33,8 +33,8 @@ def search_videos(query: str, max_results: int = 10) -> list[AssetResult]:
     }
     
     try:
-        with httpx.Client(timeout=10.0) as client:
-            response = client.get(
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
                 f"{PEXELS_API_BASE}/search",
                 headers=headers,
                 params=params,
@@ -70,11 +70,11 @@ def search_videos(query: str, max_results: int = 10) -> list[AssetResult]:
             
     except httpx.HTTPStatusError as e:
         logger.error(f"Pexels API HTTP error: {e.response.status_code}")
-        raise Exception("Could not search for videos. Please try again.") from e
+        raise Exception("We couldn't load stock clips right now.") from e
     except httpx.RequestError as e:
         logger.error(f"Pexels API request error: {type(e).__name__}")
-        raise Exception("Could not connect to video search. Please try again.") from e
+        raise Exception("We couldn't load stock clips right now.") from e
     except Exception as e:
         logger.error(f"Pexels API error: {type(e).__name__}: {e}")
-        raise Exception("An error occurred while searching for videos.") from e
+        raise Exception("We couldn't load stock clips right now.") from e
 

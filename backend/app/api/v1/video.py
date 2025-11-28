@@ -18,7 +18,7 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
         RenderJob with job_id and initial status
     """
     try:
-        return render_video(request)
+        return await render_video(request)
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -38,7 +38,7 @@ async def get_render_status(job_id: str) -> RenderJob:
         RenderJob with current status and video_url if complete
     """
     try:
-        return check_render_status(job_id)
+        return await check_render_status(job_id)
     except Exception as e:
         raise HTTPException(
             status_code=500,

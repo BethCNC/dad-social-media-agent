@@ -10,6 +10,7 @@ export interface VideoRenderRequest {
   assets: AssetSelection[];
   script: string;
   title?: string | null;
+  template_type?: string; // "image" or "video"
 }
 
 export interface RenderJob {

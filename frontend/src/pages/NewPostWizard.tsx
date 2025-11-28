@@ -20,6 +20,7 @@ type WizardStep = 1 | 2 | 3 | 4 | 5;
 export const NewPostWizard = () => {
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);
+  const [templateType, setTemplateType] = useState<string>('video');
   const [script, setScript] = useState<string>('');
   const [caption, setCaption] = useState<string>('');
   const [assets, setAssets] = useState<AssetResult[]>([]);
@@ -32,8 +33,9 @@ export const NewPostWizard = () => {
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
 
-  const handlePlanGenerated = (plan: GeneratedPlan) => {
+  const handlePlanGenerated = (plan: GeneratedPlan, templateTypeFromForm: string) => {
     setGeneratedPlan(plan);
+    setTemplateType(templateTypeFromForm);
     setScript(plan.script);
     setCaption(plan.caption);
     setCurrentStep(2);
@@ -98,7 +100,7 @@ export const NewPostWizard = () => {
 
   const startRender = async () => {
     if (selectedAssetIds.size === 0 || !script.trim()) {
-      setRenderError('Please select video clips and ensure script is filled.');
+      setRenderError(`Please select ${templateType === 'image' ? 'images' : 'video clips'} and ensure script is filled.`);
       return;
     }
 
@@ -119,6 +121,7 @@ export const NewPostWizard = () => {
         })),
         script: script,
         title: null,
+        template_type: templateType,
       };
 
       const job = await renderVideo(renderRequest);
@@ -166,10 +169,10 @@ export const NewPostWizard = () => {
   };
 
   const stepTitles = [
-    'Step 1: Describe Your Video',
+    'Step 1: Describe Your Content',
     'Step 2: Review Script & Caption',
-    'Step 3: Select Video Clips',
-    'Step 4: Render Video',
+    'Step 3: Select Assets',
+    `Step 4: Render ${templateType === 'image' ? 'Image' : 'Video'}`,
     'Step 5: Schedule Post',
   ];
 

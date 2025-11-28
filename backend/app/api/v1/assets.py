@@ -22,7 +22,7 @@ async def search_assets(
         List of AssetResult objects
     """
     try:
-        return search_videos(query, max_results)
+        return await search_videos(query, max_results)
     except Exception as e:
         raise HTTPException(
             status_code=500,

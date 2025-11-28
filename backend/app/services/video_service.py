@@ -6,7 +6,7 @@ from app.services.creatomate_client import start_render, get_render_status
 logger = logging.getLogger(__name__)
 
 
-def render_video(request: VideoRenderRequest) -> RenderJob:
+async def render_video(request: VideoRenderRequest) -> RenderJob:
     """
     Start video rendering.
     
@@ -20,13 +20,13 @@ def render_video(request: VideoRenderRequest) -> RenderJob:
         HTTPException: If rendering fails
     """
     try:
-        return start_render(request)
+        return await start_render(request)
     except Exception as e:
         logger.error(f"Video rendering error: {type(e).__name__}: {e}")
         raise
 
 
-def check_render_status(job_id: str) -> RenderJob:
+async def check_render_status(job_id: str) -> RenderJob:
     """
     Check video rendering status.
     
@@ -40,7 +40,7 @@ def check_render_status(job_id: str) -> RenderJob:
         HTTPException: If status check fails
     """
     try:
-        return get_render_status(job_id)
+        return await get_render_status(job_id)
     except Exception as e:
         logger.error(f"Render status check error: {type(e).__name__}: {e}")
         raise

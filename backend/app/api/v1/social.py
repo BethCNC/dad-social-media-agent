@@ -18,7 +18,7 @@ async def schedule_post(request: ScheduleRequest) -> ScheduleResponse:
         ScheduleResponse with provider_id, status, and external_links
     """
     try:
-        return schedule_content(request)
+        return await schedule_content(request)
     except Exception as e:
         raise HTTPException(
             status_code=500,

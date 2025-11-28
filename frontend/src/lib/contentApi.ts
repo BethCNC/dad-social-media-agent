@@ -5,6 +5,7 @@ export interface ContentBrief {
   platforms: string[];
   tone: string;
   length_seconds?: number | null;
+  template_type?: string; // "image" or "video"
 }
 
 export interface ShotInstruction {

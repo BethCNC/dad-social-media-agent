@@ -10,7 +10,7 @@ settings = get_settings()
 AYRSHARE_API_BASE = "https://app.ayrshare.com/api"
 
 
-def schedule_post(request: ScheduleRequest) -> ScheduleResponse:
+async def schedule_post(request: ScheduleRequest) -> ScheduleResponse:
     """
     Schedule a social media post via Ayrshare.
     
@@ -44,8 +44,8 @@ def schedule_post(request: ScheduleRequest) -> ScheduleResponse:
             payload["scheduleDate"] = request.scheduled_time
     
     try:
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
                 f"{AYRSHARE_API_BASE}/post",
                 headers=headers,
                 json=payload,
@@ -77,12 +77,18 @@ def schedule_post(request: ScheduleRequest) -> ScheduleResponse:
         logger.error(f"Ayrshare API HTTP error: {e.response.status_code}")
         if e.response.status_code == 401:
             raise Exception("Invalid API key. Please check your Ayrshare configuration.") from e
-        error_detail = e.response.json().get("message", "Unknown error") if e.response.headers.get("content-type", "").startswith("application/json") else str(e)
-        raise Exception(f"Could not schedule post: {error_detail}") from e
+        error_detail = ""
+        try:
+            if e.response.headers.get("content-type", "").startswith("application/json"):
+                error_data = e.response.json()
+                error_detail = error_data.get("message", "Unknown error")
+        except:
+            error_detail = "Unknown error"
+        raise Exception(f"We couldn't schedule this post. Please check your Ayrshare connection and try again.") from e
     except httpx.RequestError as e:
         logger.error(f"Ayrshare API request error: {type(e).__name__}")
-        raise Exception("Could not connect to social media service. Please try again.") from e
+        raise Exception("We couldn't schedule this post. Please check your Ayrshare connection and try again.") from e
     except Exception as e:
         logger.error(f"Ayrshare API error: {type(e).__name__}: {e}")
-        raise Exception("An error occurred while scheduling your post.") from e
+        raise Exception("We couldn't schedule this post. Please check your Ayrshare connection and try again.") from e
 
