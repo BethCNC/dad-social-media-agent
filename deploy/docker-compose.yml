@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PEXELS_API_KEY=${PEXELS_API_KEY}
+      - CREATOMATE_API_KEY=${CREATOMATE_API_KEY}
+      - AYRSHARE_API_KEY=${AYRSHARE_API_KEY}
+      - FRONTEND_URL=http://localhost:5173
+      - ENV=development
+    env_file:
+      - ../.env
+    volumes:
+      # Mount backend for hot reload in development (optional)
+      - ../backend:/app/backend
+    restart: unless-stopped
+

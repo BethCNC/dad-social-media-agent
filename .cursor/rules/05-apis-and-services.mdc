@@ -1,0 +1,57 @@
+# External APIs & Services
+
+The backend must be the single integration point for all external APIs.
+
+## OpenAI (gpt-4o)
+
+**Use for**:
+- Generating script.
+- Generating caption (with hashtags).
+- Producing a structured shot plan.
+
+**Guidelines**:
+- Always request **JSON output** that matches `GeneratedPlan`.
+- Clearly instruct the model:
+  - The client is older and needs clear, friendly language.
+  - Content is for TikTok/Instagram short video.
+  - Aim for ~15–60 seconds of spoken text, unless specified.
+- Handle JSON parsing errors gracefully (fallback messages, not crashes).
+
+## Pexels (Stock Video)
+
+**Use for**:
+- Searching stock videos based on idea/shot descriptions.
+
+**Guidelines**:
+- Backend wrapper: `pexels_client.py` with `search_videos(query, max_results)`.
+- Return normalized `AssetResult` objects.
+- Never expose the raw API key to the frontend.
+
+## Creatomate (Video Rendering)
+
+**Use for**:
+- Assembling selected stock clips + text overlays into a finished video file.
+
+**Guidelines**:
+- Use a simple pre-defined template in Creatomate (e.g., vertical 9:16 video).
+- Backend functions:
+  - `start_render(request: VideoRenderRequest) -> RenderJob`
+  - `get_render_status(job_id: str) -> RenderJob`
+- Store returned `job_id` and poll until `status` is “finished”.
+- When finished, return `video_url` to frontend.
+
+## Ayrshare (Social Publishing)
+
+**Use for**:
+- Posting or scheduling to TikTok and Instagram.
+
+**Guidelines**:
+- Backend wrapper: `ayrshare_client.py`.
+- Accept `ScheduleRequest` from frontend and translate into Ayrshare payload.
+- Return `ScheduleResponse` with provider status and any external links.
+
+## General Rules
+
+- All keys come from environment variables managed by Coolify.
+- All HTTP errors should be caught and turned into clear FastAPI `HTTPException`s.
+- Never log secrets or full responses; log high-level info only (request type, status code, job id).

@@ -1,0 +1,113 @@
+# Backend Guidelines – FastAPI
+
+## Structure
+
+```text
+backend/app/
+  main.py
+  api/
+    __init__.py
+    v1/
+      content.py      # /api/content/*
+      assets.py       # /api/assets/*
+      video.py        # /api/video/*
+      social.py       # /api/social/*
+  core/
+    config.py         # settings & env vars
+  models/
+    content.py        # Pydantic schemas
+    video.py
+    social.py
+  services/
+    openai_client.py
+    pexels_client.py
+    creatomate_client.py
+    ayrshare_client.py
+    content_service.py
+    video_service.py
+    social_service.py
+```
+
+## main.py (High-Level Requirements)
+
+- Create a FastAPI app with:
+  - CORS configured for the frontend origin.
+  - API router under `/api` prefix.
+  - A `/health` endpoint for health checks.
+- Mount static files directory for the built frontend (e.g. `/static`).
+
+## Settings & Config
+
+Create a `Settings` class in `core/config.py` using Pydantic:
+
+- `OPENAI_API_KEY`
+- `PEXELS_API_KEY`
+- `CREATOMATE_API_KEY`
+- `AYRSHARE_API_KEY`
+- `FRONTEND_URL`
+- `ENV` (`development` | `production`)
+
+Load settings lazily (e.g. `@lru_cache` factory). Never hard-code secrets.
+
+## Pydantic Models (Examples)
+
+**content.py**:
+
+- `ContentBrief`
+  - `idea: str`
+  - `platforms: list[str]`
+  - `tone: str`
+  - `length_seconds: int | None`
+- `ShotInstruction`
+  - `description: str`
+  - `duration_seconds: int`
+- `GeneratedPlan`
+  - `script: str`
+  - `caption: str`
+  - `shot_plan: list[ShotInstruction]`
+
+**video.py**:
+
+- `AssetResult`
+  - `id: str`
+  - `thumbnail_url: str`
+  - `video_url: str`
+  - `duration_seconds: int`
+- `AssetSelection`
+  - `id: str`
+  - `start_at: float | None`
+  - `end_at: float | None`
+- `VideoRenderRequest`
+  - `assets: list[AssetSelection]`
+  - `script: str`
+  - `title: str | None`
+- `RenderJob`
+  - `job_id: str`
+  - `status: str`
+  - `video_url: str | None`
+
+**social.py**:
+
+- `ScheduleRequest`
+  - `video_url: str`
+  - `caption: str`
+  - `platforms: list[str]`
+  - `scheduled_time: datetime | None`  # or ISO string
+- `ScheduleResponse`
+  - `provider_id: str`
+  - `status: str`
+  - `external_links: list[str] | None`
+
+## Services & Routers
+
+- Each external provider has a `*_client.py` responsible for talking to that API.
+- Business logic lives in service modules like `content_service.py`, which combine provider calls.
+- Route modules (`content.py`, `assets.py`, etc.) are thin:
+  - Parse/validate request.
+  - Call service function.
+  - Return result or translated error.
+
+## Error Handling
+
+- Catch and translate third-party errors into FastAPI `HTTPException` with clear messages.
+- Avoid logging secrets or entire payloads from external providers.

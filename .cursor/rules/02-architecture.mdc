@@ -1,0 +1,53 @@
+# Architecture & Folder Structure
+
+The project uses a **monorepo** layout:
+
+```text
+/ai-social-copilot
+  /frontend        # React + Vite app (TypeScript)
+    src/
+      components/
+      pages/
+      hooks/
+      lib/
+  /backend         # FastAPI app (Python 3.10+)
+    app/
+      api/
+      core/
+      models/
+      services/
+      main.py
+  /deploy
+    Dockerfile
+    docker-compose.yml   # optional, for local dev
+```
+
+## Responsibilities
+
+### Frontend (React + Vite + Tailwind)
+
+- Collect inputs: content brief, tone, platforms, length, optional user clips.
+- Display:
+  - Generated script and caption.
+  - Stock video search results and selections.
+  - Render status and preview URL.
+  - Scheduling options and confirmation.
+- Communicate only with the **FastAPI backend** via Axios.
+
+### Backend (FastAPI)
+
+- Expose REST API for the frontend.
+- Orchestrate calls to:
+  - OpenAI (plan, script, caption).
+  - Pexels (stock video search).
+  - Creatomate (video rendering).
+  - Ayrshare (social scheduling).
+- Contain business logic in `services/`.
+- Handle validation, errors, and configuration via Pydantic models and a `Settings` class.
+
+### Infrastructure
+
+- **Docker multi-stage build**:
+  - Stage 1: Node image to build Vite frontend.
+  - Stage 2: Python image to run FastAPI and serve static frontend.
+- Single container deployed to **Coolify**, exposing port `8000`.
