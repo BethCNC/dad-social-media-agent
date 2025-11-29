@@ -28,7 +28,7 @@ export const ScriptPreview = ({ script, onScriptChange }: ScriptPreviewProps) =>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Script</CardTitle>
+          <CardTitle>Script</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               This text will appear on your video as on-screen text
             </p>

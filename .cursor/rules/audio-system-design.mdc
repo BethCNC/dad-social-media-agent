@@ -1,0 +1,283 @@
+# Audio System Design – Dad Social Media Agent
+
+This document defines how **audio** should work in the app so it is:
+- Practical for Beth’s dad to use
+- Safe and legal for commercial social media content
+- Deployable on a self‑hosted Coolify server
+- Easy to implement in the existing React + FastAPI + Creatomate stack
+
+The core idea:
+
+> **Every rendered video includes a safe, free background audio track**  
+> **+** the app provides **search suggestions** Dad can use to easily find better / trending music **inside TikTok**, without the app ever touching TikTok’s internal music catalog.
+
+---
+
+## 1. Goals & Constraints
+
+### 1.1 Goals
+
+- Provide **pleasant, non-silent videos** out of the box using free, commercially safe audio.
+- Help the user (Dad) **quickly find good music inside TikTok** by suggesting what to search for.
+- Keep the workflow simple: Dad should be able to follow a **short list of steps**.
+- Maintain future flexibility to add paid music APIs later without changing the UX.
+
+### 1.2 Constraints
+
+- App runs on **self-hosted Coolify**; no reliance on closed vendor integrations that require their own hosting.
+- Must be **legally safe for commercial content**:
+  - No unlicensed use of copyrighted music.
+  - No scraping or embedding TikTok’s internal music catalog.
+- Use **only free or appropriately licensed audio sources** for the built-in track:
+  - Prefer CC0 / royalty-free background tracks (e.g., Freesound CC0, custom library).
+- TikTok/Instagram “trending sounds” are only referenced as **text search suggestions**, never downloaded or embedded by the app.
+
+---
+
+## 2. High-Level Behavior
+
+For every video the app creates:
+
+1. **Background audio is auto-selected** from a small library of safe, free tracks.
+2. The AI also generates **2–5 suggested TikTok search phrases** that Dad can use when he posts manually in TikTok/IG:
+   - e.g. `“upbeat motivational background music”`, `“calm focus lofi beat”`,  
+     or more specific: `"energetic fitness reel music"`, `"relaxing morning routine song"`.
+3. On the final step of the wizard, the UI shows:
+   - A preview of the video with the background track.
+   - A list of **“Suggested search terms for TikTok music”** Dad can copy.
+   - Clear instructions: the app will **not** add TikTok audio for him; he will choose it inside TikTok using these suggestions.
+
+This allows:
+- Direct auto-posting via Ayrshare when Dad is okay with the built-in track.
+- Higher‑end posts when he or Beth wants to manually upload and use more “on trend” sounds in TikTok.
+
+---
+
+## 3. Audio Modes
+
+Even though v1 will have only one active mode, design the system to support three modes for future flexibility.
+
+### 3.1 Modes
+
+**Enum: `AudioMode`**
+
+- `AUTO_STOCK_ONLY`  
+  - Use only the built-in free audio track (background music) in rendered videos.
+  - Ideal when Dad just wants “done for me” and doesn’t care about trending sounds.
+
+- `AUTO_STOCK_WITH_TIKTOK_HINTS` (default for Dad)  
+  - Same as above **plus** generate search suggestions for TikTok sounds.
+  - The rendered video includes safe background audio, but Dad can still add a TikTok sound on top if desired.
+
+- `MUTED_FOR_PLATFORM_MUSIC` (future option)  
+  - Render videos with **no background music** (or only voiceover/original sound).
+  - Intended for users who always add platform-native music themselves.
+
+For v1, you can treat `AUTO_STOCK_ONLY` and `AUTO_STOCK_WITH_TIKTOK_HINTS` as identical on the backend, with the difference being **whether the UI shows the TikTok search suggestions**.
+
+### 3.2 Where `AudioMode` Lives
+
+- Add an `audio_mode: AudioMode` field on the **User** or **Client** profile in the backend DB.
+- On each request to create/render content, the backend reads `audio_mode` and decides:
+  - Whether to pick a background track.
+  - Whether to ask OpenAI to produce TikTok search suggestions.
+
+---
+
+## 4. Data Models
+
+### 4.1 `AudioTrack` (backend)
+
+Represents a locally curated or API-fetched background track.
+
+```python
+class AudioTrack(Base):
+    __tablename__ = "audio_tracks"
+
+    id: UUID
+    title: str
+    mood: str  # e.g. "calm", "energetic", "inspirational"
+    tempo: str  # e.g. "slow", "medium", "fast"
+    length_seconds: int
+    source: str  # e.g. "freesound_cc0", "local_cc0_library"
+    source_id: str  # external ID or path for debugging
+    file_url: str  # S3/public URL or local path accessible to Creatomate
+    license_type: str  # e.g. "CC0", "royalty_free"
+    license_notes: Optional[str]
+```
+
+This table is populated via:
+
+- A seed script (initial few hand-picked tracks).
+- Optional integration with a free_audio source like Freesound (CC0-only).
+
+### 4.2 `TikTokMusicHint` (AI output, not persisted or optional JSON column)
+
+Represents one text-based suggestion for what the user should search for in TikTok’s music picker.
+
+```typescript
+type TikTokMusicHint = {
+  label: string;        // short label, e.g. "Calm lofi study beat"
+  searchPhrase: string; // phrase Dad can copy into TikTok search
+  mood?: string;        // mood tag, optional
+};
+```
+
+These are generated by OpenAI based on the script, mood, and desired audience, and returned with the rest of the content plan.
+
+### 4.3 Extended Content Plan
+
+Extend the existing content-plan schema to include audio info:
+
+```typescript
+type ContentPlan = {
+  script: string;
+  caption: string;
+  hashtags: string[];
+  shots: ShotPlan[];
+  mood: "calm" | "energetic" | "inspirational" | "serious" | "fun";
+  audio: {
+    selectedTrackId: string | null;
+    suggestedTracks: string[]; // optional, for UI dropdown
+    tiktokHints: TikTokMusicHint[];
+  };
+};
+```
+
+Backend ensures `audio.selectedTrackId` is chosen from the `audio_tracks` table when `audio_mode` uses built-in tracks.
+
+---
+
+## 5. Backend Logic
+
+### 5.1 Audio Service
+
+Create `audio_service.py` in `backend/app/services/` with responsibilities:
+
+1. **Track selection**
+   - `pick_track_for_plan(plan: ContentPlan, mode: AudioMode) -> AudioTrack | None`
+     - If mode is `MUTED_FOR_PLATFORM_MUSIC`: return `None`.
+     - Else:
+       - Filter tracks by `mood` and `length_seconds >= plan.estimatedLength`.
+       - Fallback to any length if no match.
+       - Randomly choose one or prefer variety via simple rotation.
+
+2. **TikTok hint generation trigger**
+   - The actual *generation* happens in `openai_client` (see below), but the audio_service can:
+     - Decide which moods/situations should produce hints (e.g. always for Reels/TikTok vertical videos).
+
+3. **Free audio integration (Freesound/CC0) [optional]**
+   - If you later want dynamic tracks from Freesound:
+     - Add a helper that pulls CC0 files for a given mood/tag and caches them in `audio_tracks`.
+
+### 5.2 OpenAI Prompt Adjustments
+
+In `openai_client.py` when creating a content plan, extend the system/user messages to ask for:
+
+- A **target mood** for background music.
+- A short list of **TikTok music search suggestions**.
+
+Pseudo-instruction in the system prompt:
+
+> When you respond, include:  
+> - A `music_mood` (calm, energetic, inspirational, serious, fun).  
+> - A list of 2‑5 `tiktok_music_hints`. These are **search phrases** the user can paste into TikTok’s music search bar (for example: `"relaxing lofi study beat"`, `"energetic motivational reel music"`).  
+> Do **not** reference specific copyrighted track names or artists. Only suggest **generic descriptive search phrases**.
+
+The content-plan JSON returned from OpenAI should then populate `audio.mood` and `audio.tiktokHints` in the backend type.
+
+### 5.3 Creatomate Integration
+
+In `video_service.py` (or equivalent):
+
+1. After generating the content plan:
+   - Call `audio_service.pick_track_for_plan(plan, audio_mode)`.
+   - Attach `audioTrack.file_url` and any timing info to the Creatomate render payload.
+
+2. Creatomate template:
+   - Include a variable/slot for the background audio file.
+   - Set the audio to loop or end with the video duration.
+
+3. If no track is selected (muted mode):
+   - Do not pass any background audio variable; Creatomate should render with original sound only.
+
+---
+
+## 6. Frontend UX
+
+### 6.1 Step: Audio Display (within New Post Wizard)
+
+In the “Preview & Schedule” step:
+- Show the video preview (with the selected background track already applied).
+- Show a panel titled **“Music & Audio”** with:
+  - Label: “Background track used in this video”
+    - Show track title (e.g., “Soft Focus Ambient 01”) and mood.
+  - Optional dropdown to switch between 2–3 suggested tracks (if you choose to support that later).
+
+If `audio_mode` is `AUTO_STOCK_WITH_TIKTOK_HINTS`, also show:
+
+- Section **“Suggested TikTok music searches”**:
+  - List each `TikTokMusicHint` as a pill/button with:
+    - `label` + a small “copy” icon that copies `searchPhrase` to the clipboard.
+  - Plain text instructions:
+    > “When you upload this video to TikTok or Instagram, tap ‘Add sound’ and paste one of these search phrases into the search bar to find good music.”
+
+### 6.2 Scheduler vs Manual Posting
+
+- If the user clicks **“Schedule via app”**:
+  - The video with the built-in background track is scheduled via Ayrshare as-is.
+- If the user prefers **manual posting**:
+  - Provide a **Download video** button and highlight the TikTok search hints.
+
+Dad can choose whichever path feels easiest.
+
+---
+
+## 7. Legal & Safety Notes (to keep in the repo)
+
+Add a short note in this doc (and optionally in a separate `LEGAL_NOTES.md`) for future Beth / collaborators:
+
+1. **Free Audio Source Rules**
+   - Only use:
+     - CC0 audio from Freesound (or similar), or
+     - Royally licensed tracks where Beth (or business) has the right to use the music in client videos.
+   - Never use Freesound CC-BY-NC (non-commercial) for Dad’s product content.
+
+2. **TikTok Trends**
+   - The app **only generates search phrases**, never specific track names or artists.
+   - The user is responsible for choosing and applying music inside TikTok/Instagram.
+
+3. **No TikTok Music API Integration**
+   - Do **not** attempt to scrape or reverse-engineer TikTok’s music catalog.
+   - If TikTok/Meta release official commercial music APIs in the future, this system can be extended, but it must be done in compliance with their terms.
+
+---
+
+## 8. Future Extensions
+
+- **Paid API integration** (e.g., SOUNDRAW, HookSounds):
+  - Swap out or augment the `audio_tracks` table with tracks automatically fetched from a commercial API.
+  - Keep the same `AudioTrack` interface and `AudioMode` logic.
+
+- **Per-client audio preferences**:
+  - Some clients might want “no music” by default, others prefer energetic tracks.
+
+- **Adobe Express handoff (optional)**:
+  - For advanced users, add helper text for opening the downloaded video in Adobe Express and applying TikTok Commercial Music Library audio there.
+
+---
+
+## 9. Implementation Checklist
+
+- [ ] Add `AudioMode` field to user/client profile.
+- [ ] Create `audio_tracks` table and seed with a few CC0-safe tracks.
+- [ ] Implement `audio_service.pick_track_for_plan` in the backend.
+- [ ] Update `openai_client` prompts + response parsing to include `music_mood` and `tiktok_music_hints`.
+- [ ] Wire audio selection into `video_service` and Creatomate payload.
+- [ ] Update the New Post wizard UI to show:
+  - Selected background track info
+  - TikTok music search suggestions (with copy-to-clipboard)
+- [ ] Test end-to-end:
+  - Plan → Render → Video includes audio
+  - TikTok search phrases appear correctly
+  - Manual upload + music selection works as expected for Dad.

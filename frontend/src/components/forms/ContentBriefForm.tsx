@@ -13,11 +13,12 @@ import { cn } from '@/lib/utils';
 
 interface ContentBriefFormProps {
   onPlanGenerated: (plan: GeneratedPlan) => void;
+  initialTopic?: string;
 }
 
-export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => {
+export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBriefFormProps) => {
   const [mode, setMode] = useState<'manual' | 'auto'>('manual');
-  const [userTopic, setUserTopic] = useState('');
+  const [userTopic, setUserTopic] = useState(initialTopic || '');
   const [useHolidays, setUseHolidays] = useState(false);
   const [selectedHolidayId, setSelectedHolidayId] = useState<string | null>(null);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -40,6 +41,14 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
   ];
 
   const platformOptions = ['TikTok', 'Instagram'];
+
+  // Update topic if initialTopic changes
+  useEffect(() => {
+    if (initialTopic) {
+      setUserTopic(initialTopic);
+      setMode('manual'); // Switch to manual mode when topic is pre-filled
+    }
+  }, [initialTopic]);
 
   // Fetch holidays when auto mode is selected
   useEffect(() => {

@@ -123,3 +123,46 @@ def get_relevant_hashtags() -> List[str]:
         "unicity",
     ]
 
+
+def fetch_trending_videos_multiple_hashtags(hashtags: Optional[List[str]] = None, max_results: int = 10) -> List[Dict]:
+    """
+    Fetch trending TikTok videos from multiple hashtags and aggregate results.
+    
+    Fetches top videos from multiple hashtags and returns combined results sorted by view count.
+    
+    Args:
+        hashtags: List of hashtags to search (defaults to #feelgreatsystem, #unicity, #insulinresistance)
+        max_results: Maximum number of videos to return per hashtag
+        
+    Returns:
+        List of video dictionaries with keys: video_url, author, caption, view_count
+    """
+    if hashtags is None:
+        hashtags = ["feelgreatsystem", "unicity", "insulinresistance"]
+    
+    all_videos = []
+    
+    for hashtag in hashtags:
+        try:
+            videos = fetch_trending_videos(f"#{hashtag}", max_results=max_results)
+            all_videos.extend(videos)
+        except Exception as e:
+            logger.warning(f"Failed to fetch trends for #{hashtag}: {e}")
+            continue
+    
+    # Sort by view count (descending) and take top results
+    all_videos.sort(key=lambda v: v.get("view_count", 0), reverse=True)
+    
+    # Transform to consistent format: video_url, author, caption, view_count
+    transformed = []
+    for video in all_videos[:max_results]:
+        transformed.append({
+            "video_url": video.get("video_url", ""),
+            "author": video.get("author_name", "Unknown"),
+            "caption": video.get("description", ""),
+            "view_count": video.get("view_count", 0),
+        })
+    
+    logger.info(f"Aggregated {len(transformed)} trending videos from {len(hashtags)} hashtags")
+    return transformed
+

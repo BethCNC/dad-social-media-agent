@@ -2,7 +2,7 @@
 from typing import List, Optional, Dict
 from datetime import date, time
 from pydantic import BaseModel
-from app.models.content import ShotInstruction
+from app.models.content import ShotInstruction, TikTokMusicHint
 
 
 class WeeklyScheduleRequest(BaseModel):
@@ -27,6 +27,11 @@ class WeeklyPost(BaseModel):
     status: str = "draft"
     id: Optional[int] = None  # For posts loaded from database
     media_url: Optional[str] = None  # Rendered video/image URL
+    # Audio metadata
+    audio_track_id: Optional[int] = None
+    audio_track_title: Optional[str] = None
+    audio_music_mood: Optional[str] = None  # e.g., calm, energetic, inspirational
+    tiktok_music_hints: List[TikTokMusicHint] = []
 
 
 class WeeklySchedule(BaseModel):

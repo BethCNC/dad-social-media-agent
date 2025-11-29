@@ -205,7 +205,7 @@ export const PostDetail = () => {
 
   const handleFindMoreOptions = async () => {
     if (!showMoreOptions) {
-      setShowMoreOptions(true);
+    setShowMoreOptions(true);
     } else {
       setShowMoreOptions(false);
     }
@@ -419,7 +419,7 @@ export const PostDetail = () => {
           </CardContent>
         </Card>
 
-        {/* Right Column: Details & Alternatives */}
+        {/* Right Column: Details, Audio, & Alternatives */}
         <div className="space-y-6">
           {/* Post Metadata */}
           <Card>
@@ -452,6 +452,45 @@ export const PostDetail = () => {
             </CardContent>
           </Card>
 
+          {/* Music & Audio info (if available) */}
+          {(post.audio_music_mood || (post.tiktok_music_hints && post.tiktok_music_hints.length > 0)) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Music & Audio</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {post.audio_music_mood && (
+                  <p className="text-sm">
+                    <span className="font-medium">Background track mood:</span>{' '}
+                    <span className="capitalize">{post.audio_music_mood}</span>
+                  </p>
+                )}
+                {post.tiktok_music_hints && post.tiktok_music_hints.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      When posting manually to TikTok or Instagram, tap “Add sound” and paste one of these phrases into
+                      the search bar to find music.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {post.tiktok_music_hints.map((hint, index) => (
+                        <Button
+                          key={`${hint.label}-${index}`}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs px-3 py-1 rounded-full"
+                          onClick={() => navigator.clipboard.writeText(hint.searchPhrase)}
+                        >
+                          {hint.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Change Media Section */}
           <Card>
             <CardHeader>
@@ -475,19 +514,19 @@ export const PostDetail = () => {
                     )}
                     Refresh Options
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleFindMoreOptions}
-                    disabled={isSearchingAlternatives}
-                  >
-                    {isSearchingAlternatives ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Search className="mr-2 h-4 w-4" />
-                    )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFindMoreOptions}
+                  disabled={isSearchingAlternatives}
+                >
+                  {isSearchingAlternatives ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="mr-2 h-4 w-4" />
+                  )}
                     {showMoreOptions ? 'Show Less' : 'Show More'}
-                  </Button>
+                </Button>
                 </div>
               </div>
             </CardHeader>

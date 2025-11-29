@@ -1,7 +1,7 @@
 """API v1 router aggregation."""
 from fastapi import APIRouter
 
-from . import assets, content, social, video, schedule, weekly, holidays, trends
+from . import assets, content, social, video, schedule, weekly, holidays, trends, dashboard
 
 api_router = APIRouter()
 
@@ -13,4 +13,5 @@ api_router.include_router(schedule.router, prefix="/schedule", tags=["schedule"]
 api_router.include_router(weekly.router, prefix="/weekly", tags=["weekly"])
 api_router.include_router(holidays.router, prefix="/holidays", tags=["holidays"])
 api_router.include_router(trends.router, prefix="/trends", tags=["trends"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 from openai import AsyncOpenAI
 from app.core.config import get_settings
-from app.models.content import ContentBrief, GeneratedPlan, ShotInstruction
+from app.models.content import ContentBrief, GeneratedPlan, ShotInstruction, TikTokMusicHint
 from app.models.schedule import ScheduleRequest, ScheduledContentItem
 from app.models.weekly_schedule import WeeklyScheduleRequest, WeeklyPost
 from datetime import date, timedelta
@@ -408,17 +408,18 @@ CRITICAL REQUIREMENTS:
    - Hashtags (1-2 specific + 1-2 broad, total 3-5)
 4. COMPLIANCE: No MLM language, no medical claims, no income promises. Use soft CTAs only.
 
-Generate:
-1. A conversational script (15-45 seconds) following the structure above
+Generate a JSON object with the following fields:
+
+1. "script": string - conversational script (15-45 seconds) following the structure above
    - Include notes for on-screen text overlays (especially in first 3 seconds with main keyword)
    - Ensure main keyword is spoken near the start
-2. A social media caption with:
+2. "caption": string - social media caption with:
    - Hook (first line, attention-grabbing)
    - Body (1-3 sentences explaining value)
    - Soft CTA (e.g., "If you're curious, link's in my bio")
    - Hashtags: Core Unicity hashtags + 1-2 specific + 1-2 broad (3-5 total)
    - Health disclaimer at the end
-3. A shot plan with 3-6 clear visual descriptions optimized for stock video/image search
+3. "shot_plan": ShotInstruction[] - 3-6 clear visual descriptions optimized for stock video/image search
    - Each description should be SPECIFIC and SEARCHABLE with concrete keywords
    - ALIGN WITH UNICITY WELLNESS THEMES: Include wellness, healthy lifestyle, metabolic health, energy, routine keywords
    - Include: colors, actions, settings, lighting, composition (e.g., "golden sunrise over mountains time-lapse", "green smoothie in glass jar marble counter morning light healthy")
@@ -427,7 +428,16 @@ Generate:
    - Focus on: healthy meals, fresh ingredients, wellness objects, peaceful environments, nature scenes, routine objects, products
    - Total duration should align with script length
    - Use 4-6 specific keywords per shot description including wellness/healthy terms for better search results
-   - Examples: "healthy breakfast bowl colorful fresh ingredients morning light", "peaceful nature scene forest path wellness", "wellness product bottle close-up white background"""
+   - Examples: "healthy breakfast bowl colorful fresh ingredients morning light", "peaceful nature scene forest path wellness", "wellness product bottle close-up white background"
+4. "music_mood": string - one of: "calm", "energetic", "inspirational", "serious", "fun".
+   - Choose the mood that best fits the script and target audience.
+5. "tiktok_music_hints": TikTokMusicHint[] - 2-5 suggestions for what to search for in TikTok's music picker.
+   - Each TikTokMusicHint has:
+     - "label": short label like "Calm lofi study beat".
+     - "searchPhrase": the exact phrase the user can paste into TikTok search, e.g. "relaxing lofi study beat".
+     - "mood": optional mood tag matching or related to music_mood.
+   - Do NOT reference specific copyrighted songs, artists, or brands.
+   - ONLY provide generic descriptive search phrases that are safe and reusable."""
 
     try:
         response = await client.chat.completions.create(
@@ -457,10 +467,22 @@ Generate:
             ShotInstruction(**shot) for shot in data.get("shot_plan", [])
         ]
 
+        # Parse TikTok music hints safely
+        raw_hints = data.get("tiktok_music_hints") or []
+        tiktok_hints: list[TikTokMusicHint] = []
+        for hint in raw_hints:
+            try:
+                if isinstance(hint, dict):
+                    tiktok_hints.append(TikTokMusicHint(**hint))
+            except Exception as e:
+                logger.warning(f"Skipping invalid TikTokMusicHint: {hint} ({e})")
+        
         return GeneratedPlan(
             script=data.get("script", ""),
             caption=data.get("caption", ""),
             shot_plan=shot_plan,
+            music_mood=data.get("music_mood"),
+            tiktok_music_hints=tiktok_hints,
         )
 
     except Exception as e:

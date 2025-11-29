@@ -3,6 +3,8 @@ import { Shell } from './components/layout/Shell';
 import { Dashboard } from './pages/Dashboard';
 import { NewPostWizard } from './pages/NewPostWizard';
 import { PostDetail } from './pages/PostDetail';
+import { VideoLibrary } from './pages/VideoLibrary';
+import { WeeklySchedulePage } from './pages/WeeklySchedule';
 
 function App() {
   return (
@@ -11,7 +13,9 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/wizard" element={<NewPostWizard />} />
+          <Route path="/weekly" element={<WeeklySchedulePage />} />
           <Route path="/posts/:id" element={<PostDetail />} />
+          <Route path="/videos" element={<VideoLibrary />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Shell>

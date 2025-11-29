@@ -1,6 +1,6 @@
 /** Weekly schedule API client. */
 import api from './api';
-import type { ShotInstruction } from './contentApi';
+import type { ShotInstruction, TikTokMusicHint } from './contentApi';
 
 export interface WeeklyScheduleRequest {
   week_start_date: string; // ISO date (Monday of the week)
@@ -22,6 +22,11 @@ export interface WeeklyPost {
   suggested_keywords: string[];
   status: string; // draft, ready, scheduled, published
   media_url?: string | null;
+  // Audio metadata
+  audio_track_id?: number | null;
+  audio_track_title?: string | null;
+  audio_music_mood?: string | null;
+  tiktok_music_hints?: TikTokMusicHint[];
 }
 
 export interface WeeklySchedule {
