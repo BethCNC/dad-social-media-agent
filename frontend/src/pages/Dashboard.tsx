@@ -86,8 +86,11 @@ export const Dashboard = () => {
         platforms: ['TikTok', 'Instagram'],
       });
       setCurrentSchedule(schedule);
+      setError(null); // Clear any previous errors on success
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to generate weekly schedule');
+      console.error('Error generating schedule:', err);
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to generate weekly schedule. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -146,7 +149,10 @@ export const Dashboard = () => {
       {error && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <p className="text-sm text-red-700">{error}</p>
+            <p className="text-lg text-red-700 font-medium">{error}</p>
+            <p className="text-sm text-red-600 mt-2">
+              If this problem continues, check that the backend server is running on port 8000.
+            </p>
           </CardContent>
         </Card>
       )}

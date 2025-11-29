@@ -1,12 +1,23 @@
 """Application configuration and settings management."""
+import os
 from functools import lru_cache
 from pathlib import Path
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Find project root (where .env file is located)
 # This file is in backend/app/core/, so go up 3 levels to project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 ENV_FILE = PROJECT_ROOT / ".env"
+
+# Load .env file using python-dotenv (this handles empty files gracefully)
+# If .env file exists and has content, load it. Otherwise, rely on system environment variables.
+if ENV_FILE.exists() and ENV_FILE.stat().st_size > 0:
+    load_dotenv(dotenv_path=ENV_FILE, override=False)
+else:
+    # .env file is empty or doesn't exist - try to load from system environment
+    # This allows users to set environment variables directly instead of using .env file
+    load_dotenv(override=False)
 
 
 class Settings(BaseSettings):
@@ -27,8 +38,8 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     
     model_config = SettingsConfigDict(
-        env_file=str(ENV_FILE) if ENV_FILE.exists() else ".env",
-        env_file_encoding="utf-8",
+        # Don't specify env_file here - we load it manually with load_dotenv above
+        # This allows us to load from .env file OR system environment variables
         case_sensitive=True,
     )
 
@@ -36,5 +47,25 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     """Get cached settings instance."""
-    return Settings()
+    try:
+        return Settings()
+    except Exception as e:
+        # Provide helpful error message if .env file is empty or missing
+        if ENV_FILE.exists() and ENV_FILE.stat().st_size == 0:
+            raise ValueError(
+                f"Your .env file at {ENV_FILE} is empty. "
+                "Please add your API keys to the .env file. "
+                "See .env.example for the required format."
+            ) from e
+        elif not ENV_FILE.exists():
+            raise ValueError(
+                f"Your .env file at {ENV_FILE} does not exist. "
+                "Please create it with your API keys. "
+                "See .env.example for the required format."
+            ) from e
+        else:
+            raise ValueError(
+                f"Failed to load settings. Missing required environment variables. "
+                f"Please check your .env file at {ENV_FILE} contains all required keys."
+            ) from e
 
