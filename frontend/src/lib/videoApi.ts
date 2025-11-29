@@ -29,3 +29,12 @@ export const getRenderStatus = async (jobId: string): Promise<RenderJob> => {
   return response.data;
 };
 
+/**
+ * Render a quick preview using Creatomate template.
+ * Used for showing previews when user selects alternative assets.
+ */
+export const renderPreview = async (request: VideoRenderRequest): Promise<RenderJob> => {
+  const response = await api.post<RenderJob>('/api/video/render/preview', request);
+  return response.data;
+};
+
