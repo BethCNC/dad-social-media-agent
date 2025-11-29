@@ -20,11 +20,6 @@ class Settings(BaseSettings):
     CREATOMATE_VIDEO_TEMPLATE_ID: str
     AYRSHARE_API_KEY: str
     
-    # Google Calendar (optional)
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:5173/auth/google/callback"
-    
     # Application settings
     FRONTEND_URL: str = "http://localhost:5173"
     ENV: str = "development"

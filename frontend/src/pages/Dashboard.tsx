@@ -16,6 +16,26 @@ export const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [accountsConnected, setAccountsConnected] = useState(false); // Placeholder
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+  
+  // Auto-refresh schedule every 30 seconds to show real-time updates
+  useEffect(() => {
+    if (!currentSchedule) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const monday = getCurrentWeekMonday();
+        const schedule = await getWeeklySchedule(format(monday, 'yyyy-MM-dd'));
+        setCurrentSchedule(schedule);
+      } catch (err: any) {
+        // Silently fail on refresh - don't show errors for background updates
+        if (err.response?.status !== 404) {
+          console.error('Background schedule refresh failed:', err);
+        }
+      }
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [currentSchedule]);
 
   // Get current week's Monday
   const getCurrentWeekMonday = () => {
