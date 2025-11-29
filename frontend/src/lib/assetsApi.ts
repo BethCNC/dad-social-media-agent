@@ -51,3 +51,69 @@ export const searchAssetsContextual = async (
   return response.data;
 };
 
+export interface UserVideo {
+  id: string;
+  filename: string;
+  original_filename: string;
+  video_url: string;
+  thumbnail_url?: string;
+  duration_seconds?: number;
+  tags: string[];
+  description?: string;
+  use_count: number;
+  last_used_at?: string;
+  created_at: string;
+}
+
+/**
+ * Upload a user video file.
+ */
+export const uploadVideo = async (
+  file: File,
+  tags?: string,
+  description?: string
+): Promise<{ id: string; video_url: string; filename: string; original_filename: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const params = new URLSearchParams();
+  if (tags) params.append('tags', tags);
+  if (description) params.append('description', description);
+  
+  const response = await api.post<{ id: string; video_url: string; filename: string; original_filename: string }>(
+    `/api/assets/upload?${params.toString()}`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data;
+};
+
+/**
+ * List all user-uploaded videos.
+ */
+export const listUserVideos = async (): Promise<UserVideo[]> => {
+  const response = await api.get<UserVideo[]>('/api/assets/videos');
+  return response.data;
+};
+
+/**
+ * Delete a user-uploaded video.
+ */
+export const deleteUserVideo = async (videoId: number): Promise<void> => {
+  await api.delete(`/api/assets/videos/${videoId}`);
+};
+
+/**
+ * Regenerate a single image using Nano Banana Pro.
+ */
+export const regenerateImage = async (prompt: string): Promise<AssetResult> => {
+  const response = await api.post<AssetResult>('/api/assets/regenerate-image', {
+    prompt,
+  });
+  return response.data;
+};
+

@@ -2,36 +2,30 @@
 
 The app is deployed as a single Docker container via **Coolify**.
 
-## Multi-Stage Docker Build (Conceptual)
+## Docker Build Strategy
 
-1. **Frontend Build Stage**
-   - Base image: `node:20-alpine` (or similar).
-   - Install dependencies and run `npm run build` for Vite.
-   - Output directory: `frontend/dist`.
-
-2. **Backend + Runtime Stage**
-   - Base image: `python:3.10-slim` (or similar).
-   - Install Python dependencies (FastAPI, uvicorn, httpx, pydantic, etc.).
-   - Copy backend code into `/app/backend`.
-   - Copy `frontend/dist` into `/app/static` or similar.
-   - Configure FastAPI to serve static files.
-   - Default command: run `uvicorn` on `0.0.0.0:8000`.
+1. **Frontend Build Stage**: Node.js builds the React app into static files.
+2. **Backend Runtime**: Python FastAPI serves the API and the static frontend files (SPA).
+3. **Dockerfile Location**: `deploy/Dockerfile`
 
 ## Coolify Setup
 
-- Create a new app in Coolify using the Dockerfile from this repo.
-- Set environment variables in Coolify UI:
-  - `OPENAI_API_KEY`
-  - `PEXELS_API_KEY`
-  - `CREATOMATE_API_KEY`
-  - `AYRSHARE_API_KEY`
-  - `ENV=production`
-  - Any other app-specific config.
-- Configure health check to call `GET /health`.
+- **Build Pack**: Dockerfile
+- **Docker Context**: `.` (Root of the repo)
+- **Dockerfile Path**: `/deploy/Dockerfile`
 
-## Local Development
+### Required Environment Variables
 
-- Optionally use `docker-compose.yml` to run the full stack locally.
-- Or run backend and frontend separately:
-  - Backend: `uvicorn app.main:app --reload --port 8000`
-  - Frontend: `npm run dev` (Vite default port, usually 5173).
+You must set these in the Coolify UI:
+
+- `GOOGLE_API_KEY`: Google API key for Gemini 3.0 Pro (text generation) and Nano Banana Pro (image generation). Get from Google AI Studio or Vertex AI.
+- `CREATOMATE_API_KEY`: For video rendering.
+- `CREATOMATE_IMAGE_TEMPLATE_ID`: Template ID for image-based videos.
+- `CREATOMATE_VIDEO_TEMPLATE_ID`: Template ID for video-based videos.
+- `AYRSHARE_API_KEY`: For social posting.
+- `ENV`: Set to `production`.
+- `FRONTEND_URL`: The full URL where the app is hosted (e.g., `https://social.yourdomain.com`).
+
+## Health Check
+
+- Configure health check in Coolify to call `GET /health`.

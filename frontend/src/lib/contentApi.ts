@@ -28,14 +28,33 @@ export interface ShotInstruction {
   duration_seconds: number;
 }
 
+export type TikTokMusicHint = {
+  label: string;
+  searchPhrase: string;
+  mood?: string;
+};
+
 export interface GeneratedPlan {
   script: string;
   caption: string;
   shot_plan: ShotInstruction[];
+  music_mood?: string | null;
+  tiktok_music_hints?: TikTokMusicHint[];
 }
 
-export const generatePlan = async (brief: ContentBrief): Promise<GeneratedPlan> => {
-  const response = await api.post<GeneratedPlan>('/api/content/plan', brief);
+export const generatePlan = async (brief: ContentBrief, imageFile?: File): Promise<GeneratedPlan> => {
+  const formData = new FormData();
+  formData.append('brief_json', JSON.stringify(brief));
+  
+  if (imageFile) {
+    formData.append('image', imageFile);
+  }
+  
+  const response = await api.post<GeneratedPlan>('/api/content/plan', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
 

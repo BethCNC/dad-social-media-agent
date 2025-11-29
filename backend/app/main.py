@@ -9,8 +9,9 @@ from fastapi.responses import FileResponse
 
 from app.core.config import get_settings
 from app.api.v1 import api_router
-from app.database.database import init_db
+from app.database.database import init_db, SessionLocal
 from app.services.holiday_service import sync_us_holidays
+from app.services.audio_seed import seed_audio_tracks
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -26,6 +27,20 @@ app = FastAPI(
 async def startup_event():
     """Initialize database tables and sync holidays on application startup."""
     init_db()
+
+    # Seed audio tracks (idempotent)
+    try:
+        db = SessionLocal()
+        created = seed_audio_tracks(db)
+        if created:
+            logger.info(f"Seeded {created} audio tracks.")
+    except Exception as e:
+        logger.warning(f"Failed to seed audio tracks: {e}")
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
     
     # Log Creatomate template configuration
     logger.info("=" * 60)
@@ -64,19 +79,32 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "ok"}
 
-# Mount static files if they exist (for production)
-static_dir = "/app/static"
-if os.path.exists(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
-    
+# Mount static directory for serving generated images and frontend
+static_dir = settings.UPLOAD_DIR.parent  # static/ directory
+static_dir.mkdir(parents=True, exist_ok=True)
+
+# Mount static files directory (for generated images and frontend)
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+# Mount uploads subdirectory for serving user-uploaded videos
+from pathlib import Path
+uploads_dir = settings.UPLOAD_DIR
+uploads_dir.mkdir(parents=True, exist_ok=True)
+if uploads_dir.exists():
+    app.mount("/api/assets/videos", StaticFiles(directory=str(uploads_dir)), name="uploads")
+
+# Mount static files if they exist (for production frontend)
+prod_static_dir = "/app/static"
+if os.path.exists(prod_static_dir):
     # Catch-all route for React Router (serve index.html for all non-API routes)
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         """Serve React app for all non-API routes."""
-        # Exclude API routes and health endpoint
-        if full_path.startswith("api") or full_path == "health":
+        # Exclude API routes, health endpoint, and static files
+        if full_path.startswith("api") or full_path == "health" or full_path.startswith("static"):
             return {"error": "Not found"}
-        index_path = os.path.join(static_dir, "index.html")
+        index_path = os.path.join(prod_static_dir, "index.html")
         if os.path.exists(index_path):
             return FileResponse(index_path)
         return {"error": "Not found"}
