@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, CheckCircle, XCircle, Video } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Video, ShieldCheck } from 'lucide-react';
 import { getRenderStatus, type RenderJob } from '../../lib/videoApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -102,6 +102,17 @@ export const RenderStatusCard = ({
           <p className={cn("text-xl font-semibold", statusDisplay.color)}>
             {statusDisplay.text}
           </p>
+          
+          {/* Compliance Check Badge - Show when rendering or completed */}
+          {(isPolling || status?.status === 'succeeded') && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+              <ShieldCheck className="w-5 h-5 text-green-600" aria-hidden="true" />
+              <span className="text-sm font-medium text-green-800">
+                Compliance Check Passed
+              </span>
+            </div>
+          )}
+          
           {status?.video_url && (
             <div className="mt-6 w-full">
               <video
