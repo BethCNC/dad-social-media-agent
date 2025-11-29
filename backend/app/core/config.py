@@ -5,6 +5,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.models.audio import AudioMode
+
 # Find project root (where .env file is located)
 # This file is in backend/app/core/, so go up 3 levels to project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
@@ -24,8 +26,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # API Keys
-    OPENAI_API_KEY: str
-    PEXELS_API_KEY: str
+    GOOGLE_API_KEY: str
     CREATOMATE_API_KEY: str
     CREATOMATE_IMAGE_TEMPLATE_ID: str
     CREATOMATE_VIDEO_TEMPLATE_ID: str
@@ -39,6 +40,15 @@ class Settings(BaseSettings):
     ENV: str = "development"
     PORT: int = 8000
     LOG_LEVEL: str = "INFO"
+
+    # Audio system settings
+    AUDIO_MODE: str = AudioMode.AUTO_STOCK_WITH_TIKTOK_HINTS.value
+    
+    # File upload settings (computed property)
+    @property
+    def UPLOAD_DIR(self) -> Path:
+        """Get the upload directory path."""
+        return PROJECT_ROOT / "uploads" / "videos"
     
     model_config = SettingsConfigDict(
         # Don't specify env_file here - we load it manually with load_dotenv above

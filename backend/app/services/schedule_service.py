@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from typing import Dict, Optional
 from fastapi import HTTPException
 from app.models.schedule import ScheduleRequest, ScheduledContentItem, MonthlySchedule
-from app.services.openai_client import generate_monthly_schedule
+from app.services.gemini_client import generate_monthly_schedule
 from app.services.holiday_service import get_holiday_context_for_date
 
 logger = logging.getLogger(__name__)
