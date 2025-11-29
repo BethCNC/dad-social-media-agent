@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
 import { ContentBriefForm } from '../components/forms/ContentBriefForm';
 import { ScriptPreview } from '../components/planning/ScriptPreview';
@@ -22,6 +23,7 @@ import { cn } from '@/lib/utils';
 type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
 
 export const NewPostWizard = () => {
+  const location = useLocation();
   const [currentStep, setCurrentStep] = useState<WizardStep>(0);
   const [monthlySchedule, setMonthlySchedule] = useState<MonthlySchedule | null>(null);
   const [selectedScheduleItem, setSelectedScheduleItem] = useState<ScheduledContentItem | null>(null);
@@ -94,6 +96,33 @@ export const NewPostWizard = () => {
 
   // Don't auto-search - let user control when to search
 
+  // Check for trend idea in location state and pre-fill
+  useEffect(() => {
+    const trendIdea = (location.state as any)?.trendIdea;
+    if (trendIdea) {
+      // Pre-fill script and caption from trend
+      if (trendIdea.hook_script) {
+        setScript(trendIdea.hook_script);
+      }
+      if (trendIdea.suggested_caption) {
+        setCaption(trendIdea.suggested_caption);
+      }
+      
+      // Create a minimal plan to allow progression
+      const plan: GeneratedPlan = {
+        script: trendIdea.hook_script || '',
+        caption: trendIdea.suggested_caption || '',
+        shot_plan: [
+          { description: 'healthy lifestyle wellness scene', duration_seconds: 5 },
+          { description: 'peaceful morning routine objects', duration_seconds: 5 },
+        ],
+      };
+      setGeneratedPlan(plan);
+      
+      // Skip to step 2 (review script & caption) since we already have the content
+      setCurrentStep(2);
+    }
+  }, [location.state]);
 
   // Auto-start render when entering step 4
   useEffect(() => {
