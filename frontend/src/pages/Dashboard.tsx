@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WeeklyScheduleView } from '@/components/weekly/WeeklyScheduleView';
 import { CalendarView } from '@/components/calendar/CalendarView';
+import { TrendAlertCard, type TrendAlert } from '@/components/trends/TrendAlertCard';
 import { generateWeeklySchedule, getWeeklySchedule, type WeeklySchedule, type WeeklyPost } from '@/lib/weeklyApi';
+import { getLatestTrends } from '@/lib/trendsApi';
 import { format, startOfWeek, parseISO } from 'date-fns';
 
 export const Dashboard = () => {
@@ -16,6 +18,8 @@ export const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [accountsConnected, setAccountsConnected] = useState(false); // Placeholder
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+  const [trendAlert, setTrendAlert] = useState<TrendAlert | null>(null);
+  const [isLoadingTrends, setIsLoadingTrends] = useState(false);
   
   // Auto-refresh schedule every 10 seconds to show real-time updates (faster for preview rendering)
   useEffect(() => {
@@ -113,6 +117,25 @@ export const Dashboard = () => {
     loadCurrentWeek();
   }, []);
 
+  // Load trending content on mount
+  useEffect(() => {
+    const loadTrends = async () => {
+      try {
+        setIsLoadingTrends(true);
+        const trend = await getLatestTrends();
+        setTrendAlert(trend);
+      } catch (err: any) {
+        // Silently fail - trends are optional
+        console.log('Trends not available:', err.response?.data?.detail || err.message);
+        setTrendAlert(null);
+      } finally {
+        setIsLoadingTrends(false);
+      }
+    };
+
+    loadTrends();
+  }, []);
+
   const handleNewPost = () => {
     navigate('/wizard');
   };
@@ -143,6 +166,19 @@ export const Dashboard = () => {
     }
   };
 
+  const handleUseTrendIdea = (trend: TrendAlert) => {
+    // Navigate to wizard with trend data in location state
+    navigate('/wizard', {
+      state: {
+        trendIdea: {
+          hook_script: trend.hook_script,
+          suggested_caption: trend.suggested_caption,
+          trend_title: trend.trend_title,
+        },
+      },
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
@@ -166,6 +202,11 @@ export const Dashboard = () => {
           </Button>
         </div>
       </div>
+
+      {/* Trend Alert Card */}
+      {trendAlert && (
+        <TrendAlertCard trend={trendAlert} onUseIdea={handleUseTrendIdea} />
+      )}
 
       {/* Connect Accounts Info (Placeholder) */}
       {!accountsConnected && (

@@ -980,3 +980,136 @@ Return ONLY a JSON object with this structure:
         logger.error(f"Gemini API error in weekly schedule generation: {type(e).__name__}: {str(e)}")
         raise
 
+
+async def analyze_social_trend(video_descriptions: List[str]) -> dict:
+    """
+    Analyze trending TikTok captions and generate a compliant remix idea.
+    
+    Uses Gemini 3.0 Pro to identify common hooks/themes and create a compliant
+    script that pivots to Unicity products (Unimate/Balance).
+    
+    Args:
+        video_descriptions: List of video captions/descriptions from trending videos
+        
+    Returns:
+        Dictionary with keys: trend_title, why_it_works, hook_script, suggested_caption
+        
+    Raises:
+        FileNotFoundError: If client profile cannot be loaded
+        ValueError: If Gemini response is invalid
+        Exception: If Gemini API call fails
+    """
+    # Load client profile for compliance rules
+    try:
+        client_profile = load_client_profile()
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to load client profile: {e}")
+        raise
+    
+    # Build system message with compliance rules
+    compliance_rules = client_profile.get("compliance", {}).get("rules", {})
+    tone = client_profile.get("tone", {})
+    hashtags = client_profile.get("hashtags", {})
+    disclaimers = client_profile.get("disclaimers", {})
+    
+    # Build compliance text
+    compliance_text = []
+    if compliance_rules.get("noDiseaseClaims"):
+        compliance_text.append(
+            "- NEVER claim that products cure, treat, or prevent specific diseases. "
+            "Use language like 'supports', 'helps with', 'can make it easier to' instead."
+        )
+    if compliance_rules.get("noGuaranteedIncome"):
+        compliance_text.append(
+            "- NEVER promise specific income, guaranteed earnings, or 'get rich' results."
+        )
+    
+    system_message = f"""You are a Social Media Strategist for a Unicity Distributor (50+ male).
+
+CLIENT CONTEXT:
+- The client is an Independent Unicity Distributor creating content for their personal brand.
+- Brand name: {client_profile.get('brandName', 'Unicity Wellness')}
+- Target audience: Everyday people trying to feel better, have more stable energy, and improve their habits.
+- Products to reference: Feel Great System, Unimate, and Balance when relevant.
+
+TONE & VOICE:
+- Overall tone: {tone.get('overall', 'friendly, educational, supportive')}
+- Reading level: {tone.get('readingLevel', '9th grade')} - use short sentences, avoid jargon
+- Perspective: {tone.get('personPerspective', 'first person or conversational')}
+- Use language like "supports", "helps with", "can make it easier to" rather than "fixes" or "cures"
+
+COMPLIANCE RULES (CRITICAL - MUST FOLLOW):
+{chr(10).join(compliance_text)}
+
+TASK:
+Analyze these trending TikTok captions and create a compliant remix idea.
+
+1. Identify the common 'Hook' or theme (e.g., 'The 3pm crash', 'Bloating relief', 'Energy crashes').
+2. Write a short, compliant script (15-30 seconds) that uses this hook but pivots to Unicity products (Unimate/Balance).
+3. Create a suggested caption with hook, body, soft CTA, and hashtags.
+
+STRICT RULES:
+- No medical claims (curing diabetes/PCOS)
+- No income claims
+- Use soft CTAs only ("link in bio if you're curious")
+- Include core Unicity hashtags: {', '.join(hashtags.get('general', []))}
+- End with health disclaimer: {disclaimers.get('health', '')}
+
+Return ONLY valid JSON with this structure:
+{{
+  "trend_title": "string - short title for the trend (e.g., 'The 3pm Energy Crash')",
+  "why_it_works": "string - 1-2 sentences explaining why this trend is working (e.g., 'People are struggling with afternoon energy crashes and looking for natural solutions')",
+  "hook_script": "string - 15-30 second script that uses the trending hook but pivots to Unicity products. Must include a strong hook in first 1-3 seconds.",
+  "suggested_caption": "string - full caption with hook, body, soft CTA, hashtags ({', '.join(hashtags.get('general', []))}), and health disclaimer"
+}}"""
+    
+    # Build user message with video descriptions
+    descriptions_text = "\n".join([f"- {desc}" for desc in video_descriptions[:10]])  # Limit to 10
+    
+    user_message = f"""Here are trending TikTok captions related to wellness and metabolic health:
+
+{descriptions_text}
+
+Analyze these captions and create a compliant remix idea following the instructions above."""
+    
+    try:
+        full_prompt = f"{system_message}\n\n{user_message}"
+        
+        response = client.models.generate_content(
+            model="gemini-3-pro-preview",
+            contents=full_prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.7,
+            )
+        )
+        
+        content = response.text
+        if not content:
+            raise ValueError("Empty response from Gemini")
+        
+        # Parse JSON response
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse Gemini JSON response: {e}")
+            logger.error(f"Raw response: {content[:500]}")
+            raise ValueError("Invalid JSON response from AI") from e
+        
+        # Validate required fields
+        required_fields = ["trend_title", "why_it_works", "hook_script", "suggested_caption"]
+        for field in required_fields:
+            if field not in data:
+                raise ValueError(f"Missing required field in response: {field}")
+        
+        return {
+            "trend_title": data.get("trend_title", ""),
+            "why_it_works": data.get("why_it_works", ""),
+            "hook_script": data.get("hook_script", ""),
+            "suggested_caption": data.get("suggested_caption", ""),
+        }
+        
+    except Exception as e:
+        logger.error(f"Gemini API error in trend analysis: {type(e).__name__}: {str(e)}")
+        raise
+
