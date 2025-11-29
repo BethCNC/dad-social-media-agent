@@ -22,6 +22,7 @@ import {
   type WeeklyPost 
 } from '@/lib/weeklyApi';
 import { searchAssets, searchAssetsContextual, type AssetResult } from '@/lib/assetsApi';
+import { renderPreview, getRenderStatus, type VideoRenderRequest } from '@/lib/videoApi';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -45,6 +46,9 @@ export const PostDetail = () => {
   const [alternativeMedia, setAlternativeMedia] = useState<AssetResult[]>([]);
   const [selectedAlternativeId, setSelectedAlternativeId] = useState<string | null>(null);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isRenderingPreview, setIsRenderingPreview] = useState(false);
+  const [previewJobId, setPreviewJobId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPost = async () => {
@@ -134,10 +138,68 @@ export const PostDetail = () => {
     }
   };
 
-  const handleSelectAlternative = (asset: AssetResult) => {
+  const handleSelectAlternative = async (asset: AssetResult) => {
+    if (!post) return;
+    
     setSelectedAlternativeId(asset.id);
-    // TODO: Update post with new media selection
-    // This would require updating the shot_plan or media_url
+    setIsRenderingPreview(true);
+    setPreviewUrl(null);
+    setPreviewJobId(null);
+    
+    try {
+      // Render preview using Creatomate template
+      const renderRequest: VideoRenderRequest = {
+        assets: [{
+          id: asset.video_url,
+          start_at: null,
+          end_at: null,
+        }],
+        script: post.script,
+        title: null,
+        template_type: post.template_type,
+      };
+      
+      const job = await renderPreview(renderRequest);
+      setPreviewJobId(job.job_id);
+      
+      // Poll for preview completion
+      const pollPreview = async () => {
+        const maxAttempts = 30; // 30 seconds max
+        let attempts = 0;
+        
+        const checkStatus = async () => {
+          if (!job.job_id) return;
+          
+          try {
+            const status = await getRenderStatus(job.job_id);
+            
+            if (status.status === 'succeeded' && status.video_url) {
+              setPreviewUrl(status.video_url);
+              setIsRenderingPreview(false);
+            } else if (status.status === 'failed' || status.status === 'error') {
+              setIsRenderingPreview(false);
+              setError('Failed to render preview');
+            } else if (attempts < maxAttempts) {
+              attempts++;
+              setTimeout(checkStatus, 1000); // Check every second
+            } else {
+              setIsRenderingPreview(false);
+              setError('Preview rendering is taking longer than expected');
+            }
+          } catch (err) {
+            setIsRenderingPreview(false);
+            console.error('Failed to check preview status:', err);
+          }
+        };
+        
+        checkStatus();
+      };
+      
+      pollPreview();
+    } catch (err: any) {
+      setIsRenderingPreview(false);
+      setError(err.response?.data?.detail || 'Failed to render preview');
+    }
   };
 
   const handleFindMoreOptions = async () => {
@@ -227,24 +289,83 @@ export const PostDetail = () => {
             <CardTitle>Visual Preview</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Current Media */}
-            {post.media_url ? (
+            {/* Preview Media - Show preview if available, otherwise show current media */}
+            {(previewUrl || post.media_url) ? (
               <div className="space-y-2">
-                <Label>Current {post.template_type === 'image' ? 'Image' : 'Video'}</Label>
-                {post.template_type === 'image' ? (
-                  <img
-                    src={post.media_url}
-                    alt="Rendered image"
-                    className="w-full rounded-lg border aspect-[9/16] object-cover"
-                  />
+                <Label>
+                  {previewUrl ? 'Preview' : 'Current'} {post.template_type === 'image' ? 'Image' : 'Video'}
+                  {previewUrl && (
+                    <span className="ml-2 text-xs text-blue-600">(Creatomate Template)</span>
+                  )}
+                </Label>
+                {isRenderingPreview ? (
+                  <div className="flex items-center justify-center min-h-[400px] border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 mx-auto text-gray-400 mb-2 animate-spin" />
+                      <p className="text-sm text-gray-500">Rendering preview...</p>
+                    </div>
+                  </div>
                 ) : (
-                  <video
-                    src={post.media_url}
-                    controls
-                    className="w-full rounded-lg border aspect-[9/16]"
-                  >
-                    Your browser does not support the video tag.
-                  </video>
+                  <>
+                    {post.template_type === 'image' ? (
+                      <img
+                        src={previewUrl || post.media_url!}
+                        alt={previewUrl ? "Preview image" : "Rendered image"}
+                        className="w-full rounded-lg border aspect-[9/16] object-cover"
+                      />
+                    ) : (
+                      <video
+                        src={previewUrl || post.media_url!}
+                        controls
+                        className="w-full rounded-lg border aspect-[9/16]"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
+                    {previewUrl && (
+                      <div className="space-y-2 pt-3 border-t">
+                        <p className="text-xs text-gray-600">
+                          This is a preview rendered with your Creatomate template. Click "Apply" to save it to this post.
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={async () => {
+                              // Apply preview to post
+                              if (!post?.id) return;
+                              try {
+                                setError(null);
+                                const updated = await updatePost(post.id, {
+                                  ...post,
+                                  media_url: previewUrl,
+                                  status: 'ready', // Mark as ready when preview is applied
+                                });
+                                setPost(updated);
+                                setEditedPost(updated);
+                                setPreviewUrl(null);
+                                setSelectedAlternativeId(null);
+                              } catch (err: any) {
+                                setError(err.response?.data?.detail || 'Failed to apply preview');
+                              }
+                            }}
+                          >
+                            Apply This Preview
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setPreviewUrl(null);
+                              setSelectedAlternativeId(null);
+                            }}
+                          >
+                            Cancel Preview
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ) : (
@@ -252,6 +373,7 @@ export const PostDetail = () => {
                 <div className="text-center">
                   <Video className="h-12 w-12 mx-auto text-gray-400 mb-2" />
                   <p className="text-sm text-gray-500">No media rendered yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Select an asset below to preview</p>
                 </div>
               </div>
             )}
@@ -352,38 +474,55 @@ export const PostDetail = () => {
                     Select an alternative video/image option:
                   </p>
                   <div className="grid grid-cols-3 gap-4">
-                    {(showMoreOptions ? alternativeMedia : alternativeMedia.slice(0, 3)).map((asset) => (
-                      <div
-                        key={asset.id}
-                        className={cn(
-                          "relative cursor-pointer rounded-lg border-2 overflow-hidden transition-all",
-                          selectedAlternativeId === asset.id
-                            ? "border-primary ring-2 ring-primary"
-                            : "border-gray-200 hover:border-gray-300"
-                        )}
-                        onClick={() => handleSelectAlternative(asset)}
-                      >
-                        <div className="aspect-[9/16] bg-gray-100 relative">
-                          <img
-                            src={asset.thumbnail_url}
-                            alt="Video thumbnail"
-                            className="w-full h-full object-cover"
-                          />
-                          {selectedAlternativeId === asset.id && (
-                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                              <div className="bg-primary text-white rounded-full p-2">
-                                <Check className="h-4 w-4" />
-                              </div>
-                            </div>
+                    {(showMoreOptions ? alternativeMedia : alternativeMedia.slice(0, 3)).map((asset) => {
+                      const isSelected = selectedAlternativeId === asset.id;
+                      const isRendering = isSelected && isRenderingPreview;
+                      
+                      return (
+                        <div
+                          key={asset.id}
+                          className={cn(
+                            "relative cursor-pointer rounded-lg border-2 overflow-hidden transition-all",
+                            isSelected
+                              ? "border-primary ring-2 ring-primary ring-offset-2"
+                              : "border-gray-200 hover:border-gray-300 hover:shadow-md"
                           )}
+                          onClick={() => handleSelectAlternative(asset)}
+                        >
+                          <div className="aspect-[9/16] bg-gray-100 relative">
+                            <img
+                              src={asset.thumbnail_url}
+                              alt="Video thumbnail"
+                              className="w-full h-full object-cover"
+                            />
+                            {isRendering && (
+                              <div className="absolute inset-0 bg-primary/30 flex items-center justify-center backdrop-blur-sm">
+                                <div className="bg-white rounded-full p-3 shadow-lg">
+                                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                                </div>
+                              </div>
+                            )}
+                            {isSelected && !isRendering && (
+                              <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                                <div className="bg-primary text-white rounded-full p-2 shadow-lg">
+                                  <Check className="h-4 w-4" />
+                                </div>
+                              </div>
+                            )}
+                            {isSelected && (
+                              <div className="absolute top-2 left-2 bg-primary text-white px-2 py-1 rounded text-[10px] font-semibold">
+                                {isRendering ? 'Rendering...' : 'Selected'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-2 bg-white">
+                            <p className="text-xs text-gray-500 truncate">
+                              {asset.duration_seconds}s
+                            </p>
+                          </div>
                         </div>
-                        <div className="p-2 bg-white">
-                          <p className="text-xs text-gray-500 truncate">
-                            {asset.duration_seconds}s
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {!showMoreOptions && alternativeMedia.length > 3 && (
                     <Button
