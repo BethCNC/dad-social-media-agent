@@ -1,14 +1,14 @@
 """Weekly schedule API endpoints."""
 import logging
 from datetime import date
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.database.models import ScheduledPost as ScheduledPostDB
 from app.database.content_repository import get_quotes_by_category
 from app.models.weekly_schedule import WeeklyScheduleRequest, WeeklySchedule, WeeklyPost
-from app.services.weekly_schedule_service import create_weekly_schedule, get_weekly_schedule
+from app.services.weekly_schedule_service import create_weekly_schedule, get_weekly_schedule, auto_render_post_preview
 from app.services.openai_client import generate_content_plan
 from app.models.content import ContentBrief, ShotInstruction
 
@@ -19,15 +19,51 @@ router = APIRouter()
 @router.post("/generate", response_model=WeeklySchedule)
 async def generate_week(
     request: WeeklyScheduleRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ) -> WeeklySchedule:
     """
     Generate a weekly schedule with 7 posts.
     
     Returns a complete weekly schedule with AI-generated content for each day.
+    Automatically renders previews in the background for all posts.
     """
     try:
-        return await create_weekly_schedule(request, db)
+        schedule = await create_weekly_schedule(request, db)
+        
+        # Start background task to render previews for all posts
+        async def render_all_previews():
+            """Render previews for all posts and update database."""
+            from app.database.database import SessionLocal
+            
+            local_db = SessionLocal()
+            try:
+                for post in schedule.posts:
+                    try:
+                        logger.info(f"🎬 Starting auto-render for post {post.id}: {post.topic}")
+                        media_url = await auto_render_post_preview(post, local_db)
+                        if media_url:
+                            # Update post in database
+                            post_db = local_db.query(ScheduledPostDB).filter(ScheduledPostDB.id == post.id).first()
+                            if post_db:
+                                post_db.media_url = media_url
+                                local_db.commit()
+                                logger.info(f"✅ Updated post {post.id} with preview URL: {media_url[:50]}...")
+                            else:
+                                logger.warning(f"⚠️ Post {post.id} not found in database")
+                        else:
+                            logger.warning(f"⚠️ Preview render returned no URL for post {post.id}")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to render preview for post {post.id}: {type(e).__name__}: {e}", exc_info=True)
+                        local_db.rollback()
+            finally:
+                local_db.close()
+        
+        # Add background task (FastAPI BackgroundTasks supports async functions)
+        background_tasks.add_task(render_all_previews)
+        logger.info(f"📋 Added background task to render {len(schedule.posts)} post previews")
+        
+        return schedule
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -57,6 +93,90 @@ async def get_week(
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve weekly schedule. Please try again."
+        ) from e
+
+
+@router.get("/debug/creatomate-config")
+async def debug_creatomate_config():
+    """
+    Debug endpoint to check Creatomate configuration.
+    Returns template IDs and API key status (without exposing full keys).
+    """
+    from app.core.config import get_settings
+    settings = get_settings()
+    
+    return {
+        "creatomate_api_key_set": bool(settings.CREATOMATE_API_KEY),
+        "creatomate_api_key_length": len(settings.CREATOMATE_API_KEY) if settings.CREATOMATE_API_KEY else 0,
+        "video_template_id": settings.CREATOMATE_VIDEO_TEMPLATE_ID,
+        "image_template_id": settings.CREATOMATE_IMAGE_TEMPLATE_ID,
+        "video_template_id_set": bool(settings.CREATOMATE_VIDEO_TEMPLATE_ID),
+        "image_template_id_set": bool(settings.CREATOMATE_IMAGE_TEMPLATE_ID),
+    }
+
+
+@router.post("/posts/{post_id}/render-preview", response_model=WeeklyPost)
+async def render_post_preview(
+    post_id: int,
+    db: Session = Depends(get_db)
+) -> WeeklyPost:
+    """
+    Manually trigger preview rendering for a specific post.
+    
+    This endpoint can be called to render a preview if it wasn't auto-generated
+    or to re-render with different assets.
+    """
+    try:
+        post_db = db.query(ScheduledPostDB).filter(ScheduledPostDB.id == post_id).first()
+        
+        if not post_db:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        # Convert to WeeklyPost
+        from app.models.content import ShotInstruction
+        shot_plan = [
+            ShotInstruction(**shot) for shot in (post_db.shot_plan or [])
+        ]
+        
+        post = WeeklyPost(
+            id=post_db.id,
+            post_date=post_db.post_date,
+            post_time=post_db.post_time,
+            content_pillar=post_db.content_pillar,
+            series_name=post_db.series_name,
+            topic=post_db.topic,
+            hook=post_db.hook,
+            script=post_db.script,
+            caption=post_db.caption,
+            template_type=post_db.template_type,
+            shot_plan=shot_plan,
+            suggested_keywords=post_db.suggested_keywords or [],
+            status=post_db.status,
+            media_url=post_db.media_url,
+        )
+        
+        # Render preview
+        logger.info(f"Manually rendering preview for post {post_id}")
+        media_url = await auto_render_post_preview(post, db)
+        
+        if media_url:
+            post_db.media_url = media_url
+            post.media_url = media_url
+            db.commit()
+            logger.info(f"Successfully rendered preview for post {post_id}")
+        else:
+            logger.warning(f"Preview rendering returned no URL for post {post_id}")
+        
+        return post
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error rendering preview: {type(e).__name__}: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to render preview: {str(e)}"
         ) from e
 
 

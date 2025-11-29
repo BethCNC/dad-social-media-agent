@@ -32,6 +32,7 @@ export const NewPostWizard = () => {
   const [caption, setCaption] = useState<string>('');
   const [assets, setAssets] = useState<AssetResult[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set());
+  const [selectedAssetOrder, setSelectedAssetOrder] = useState<string[]>([]); // Track selection order
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -77,6 +78,17 @@ export const NewPostWizard = () => {
     setCaption(plan.caption);
     setCurrentStep(2);
   };
+
+  // Reset selection when leaving step 3 (asset selection)
+  useEffect(() => {
+    if (currentStep !== 3) {
+      // Don't reset if we're going to step 4 (rendering) - keep selections
+      if (currentStep < 3) {
+        setSelectedAssetIds(new Set());
+        setSelectedAssetOrder([]);
+      }
+    }
+  }, [currentStep]);
 
   // Auto-search when entering step 3 using contextual search
   useEffect(() => {
@@ -167,20 +179,41 @@ export const NewPostWizard = () => {
   };
 
   const handleAssetSelectionChange = (id: string, selected: boolean) => {
+    const maxSelection = templateType === 'image' ? 1 : 2;
+    
     setSelectedAssetIds((prev) => {
       const next = new Set(prev);
       if (selected) {
-        next.add(id);
+        // Check if we can add more (respect maxSelection)
+        if (next.size < maxSelection) {
+          next.add(id);
+        }
       } else {
         next.delete(id);
       }
       return next;
     });
+    
+    // Update selection order - maintain order of selection
+    setSelectedAssetOrder((prev) => {
+      if (selected) {
+        // Only add if not already selected and under limit
+        if (!prev.includes(id) && prev.length < maxSelection) {
+          return [...prev, id];
+        }
+      } else {
+        // Remove from order when deselected
+        return prev.filter(assetId => assetId !== id);
+      }
+      return prev;
+    });
   };
 
   const startRender = async () => {
-    if (selectedAssetIds.size === 0 || !script.trim()) {
-      setRenderError(`Please select ${templateType === 'image' ? 'images' : 'video clips'} and ensure script is filled.`);
+    const requiredCount = templateType === 'image' ? 1 : 2;
+    if (selectedAssetIds.size !== requiredCount || !script.trim()) {
+      const assetTypeLabel = templateType === 'image' ? 'image' : 'video clips';
+      setRenderError(`Please select exactly ${requiredCount} ${assetTypeLabel} and ensure script is filled.`);
       return;
     }
 
@@ -188,10 +221,22 @@ export const NewPostWizard = () => {
     setRenderError(null);
 
     try {
-      // Get selected assets with their URLs
-      const selectedAssets = assets.filter((asset) =>
-        selectedAssetIds.has(asset.id)
-      );
+      // Get selected assets with their URLs in selection order
+      const selectedAssets = selectedAssetOrder
+        .map(id => assets.find(asset => asset.id === id))
+        .filter((asset): asset is NonNullable<typeof asset> => asset !== undefined);
+
+      // Validate we have the correct number of assets
+      const requiredCount = templateType === 'image' ? 1 : 2;
+      if (selectedAssets.length !== requiredCount) {
+        const assetTypeLabel = templateType === 'image' ? 'image' : 'video clips';
+        setRenderError(`Please select exactly ${requiredCount} ${assetTypeLabel}. Currently selected: ${selectedAssets.length}`);
+        setIsRendering(false);
+        return;
+      }
+
+      console.log('Selected assets for rendering:', selectedAssets.map(a => ({ id: a.id, url: a.video_url })));
+      console.log('Script to render:', script);
 
       const renderRequest: VideoRenderRequest = {
         assets: selectedAssets.map((asset) => ({
@@ -229,9 +274,12 @@ export const NewPostWizard = () => {
     if (currentStep < 5) {
       // Only allow progression if we have a plan for step 2+
       if (currentStep === 1 || generatedPlan) {
-        // For step 3, require at least one asset selected
-        if (currentStep === 3 && selectedAssetIds.size === 0) {
-          return;
+        // For step 3, require exactly the right number of assets based on template type
+        if (currentStep === 3) {
+          const requiredCount = templateType === 'image' ? 1 : 2;
+          if (selectedAssetIds.size !== requiredCount) {
+            return;
+          }
         }
         // For step 4, require video to be rendered
         if (currentStep === 4 && !videoUrl) {
@@ -312,8 +360,30 @@ export const NewPostWizard = () => {
           </div>
         );
       case 3:
+        const maxSelection = templateType === 'image' ? 1 : 2;
+        const requiredCount = maxSelection;
+        const hasCorrectSelection = selectedAssetIds.size === requiredCount;
+        const assetTypeLabel = templateType === 'image' ? 'image' : 'video clips';
+        const searchPlaceholder = templateType === 'image' 
+          ? 'Search for images...' 
+          : 'Search for video clips...';
+
         return (
           <div className="space-y-6">
+            {/* Template Requirements Info */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="py-4">
+                <p className="text-blue-900 font-semibold text-lg mb-2">
+                  Template Requirements
+                </p>
+                <p className="text-blue-800 text-base">
+                  {templateType === 'image' 
+                    ? 'Please select exactly 1 image for the image template.'
+                    : 'Please select exactly 2 video clips for the video template.'}
+                </p>
+              </CardContent>
+            </Card>
+
             <div className="flex gap-4">
               <Input
                 type="text"
@@ -324,16 +394,16 @@ export const NewPostWizard = () => {
                     handleSearch();
                   }
                 }}
-                placeholder="Search for video clips..."
+                placeholder={searchPlaceholder}
                 className="text-lg h-12"
-                aria-label="Search for video clips"
+                aria-label={searchPlaceholder}
               />
               <Button
                 onClick={() => handleSearch()}
                 disabled={isSearching || !searchQuery.trim()}
                 size="lg"
                 className="py-6 px-8 text-lg"
-                aria-label="Search videos"
+                aria-label="Search"
               >
                 {isSearching ? (
                   <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
@@ -355,14 +425,24 @@ export const NewPostWizard = () => {
             <AssetGrid
               assets={assets}
               selectedIds={selectedAssetIds}
+              selectedOrder={selectedAssetOrder}
               onSelectionChange={handleAssetSelectionChange}
+              maxSelection={maxSelection}
+              templateType={templateType as 'image' | 'video'}
             />
 
-            {selectedAssetIds.size === 0 && assets.length > 0 && (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <p className="text-amber-600 text-lg">
-                    Please select at least one video clip to continue.
+            {!hasCorrectSelection && assets.length > 0 && (
+              <Card className={selectedAssetIds.size === 0 ? "border-amber-200 bg-amber-50" : "border-destructive/20 bg-destructive/10"}>
+                <CardContent className="py-4">
+                  <p className={cn(
+                    "text-lg font-medium",
+                    selectedAssetIds.size === 0 ? "text-amber-800" : "text-destructive"
+                  )}>
+                    {selectedAssetIds.size === 0
+                      ? `Please select ${requiredCount} ${assetTypeLabel} to continue.`
+                      : selectedAssetIds.size < requiredCount
+                      ? `Please select ${requiredCount - selectedAssetIds.size} more ${assetTypeLabel.slice(0, -1)} to continue.`
+                      : `Please select exactly ${requiredCount} ${assetTypeLabel}. You have selected ${selectedAssetIds.size}.`}
                   </p>
                 </CardContent>
               </Card>
@@ -511,7 +591,10 @@ export const NewPostWizard = () => {
                 disabled={
                   currentStep === 5 ||
                   (currentStep >= 2 && !generatedPlan) ||
-                  (currentStep === 3 && selectedAssetIds.size === 0) ||
+                  (currentStep === 3 && (() => {
+                    const requiredCount = templateType === 'image' ? 1 : 2;
+                    return selectedAssetIds.size !== requiredCount;
+                  })()) ||
                   (currentStep === 4 && !videoUrl)
                 }
                 size="lg"

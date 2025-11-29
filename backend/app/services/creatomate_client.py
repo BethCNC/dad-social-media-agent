@@ -47,6 +47,9 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     asset_urls = [asset.id for asset in request.assets]
     
     # Build modifications object using dot notation
+    # NOTE: Element names must match EXACTLY what's in your Creatomate template
+    # To find element names: Open template in Creatomate editor → Select element → Check "Name" field
+    # Common names: Background-1, Background-2, Video-1, Video-2, Text-1, Text-2, etc.
     # Image templates use: Image.source, Text.text
     # Video templates use: Music.source, Background-1.source, Background-2.source, Text-1.text, Text-2.text
     modifications = {}
@@ -70,17 +73,24 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
         if music_source:
             modifications["Music.source"] = music_source
         
-        # Map assets to Background elements (Background-1, Background-2)
-        # Template expects exactly 2 video clips: Background-1 and Background-2
-        if asset_urls:
-            # Use first two assets for Background-1 and Background-2
-            if len(asset_urls) >= 1:
-                modifications["Background-1.source"] = asset_urls[0]
-            if len(asset_urls) >= 2:
-                modifications["Background-2.source"] = asset_urls[1]
-            # If more than 2 assets, we'll use the first 2 (template only has 2 slots)
-            if len(asset_urls) > 2:
-                logger.warning(f"Video template only supports 2 video clips, using first 2 of {len(asset_urls)} assets")
+    # Map assets to Background elements (Background-1, Background-2)
+    # Template expects exactly 2 video clips: Background-1 and Background-2
+    if len(asset_urls) < 2:
+        logger.warning(f"Video template requires 2 video clips, but only {len(asset_urls)} provided")
+    
+    if asset_urls:
+        # Use first two assets for Background-1 and Background-2
+        if len(asset_urls) >= 1:
+            modifications["Background-1.source"] = asset_urls[0]
+            logger.info(f"Setting Background-1.source to: {asset_urls[0][:80]}...")
+        if len(asset_urls) >= 2:
+            modifications["Background-2.source"] = asset_urls[1]
+            logger.info(f"Setting Background-2.source to: {asset_urls[1][:80]}...")
+        else:
+            logger.warning("Background-2.source not set - only 1 video clip provided")
+        # If more than 2 assets, we'll use the first 2 (template only has 2 slots)
+        if len(asset_urls) > 2:
+            logger.warning(f"Video template only supports 2 video clips, using first 2 of {len(asset_urls)} assets")
         
         # Map script text to Text elements (Text-1, Text-2)
         # Split script into two parts for better visual distribution
@@ -108,12 +118,22 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
             # Set Text-1 and Text-2
             modifications["Text-1.text"] = text_1 if text_1 else script_text
             modifications["Text-2.text"] = text_2 if text_2 else ""
+            logger.info(f"Setting Text-1.text (length: {len(text_1 if text_1 else script_text)}): {text_1[:50] if text_1 else script_text[:50]}...")
+            logger.info(f"Setting Text-2.text (length: {len(text_2)}): {text_2[:50] if text_2 else '(empty)'}...")
     
     # Build payload with template_id and modifications
     payload = {
         "template_id": template_id,
         "modifications": modifications,
     }
+    
+    # Log the payload for debugging
+    logger.info(f"🎬 Rendering {template_type} template with ID: {template_id}")
+    logger.info(f"   Number of assets: {len(asset_urls)}")
+    logger.info(f"   Asset URLs: {[url[:60] + '...' if len(url) > 60 else url for url in asset_urls]}")
+    logger.info(f"   Modifications being sent: {modifications}")
+    logger.info(f"   Script length: {len(request.script) if request.script else 0} characters")
+    logger.info(f"   Script preview: {request.script[:100] + '...' if request.script and len(request.script) > 100 else request.script}")
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -130,10 +150,31 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
             if isinstance(data, list) and len(data) > 0:
                 data = data[0]
             
+            # Log the response for debugging
+            logger.info(f"✅ Creatomate API response received: job_id={data.get('id', 'N/A')}, status={data.get('status', 'N/A')}")
+            logger.debug(f"Full Creatomate response: {data}")
+            
             job_id = data.get("id", "")
             status = data.get("status", "pending")
             # Video URL might be in 'url' or 'preview_url' field
             video_url = data.get("url") or data.get("preview_url")
+            
+            if video_url:
+                logger.info(f"🎥 Video URL available immediately: {video_url[:80]}...")
+            else:
+                logger.info(f"⏳ Video URL not yet available, status: {status}")
+            
+            # Log what was sent for verification
+            if template_type == "video" and len(asset_urls) >= 2:
+                logger.info(f"📹 Sent 2 video URLs to template:")
+                logger.info(f"   Background-1: {asset_urls[0][:80]}...")
+                logger.info(f"   Background-2: {asset_urls[1][:80]}...")
+            elif template_type == "video" and len(asset_urls) == 1:
+                logger.warning(f"⚠️ Only 1 video URL sent, but video template expects 2")
+            
+            if request.script:
+                script_preview = request.script[:100] + "..." if len(request.script) > 100 else request.script
+                logger.info(f"📝 Sent script text ({len(request.script)} chars): {script_preview}")
             
             return RenderJob(
                 job_id=job_id,
@@ -150,10 +191,12 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
         error_detail = ""
         try:
             error_data = e.response.json()
-            error_detail = error_data.get("message", "")
+            error_detail = error_data.get("message", "") or str(error_data)
+            logger.error(f"Creatomate API error detail: {error_detail}")
+            logger.error(f"Full error response: {error_data}")
         except:
-            pass
-        raise Exception(f"Video rendering is taking longer than expected. Please try again in a few minutes.") from e
+            logger.error(f"Could not parse error response: {e.response.text}")
+        raise Exception(f"Video rendering failed: {error_detail or 'Please check your template configuration and try again.'}") from e
     except httpx.RequestError as e:
         logger.error(f"Creatomate API request error: {type(e).__name__}")
         raise Exception("Could not connect to video rendering service. Please try again.") from e
