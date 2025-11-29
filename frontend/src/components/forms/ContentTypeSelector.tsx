@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FileText, Calendar, CalendarDays, Hash, Sparkles } from 'lucide-react';
+import { FileText, Calendar, CalendarDays, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type ContentType = 'single' | 'weekly' | 'monthly' | 'custom';
