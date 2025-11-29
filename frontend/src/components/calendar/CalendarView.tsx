@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,15 @@ interface CalendarViewProps {
 export const CalendarView = ({ posts, weekStartDate, onPostClick, onWeekChange }: CalendarViewProps) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(weekStartDate, { weekStartsOn: 1 }));
   
+  // Update when weekStartDate prop changes (for real-time updates)
+  useEffect(() => {
+    setCurrentWeekStart(startOfWeek(weekStartDate, { weekStartsOn: 1 }));
+  }, [weekStartDate]);
+  
   const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
   const weekDays = eachDayOfInterval({ start: currentWeekStart, end: weekEnd });
   
   const weekDaysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const weekDaysFull = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   
   const handlePreviousWeek = () => {
     const newWeek = subWeeks(currentWeekStart, 1);
