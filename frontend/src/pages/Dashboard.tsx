@@ -62,7 +62,7 @@ export const Dashboard = () => {
         trendIdea: {
           hook_script: trend.hook_script,
           suggested_caption: trend.suggested_caption,
-          trend_title: trend.trend_title,
+          trend_title: trend.title,
         },
       },
     });
