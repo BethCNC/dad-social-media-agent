@@ -75,7 +75,7 @@ export const WeeklySchedulePage = () => {
 
   const handlePostClick = (post: WeeklyPost) => {
     if (post.id) {
-      navigate(`/posts/${post.id}`);
+      navigate(`/posts/${post.id}`, { state: { from: '/weekly' } });
     }
   };
 
@@ -135,7 +135,7 @@ export const WeeklySchedulePage = () => {
               List
             </Button>
           </div>
-          
+
           {/* Calendar or List View */}
           {viewMode === 'calendar' ? (
             <CalendarView

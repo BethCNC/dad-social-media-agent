@@ -1,100 +1,62 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Sparkles, Calendar, TrendingUp, Loader2, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Plus, Calendar, Video, TrendingUp, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getDailyBriefing, type DailyBriefing, type TrendAlert } from '@/lib/dashboardApi';
+import { getDailyBriefing, type DailyBriefing } from '@/lib/dashboardApi';
+import { SocialTrendsPulse } from '@/components/trends/SocialTrendsPulse';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [showTrends, setShowTrends] = useState(false);
+  const [showCompliance, setShowCompliance] = useState(false);
 
-  // Load daily briefing on mount
   useEffect(() => {
-    const loadBriefing = async () => {
+    const fetchBriefing = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
         const data = await getDailyBriefing();
         setBriefing(data);
-      } catch (err: any) {
-        console.error('Failed to load briefing:', err);
-        
-        // Better error handling for network issues
-        let errorMessage = 'Failed to load your briefing. Please try again.';
-        
-        if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error') || !err.response) {
-          errorMessage = 'Could not connect to the server. Please make sure the backend server is running on port 8000.';
-        } else if (err.response?.data?.detail) {
-          errorMessage = err.response.data.detail;
-        } else if (err.message) {
-          errorMessage = err.message;
-        }
-        
-        setError(errorMessage);
+      } catch (error) {
+        console.error('Failed to fetch briefing:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadBriefing();
+    fetchBriefing();
   }, []);
 
-  const handleCreateThisPost = () => {
-    // Navigate to wizard with pre-filled prompt from suggested action
-    if (briefing?.suggested_action) {
-      navigate('/wizard', {
-        state: {
-          prefillTopic: briefing.suggested_action,
-        },
-      });
-    } else {
-      navigate('/wizard');
-    }
+  const handleCreatePost = () => {
+    navigate('/wizard');
   };
 
-  const handleUseTrend = (trend: TrendAlert) => {
-    // Navigate to wizard with trend data
-    navigate('/wizard', {
-      state: {
-        trendIdea: {
-          hook_script: trend.hook_script,
-          suggested_caption: trend.suggested_caption,
-          trend_title: trend.title,
-        },
-      },
-    });
+  const handleWeeklySchedule = () => {
+    navigate('/weekly');
+  };
+
+  const handleVideoLibrary = () => {
+    navigate('/videos');
   };
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground text-lg">Loading your briefing...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <p className="text-lg text-red-700 font-medium">{error}</p>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
       </div>
     );
   }
 
   if (!briefing) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Unable to load dashboard</p>
+      </div>
+    );
   }
 
   return (
@@ -102,197 +64,208 @@ export const Dashboard = () => {
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-4xl font-bold">{briefing.greeting}</h1>
-        <div className="flex items-center gap-4 text-muted-foreground">
-          <p className="text-lg">{briefing.current_date}</p>
-          {briefing.daily_theme && (
-            <>
-              <span>•</span>
-              <p className="text-lg font-medium">{briefing.daily_theme}</p>
-            </>
-          )}
-        </div>
+        <p className="text-lg text-muted-foreground">{briefing.current_date}</p>
       </div>
 
-      {/* Hero Card - Today's Mission */}
-      <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
-        <CardHeader>
-          <CardTitle className="text-2xl flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-primary" />
-            Today's Mission
-          </CardTitle>
-          <CardDescription className="text-base">
-            Your suggested action for today
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <p className="text-xl font-medium text-foreground">
-            {briefing.suggested_action}
-          </p>
-          <Button
-            onClick={handleCreateThisPost}
-            size="lg"
-            className="w-full sm:w-auto py-6 px-8 text-lg font-semibold"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Create This Post
-          </Button>
+      {/* Hero CTA - Primary Action */}
+      <Card className="border-2 border-primary shadow-lg bg-gradient-to-br from-primary/10 via-primary/5 to-background">
+        <CardContent className="p-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex-1 space-y-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-8 h-8 text-primary" />
+                <h2 className="text-3xl font-bold">Create Your Next Post</h2>
+              </div>
+              <p className="text-lg text-muted-foreground max-w-2xl">
+                Generate AI-powered social content that follows Unicity guidelines and maximizes engagement in under 5 minutes.
+              </p>
+              {briefing.suggested_action && (
+                <div className="bg-background/80 rounded-lg p-4 border">
+                  <p className="text-sm text-muted-foreground mb-1">Suggested Today:</p>
+                  <p className="font-medium">{briefing.suggested_action}</p>
+                </div>
+              )}
+            </div>
+            <div className="flex-shrink-0">
+              <Button
+                onClick={handleCreatePost}
+                size="lg"
+                className="h-16 px-12 text-xl font-bold shadow-lg hover:shadow-xl transition-shadow"
+              >
+                <Plus className="w-6 h-6 mr-3" />
+                Create Post Now
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Trend Alert Card */}
-      {briefing.trend_alert && (
-        <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+      {/* Quick Actions - Secondary Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Weekly Schedule */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={handleWeeklySchedule}>
           <CardHeader>
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <TrendingUp className="w-6 h-6 text-orange-600" />
-              🔥 Trending Now
-            </CardTitle>
-            <CardDescription className="text-base">
-              {briefing.trend_alert.title}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-base text-muted-foreground">
-              {briefing.trend_alert.why_it_works}
-            </p>
-            <div className="bg-white/60 rounded-lg p-4 border border-orange-200">
-              <p className="text-sm font-semibold text-orange-900 mb-2">Hook Preview:</p>
-              <p className="text-sm text-orange-800 italic">
-                "{briefing.trend_alert.hook_script.substring(0, 100)}..."
-              </p>
+            <div className="flex items-center justify-between">
+              <Calendar className="w-10 h-10 text-primary" />
+              <ChevronDown className="w-5 h-5 text-muted-foreground group-hover:translate-y-1 transition-transform" />
             </div>
-            <Button
-              onClick={() => handleUseTrend(briefing.trend_alert!)}
-              variant="default"
-              size="lg"
-              className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700"
-            >
-              Use This Trend
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Upcoming Holidays */}
-      {briefing.upcoming_holidays && briefing.upcoming_holidays.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Upcoming Holidays
-            </CardTitle>
+            <CardTitle className="text-xl">Weekly Schedule</CardTitle>
             <CardDescription>
-              Opportunities for seasonal content
+              Generate or view your 7-day content plan
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {briefing.upcoming_holidays.map((holiday, index) => (
+            <p className="text-sm text-muted-foreground">
+              {briefing.stats.scheduled_posts > 0
+                ? `${briefing.stats.scheduled_posts} posts scheduled`
+                : 'No posts scheduled yet'}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Video Library */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={handleVideoLibrary}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <Video className="w-10 h-10 text-primary" />
+              <ChevronDown className="w-5 h-5 text-muted-foreground group-hover:translate-y-1 transition-transform" />
+            </div>
+            <CardTitle className="text-xl">Video Library</CardTitle>
+            <CardDescription>
+              Upload videos to use in your posts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Manage your uploaded assets
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* View Trends */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => setShowTrends(!showTrends)}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <TrendingUp className="w-10 h-10 text-primary" />
+              {showTrends ? (
+                <ChevronUp className="w-5 h-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-muted-foreground group-hover:translate-y-1 transition-transform" />
+              )}
+            </div>
+            <CardTitle className="text-xl">Content Inspiration</CardTitle>
+            <CardDescription>
+              See what's trending in your niche
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              {briefing.trend_pulse
+                ? `${briefing.trend_pulse.new_viral_trends} new trends today`
+                : 'Click to view trends'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Expandable Sections */}
+
+      {/* Social Trends Pulse - Expandable */}
+      {showTrends && briefing.trend_pulse && (
+        <div className="animate-in slide-in-from-top-4 duration-300">
+          <SocialTrendsPulse
+            data={briefing.trend_pulse}
+            onTrendClick={(trend) => {
+              navigate('/wizard', {
+                state: {
+                  prefillTopic: trend.name,
+                },
+              });
+            }}
+          />
+        </div>
+      )}
+
+      {/* Compliance Quick Reference - Collapsible */}
+      <Card
+        className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 cursor-pointer"
+        onClick={() => setShowCompliance(!showCompliance)}
+      >
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Shield className="w-6 h-6 text-orange-600" />
+              <CardTitle className="text-xl">Compliance & Brand Guidelines</CardTitle>
+            </div>
+            {showCompliance ? (
+              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+            )}
+          </div>
+          {!showCompliance && (
+            <CardDescription>
+              Click to view important rules to keep your account safe
+            </CardDescription>
+          )}
+        </CardHeader>
+        {showCompliance && (
+          <CardContent className="space-y-4 animate-in slide-in-from-top-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Critical DO's */}
+              <div className="space-y-2">
+                <p className="font-semibold text-green-900 text-sm uppercase tracking-wide">✅ Always Include:</p>
+                <ul className="space-y-1 text-sm text-green-800">
+                  <li>• Hashtags: #metabolichealth #healthyliving #unicity</li>
+                  <li>• "Link in bio" (never direct URLs)</li>
+                  <li>• Health disclaimer at end</li>
+                  <li>• "Supports", "helps with" language</li>
+                </ul>
+              </div>
+              {/* Critical DON'Ts */}
+              <div className="space-y-2">
+                <p className="font-semibold text-red-900 text-sm uppercase tracking-wide">❌ Never Say:</p>
+                <ul className="space-y-1 text-sm text-red-800">
+                  <li>• "Cures", "treats", "fixes" diseases</li>
+                  <li>• "Make $X" or income promises</li>
+                  <li>• "Join my team" (MLM banned on TikTok)</li>
+                  <li>• Direct URLs in captions</li>
+                </ul>
+              </div>
+            </div>
+            <div className="pt-3 border-t border-orange-200">
+              <p className="text-xs text-orange-700 flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                All generated content automatically follows these rules
+              </p>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Upcoming Holidays - Compact */}
+      {briefing.upcoming_holidays && briefing.upcoming_holidays.length > 0 && (
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              Upcoming Holiday Opportunities
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {briefing.upcoming_holidays.slice(0, 3).map((holiday, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                  className="bg-white/80 rounded-lg px-4 py-2 border border-blue-200"
                 >
-                  <div>
-                    <p className="font-medium">{holiday.name}</p>
-                    <p className="text-sm text-muted-foreground">{holiday.date}</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      navigate('/wizard', {
-                        state: {
-                          prefillTopic: `Create content related to ${holiday.name}`,
-                        },
-                      });
-                    }}
-                  >
-                    Use
-                  </Button>
+                  <p className="font-medium text-sm text-blue-900">{holiday.name}</p>
+                  <p className="text-xs text-blue-600">{holiday.date}</p>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-auto py-6 flex-col items-start"
-              onClick={() => navigate('/wizard')}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Plus className="w-5 h-5" />
-                <span className="text-lg font-semibold">Create Custom Post</span>
-              </div>
-              <span className="text-sm text-muted-foreground text-left">
-                Start from scratch with your own idea
-              </span>
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-auto py-6 flex-col items-start"
-              onClick={() => navigate('/weekly')}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="w-5 h-5" />
-                <span className="text-lg font-semibold">View Weekly Schedule</span>
-              </div>
-              <span className="text-sm text-muted-foreground text-left">
-                See your planned posts for the week
-              </span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stats (Placeholder) */}
-      {briefing.stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Posts This Week
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{briefing.stats.posts_this_week}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Scheduled Posts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{briefing.stats.scheduled_posts}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Engagement Rate
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">
-                {briefing.stats.engagement_rate !== null
-                  ? `${briefing.stats.engagement_rate}%`
-                  : '—'}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       )}
     </div>
   );

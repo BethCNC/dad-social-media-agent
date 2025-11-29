@@ -1,6 +1,6 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Video, Plus } from 'lucide-react';
+import { Home, Video, Plus, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ShellProps {
@@ -12,6 +12,7 @@ export const Shell = ({ children }: ShellProps) => {
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: Home },
+    { path: '/weekly', label: 'Weekly Schedule', icon: Calendar },
     { path: '/videos', label: 'Video Library', icon: Video },
     { path: '/wizard', label: 'New Post', icon: Plus },
   ];
@@ -21,9 +22,9 @@ export const Shell = ({ children }: ShellProps) => {
       <header className="bg-card shadow-sm border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">
-            AI Social Media Co-Pilot
-          </h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              AI Social Media Co-Pilot
+            </h1>
             <nav className="flex items-center gap-2">
               {navItems.map((item) => {
                 const Icon = item.icon;

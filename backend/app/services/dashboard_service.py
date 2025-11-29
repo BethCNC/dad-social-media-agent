@@ -126,6 +126,18 @@ async def get_daily_briefing(target_date: Optional[date] = None, db: Optional[Se
             logger.warning(f"Could not generate trend alert: {e}")
             # trend_alert stays None
         
+        # 5. Get trend pulse data (for the Social Trends Pulse card)
+        from app.services.trend_analytics_service import analyze_trend_pulse
+        trend_pulse = None
+        try:
+            trend_pulse = analyze_trend_pulse(
+                hashtags=["feelgreatsystem", "unicity", "insulinresistance"],
+                max_results=15
+            )
+        except Exception as e:
+            logger.warning(f"Could not generate trend pulse data: {e}")
+            # trend_pulse stays None
+        
         # 5. Generate suggested action
         suggested_action = _generate_suggested_action(
             target_date=target_date,
@@ -158,6 +170,7 @@ async def get_daily_briefing(target_date: Optional[date] = None, db: Optional[Se
             "suggested_action": suggested_action,
             "upcoming_holidays": upcoming_holidays,
             "trend_alert": trend_alert,
+            "trend_pulse": trend_pulse,
             "stats": stats,
         }
         

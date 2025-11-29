@@ -1,26 +1,26 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { PostMockup } from '@/components/calendar/PostMockup';
-import { 
-  ArrowLeft, 
-  RefreshCw, 
-  Edit, 
-  Image as ImageIcon, 
-  Video, 
-  Calendar,
+import {
+  ArrowLeft,
+  RefreshCw,
+  Edit,
+  Image as ImageIcon,
+  Video,
   Loader2,
   Search,
-  Check
+  Check,
+  Download
 } from 'lucide-react';
-import { 
-  getPostById, 
-  updatePost, 
-  regeneratePostText, 
-  type WeeklyPost 
+import {
+  getPostById,
+  updatePost,
+  regeneratePostText,
+  type WeeklyPost
 } from '@/lib/weeklyApi';
 import { searchAssets, searchAssetsContextual, type AssetResult } from '@/lib/assetsApi';
 import { renderPreview, getRenderStatus, type VideoRenderRequest } from '@/lib/videoApi';
@@ -37,6 +37,7 @@ const PILLAR_LABELS: Record<string, string> = {
 export const PostDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [post, setPost] = useState<WeeklyPost | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -50,6 +51,9 @@ export const PostDetail = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isRenderingPreview, setIsRenderingPreview] = useState(false);
   const [previewJobId, setPreviewJobId] = useState<string | null>(null);
+
+  const backPath = (location.state as any)?.from || '/';
+  const backLabel = backPath === '/weekly' ? 'Back to Schedule' : 'Back to Dashboard';
 
   useEffect(() => {
     const loadPost = async () => {
@@ -79,7 +83,7 @@ export const PostDetail = () => {
     if (!post) return;
     try {
       setIsSearchingAlternatives(true);
-      
+
       // Use contextual search for better relevance
       const results = await searchAssetsContextual({
         topic: post.topic,
@@ -90,7 +94,7 @@ export const PostDetail = () => {
         suggested_keywords: post.suggested_keywords || [],
         max_results: 12,
       });
-      
+
       setAlternativeMedia(results);
     } catch (err: any) {
       console.error('Failed to load alternative media:', err);
@@ -141,12 +145,12 @@ export const PostDetail = () => {
 
   const handleSelectAlternative = async (asset: AssetResult) => {
     if (!post) return;
-    
+
     setSelectedAlternativeId(asset.id);
     setIsRenderingPreview(true);
     setPreviewUrl(null);
     setPreviewJobId(null);
-    
+
     try {
       // Render preview using Creatomate template
       const renderRequest: VideoRenderRequest = {
@@ -159,21 +163,21 @@ export const PostDetail = () => {
         title: null,
         template_type: post.template_type,
       };
-      
+
       const job = await renderPreview(renderRequest);
       setPreviewJobId(job.job_id);
-      
+
       // Poll for preview completion
       const pollPreview = async () => {
         const maxAttempts = 30; // 30 seconds max
         let attempts = 0;
-        
+
         const checkStatus = async () => {
           if (!job.job_id) return;
-          
+
           try {
             const status = await getRenderStatus(job.job_id);
-            
+
             if (status.status === 'succeeded' && status.video_url) {
               setPreviewUrl(status.video_url);
               setIsRenderingPreview(false);
@@ -192,10 +196,10 @@ export const PostDetail = () => {
             console.error('Failed to check preview status:', err);
           }
         };
-        
+
         checkStatus();
       };
-      
+
       pollPreview();
     } catch (err: any) {
       setIsRenderingPreview(false);
@@ -205,7 +209,7 @@ export const PostDetail = () => {
 
   const handleFindMoreOptions = async () => {
     if (!showMoreOptions) {
-    setShowMoreOptions(true);
+      setShowMoreOptions(true);
     } else {
       setShowMoreOptions(false);
     }
@@ -244,9 +248,9 @@ export const PostDetail = () => {
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => navigate('/')}>
+        <Button variant="ghost" onClick={() => navigate(backPath)}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
+          {backLabel}
         </Button>
         <div className="flex gap-2">
           <Button
@@ -342,6 +346,23 @@ export const PostDetail = () => {
                       >
                         Your browser does not support the video tag.
                       </video>
+                    )}
+                    {(previewUrl || post.media_url) && (
+                      <Button
+                        variant="outline"
+                        className="w-full mt-2"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = previewUrl || post.media_url!;
+                          link.download = `post-${post.id || 'preview'}.mp4`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Video
+                      </Button>
                     )}
                     {previewUrl && (
                       <div className="space-y-2 pt-3 border-t">
@@ -514,19 +535,19 @@ export const PostDetail = () => {
                     )}
                     Refresh Options
                   </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleFindMoreOptions}
-                  disabled={isSearchingAlternatives}
-                >
-                  {isSearchingAlternatives ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="mr-2 h-4 w-4" />
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleFindMoreOptions}
+                    disabled={isSearchingAlternatives}
+                  >
+                    {isSearchingAlternatives ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="mr-2 h-4 w-4" />
+                    )}
                     {showMoreOptions ? 'Show Less' : 'Show More'}
-                </Button>
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -556,7 +577,7 @@ export const PostDetail = () => {
                       Template Requirements
                     </p>
                     <p className="text-sm text-blue-800">
-                      {post.template_type === 'image' 
+                      {post.template_type === 'image'
                         ? 'Please select exactly 1 image for the image template.'
                         : 'Please select exactly 2 video clips for the video template.'}
                     </p>
@@ -568,7 +589,7 @@ export const PostDetail = () => {
                     {(showMoreOptions ? alternativeMedia : alternativeMedia.slice(0, 3)).map((asset) => {
                       const isSelected = selectedAlternativeId === asset.id;
                       const isRendering = isSelected && isRenderingPreview;
-                      
+
                       return (
                         <div
                           key={asset.id}
