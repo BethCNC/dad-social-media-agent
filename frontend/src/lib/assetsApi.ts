@@ -16,6 +16,7 @@ export interface ContextualSearchRequest {
   content_pillar: string;
   suggested_keywords?: string[];
   max_results?: number;
+  visual_style?: 'pexels' | 'ai_generation'; // 'pexels' for stock videos, 'ai_generation' for AI images
 }
 
 /**
@@ -47,6 +48,7 @@ export const searchAssetsContextual = async (
     content_pillar: request.content_pillar,
     suggested_keywords: request.suggested_keywords || [],
     max_results: request.max_results || 12,
+    visual_style: request.visual_style || 'ai_generation', // Default to AI generation
   });
   return response.data;
 };

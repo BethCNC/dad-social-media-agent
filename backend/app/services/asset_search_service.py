@@ -65,13 +65,11 @@ async def generate_campaign_assets(
     content_pillar: str,
     suggested_keywords: Optional[List[str]] = None,
     max_results: int = 12,
-    db: Optional[Session] = None
+    db: Optional[Session] = None,
+    mode: str = "ai_generation"  # 'pexels' or 'ai_generation'
 ) -> List[AssetResult]:
     """
-    Generate AI images using Nano Banana Pro based on shot plan descriptions.
-    
-    Uses shot plan descriptions (scenes) to generate relevant images for each shot.
-    Falls back to Pexels search if image generation fails.
+    Generate assets based on shot plan descriptions using either Pexels videos or AI-generated images.
     
     Args:
         topic: Post topic
@@ -79,49 +77,30 @@ async def generate_campaign_assets(
         script: Post script
         shot_plan: List of shot descriptions with duration_seconds (scenes from content plan)
         content_pillar: Content pillar (education, routine, story, product_integration)
-        suggested_keywords: Optional AI-suggested keywords (used for Pexels fallback)
+        suggested_keywords: Optional AI-suggested keywords (used for Pexels search)
         max_results: Maximum number of results to return
         db: Optional database session for user videos
+        mode: 'pexels' for stock video search, 'ai_generation' for AI-generated images
         
     Returns:
-        List of AssetResult objects with generated image URLs
+        List of AssetResult objects with video URLs (Pexels) or image URLs (AI generation)
     """
     all_results: List[AssetResult] = []
     seen_ids = set()
     
-    # Generate images for each shot description (scene)
-    for shot in shot_plan[:max_results]:  # Limit to max_results shots
-        shot_desc = shot.get("description", "")
-        duration = shot.get("duration_seconds", 10)
+    if mode == "pexels":
+        # Use Pexels video search for each shot description
+        from app.services.pexels_client import search_videos
         
-        if not shot_desc:
-            continue
-        
-        try:
-            # Try AI image generation first (creation-first workflow)
-            from app.services.gemini_client import generate_image_asset
-            image_url = await generate_image_asset(shot_desc)
+        for shot in shot_plan[:max_results]:
+            shot_desc = shot.get("description", "")
+            duration = shot.get("duration_seconds", 10)
             
-            # Create AssetResult object with generated image URL
-            asset = AssetResult(
-                id=image_url,  # Use image URL as ID (Creatomate expects URL in asset.id)
-                thumbnail_url=image_url,
-                video_url=image_url,  # Static images work in Creatomate templates
-                duration_seconds=duration
-            )
+            if not shot_desc:
+                continue
             
-            if asset.id not in seen_ids:
-                seen_ids.add(asset.id)
-                all_results.append(asset)
-                logger.info(f"Successfully generated image for scene: {shot_desc[:50]}...")
-                
-        except Exception as e:
-            logger.warning(f"AI image generation failed for shot description '{shot_desc}': {e}")
-            logger.info(f"Falling back to Pexels search for: {shot_desc}")
-            
-            # Fallback to Pexels search
             try:
-                from app.services.pexels_client import search_videos
+                # Search Pexels for videos matching this shot description
                 pexels_results = await search_videos(shot_desc, max_results=1)
                 if pexels_results:
                     asset = pexels_results[0]
@@ -130,14 +109,50 @@ async def generate_campaign_assets(
                     if asset.id not in seen_ids:
                         seen_ids.add(asset.id)
                         all_results.append(asset)
-                        logger.info(f"Using Pexels fallback asset for: {shot_desc[:50]}...")
+                        logger.info(f"Found Pexels video for scene: {shot_desc[:50]}...")
             except Exception as pexels_error:
-                logger.error(f"Pexels fallback also failed for '{shot_desc}': {pexels_error}")
+                logger.error(f"Pexels search failed for '{shot_desc}': {pexels_error}")
                 # Continue to next shot
                 continue
     
-    # Include user-uploaded videos if database session provided
-    if db:
+    elif mode == "ai_generation":
+        # Generate AI images for each shot description
+        from app.services.gemini_client import generate_image_asset
+        
+        for shot in shot_plan[:max_results]:
+            shot_desc = shot.get("description", "")
+            duration = shot.get("duration_seconds", 10)
+            
+            if not shot_desc:
+                continue
+            
+            try:
+                # Generate AI image for this shot description
+                image_url = await generate_image_asset(shot_desc)
+                
+                # Create AssetResult object with generated image URL
+                asset = AssetResult(
+                    id=image_url,  # Use image URL as ID (Creatomate expects URL in asset.id)
+                    thumbnail_url=image_url,
+                    video_url=image_url,  # Static images work in Creatomate templates
+                    duration_seconds=duration
+                )
+                
+                if asset.id not in seen_ids:
+                    seen_ids.add(asset.id)
+                    all_results.append(asset)
+                    logger.info(f"Successfully generated image for scene: {shot_desc[:50]}...")
+                    
+            except Exception as e:
+                logger.error(f"AI image generation failed for shot description '{shot_desc}': {e}")
+                # Continue to next shot (no fallback in pure AI mode)
+                continue
+    
+    else:
+        raise ValueError(f"Invalid mode: {mode}. Must be 'pexels' or 'ai_generation'")
+    
+    # Include user-uploaded videos if database session provided (only in pexels mode)
+    if db and mode == "pexels":
         try:
             user_videos = get_user_videos(db, max_count=3)  # Include 3 user videos
             for user_video in user_videos:
@@ -160,7 +175,8 @@ async def generate_relevant_assets(
     content_pillar: str,
     suggested_keywords: Optional[List[str]] = None,
     max_results: int = 12,
-    db: Optional[Session] = None
+    db: Optional[Session] = None,
+    mode: str = "ai_generation"
 ) -> List[AssetResult]:
     """
     Backward compatibility wrapper - redirects to generate_campaign_assets.
@@ -173,7 +189,8 @@ async def generate_relevant_assets(
         content_pillar=content_pillar,
         suggested_keywords=suggested_keywords,
         max_results=max_results,
-        db=db
+        db=db,
+        mode=mode
     )
 
 
@@ -186,7 +203,8 @@ async def search_relevant_assets(
     content_pillar: str,
     suggested_keywords: Optional[List[str]] = None,
     max_results: int = 12,
-    db: Optional[Session] = None
+    db: Optional[Session] = None,
+    mode: str = "ai_generation"
 ) -> List[AssetResult]:
     """
     Backward compatibility wrapper - redirects to generate_campaign_assets.
@@ -199,32 +217,9 @@ async def search_relevant_assets(
         content_pillar=content_pillar,
         suggested_keywords=suggested_keywords,
         max_results=max_results,
-        db=db
+        db=db,
+        mode=mode
     )
 
 
-# Also keep generate_relevant_assets for compatibility
-async def generate_relevant_assets(
-    topic: str,
-    hook: str,
-    script: str,
-    shot_plan: List[dict],
-    content_pillar: str,
-    suggested_keywords: Optional[List[str]] = None,
-    max_results: int = 12,
-    db: Optional[Session] = None
-) -> List[AssetResult]:
-    """
-    Backward compatibility wrapper - redirects to generate_campaign_assets.
-    """
-    return await generate_campaign_assets(
-        topic=topic,
-        hook=hook,
-        script=script,
-        shot_plan=shot_plan,
-        content_pillar=content_pillar,
-        suggested_keywords=suggested_keywords,
-        max_results=max_results,
-        db=db
-    )
 

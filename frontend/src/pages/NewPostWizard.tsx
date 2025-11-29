@@ -27,7 +27,6 @@ export const NewPostWizard = () => {
   const [selectedScheduleItem, setSelectedScheduleItem] = useState<ScheduledContentItem | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);
-  const [templateType, setTemplateType] = useState<string>('video');
   const [script, setScript] = useState<string>('');
   const [caption, setCaption] = useState<string>('');
   const [assets, setAssets] = useState<AssetResult[]>([]);
@@ -37,6 +36,8 @@ export const NewPostWizard = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [visualStyle, setVisualStyle] = useState<'pexels' | 'ai_generation'>('ai_generation'); // Visual style preference
+  const [hasSearched, setHasSearched] = useState(false); // Track if user has triggered a search
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
@@ -60,7 +61,7 @@ export const NewPostWizard = () => {
     };
     
     setGeneratedPlan(plan);
-    setTemplateType(item.template_type);
+    // Always use 'video' template - backend handles Ken Burns for static images
     setScript(item.script);
     setCaption(item.caption);
     setShowScheduleModal(false);
@@ -72,9 +73,9 @@ export const NewPostWizard = () => {
     setCurrentStep(1);
   };
 
-  const handlePlanGenerated = (plan: GeneratedPlan, templateTypeFromForm: string) => {
+  const handlePlanGenerated = (plan: GeneratedPlan) => {
     setGeneratedPlan(plan);
-    setTemplateType(templateTypeFromForm);
+    // Always use 'video' template - backend handles Ken Burns for static images
     setScript(plan.script);
     setCaption(plan.caption);
     setCurrentStep(2);
@@ -91,26 +92,8 @@ export const NewPostWizard = () => {
     }
   }, [currentStep]);
 
-  // Auto-generate images when entering step 3 using contextual generation
-  useEffect(() => {
-    if (currentStep === 3 && generatedPlan && assets.length === 0 && script && caption) {
-      // Use contextual generation for better relevance
-      handleContextualSearch();
-    } else if (currentStep === 3 && generatedPlan && assets.length === 0) {
-      // Fallback: extract keywords from shot plan if contextual generation not ready
-      const keywords = generatedPlan.shot_plan
-        .map((shot) => shot.description)
-        .join(' ')
-        .split(' ')
-        .slice(0, 5)
-        .join(' ');
-      
-      if (keywords) {
-        setSearchQuery(keywords);
-        handleSearch(keywords);
-      }
-    }
-  }, [currentStep, generatedPlan, script, caption]);
+  // Don't auto-search - let user control when to search
+
 
   // Auto-start render when entering step 4
   useEffect(() => {
@@ -126,7 +109,7 @@ export const NewPostWizard = () => {
     setSearchError(null);
 
     try {
-      // Use contextual generation for better relevance
+      // Use contextual generation for better relevance with visual style preference
       const results = await searchAssetsContextual({
         topic: '', // We don't have topic in wizard, use first shot description
         hook: caption.split('\n')[0] || '', // First line is usually hook
@@ -135,6 +118,7 @@ export const NewPostWizard = () => {
         content_pillar: 'education', // Default, could be enhanced
         suggested_keywords: [],
         max_results: 12,
+        visual_style: visualStyle, // Pass visual style preference
       });
       setAssets(results);
       
@@ -189,7 +173,7 @@ export const NewPostWizard = () => {
   };
 
   const handleAssetSelectionChange = (id: string, selected: boolean) => {
-    const maxSelection = templateType === 'image' ? 1 : 2;
+    const maxSelection = 2; // Always allow 2 selections for video template
     
     setSelectedAssetIds((prev) => {
       const next = new Set(prev);
@@ -220,10 +204,9 @@ export const NewPostWizard = () => {
   };
 
   const startRender = async () => {
-    const requiredCount = templateType === 'image' ? 1 : 2;
+    const requiredCount = 2; // Always require 2 assets for video template
     if (selectedAssetIds.size !== requiredCount || !script.trim()) {
-      const assetTypeLabel = templateType === 'image' ? 'image' : 'video clips';
-      setRenderError(`Please select exactly ${requiredCount} ${assetTypeLabel} and ensure script is filled.`);
+      setRenderError(`Please select exactly ${requiredCount} visuals and ensure script is filled.`);
       return;
     }
 
@@ -237,10 +220,8 @@ export const NewPostWizard = () => {
         .filter((asset): asset is NonNullable<typeof asset> => asset !== undefined);
 
       // Validate we have the correct number of assets
-      const requiredCount = templateType === 'image' ? 1 : 2;
       if (selectedAssets.length !== requiredCount) {
-        const assetTypeLabel = templateType === 'image' ? 'image' : 'video clips';
-        setRenderError(`Please select exactly ${requiredCount} ${assetTypeLabel}. Currently selected: ${selectedAssets.length}`);
+        setRenderError(`Please select exactly ${requiredCount} visuals. Currently selected: ${selectedAssets.length}`);
         setIsRendering(false);
         return;
       }
@@ -256,7 +237,7 @@ export const NewPostWizard = () => {
         })),
         script: script,
         title: null,
-        template_type: templateType,
+        template_type: 'video', // Always use video template - backend handles Ken Burns for static images
       };
 
       const job = await renderVideo(renderRequest);
@@ -284,9 +265,9 @@ export const NewPostWizard = () => {
     if (currentStep < 5) {
       // Only allow progression if we have a plan for step 2+
       if (currentStep === 1 || generatedPlan) {
-        // For step 3, require exactly the right number of assets based on template type
+        // For step 3, require exactly 2 assets (always using video template)
         if (currentStep === 3) {
-          const requiredCount = templateType === 'image' ? 1 : 2;
+          const requiredCount = 2;
           if (selectedAssetIds.size !== requiredCount) {
           return;
           }
@@ -310,8 +291,8 @@ export const NewPostWizard = () => {
     'Step 1: Monthly Schedule (Optional)',
     'Step 2: Choose Your Topic',
     'Step 3: Review Your Script & Caption',
-    'Step 4: AI Generated Visuals',
-    `Step 5: Create Your ${templateType === 'image' ? 'Image' : 'Video'}`,
+    'Step 4: Choose Your Visuals',
+    'Step 5: Create Your Video',
     'Step 6: Schedule Your Post',
   ];
 
@@ -370,16 +351,59 @@ export const NewPostWizard = () => {
           </div>
         );
       case 3:
-        const maxSelection = templateType === 'image' ? 1 : 2;
-        const requiredCount = maxSelection;
+        const requiredCount = 2; // Always require 2 assets for video template
         const hasCorrectSelection = selectedAssetIds.size === requiredCount;
-        const assetTypeLabel = templateType === 'image' ? 'image' : 'visuals';
-        const searchPlaceholder = templateType === 'image' 
-          ? 'Enter image description...' 
-          : 'Enter visual description...';
 
         return (
           <div className="space-y-6">
+            {/* Visual Style Segmented Control */}
+            <Card className="bg-gray-50 border-gray-200">
+              <CardContent className="py-4">
+                <p className="text-gray-900 font-semibold text-lg mb-4">
+                  Choose Your Visual Style
+                </p>
+                <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-300">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Don't clear assets - persist selections when switching tabs
+                      setVisualStyle('ai_generation');
+                    }}
+                    className={cn(
+                      "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all",
+                      visualStyle === 'ai_generation'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    )}
+                    disabled={isSearching}
+                  >
+                    AI Generated
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Don't clear assets - persist selections when switching tabs
+                      setVisualStyle('pexels');
+                    }}
+                    className={cn(
+                      "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all",
+                      visualStyle === 'pexels'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    )}
+                    disabled={isSearching}
+                  >
+                    Stock Video
+                  </button>
+                </div>
+                <p className="text-sm text-muted-foreground mt-3">
+                  {visualStyle === 'pexels' 
+                    ? 'Search for real stock videos that match your content.'
+                    : 'Create unique AI-generated images for each scene.'}
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Template Requirements Info */}
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="py-4">
@@ -387,53 +411,76 @@ export const NewPostWizard = () => {
                   Template Requirements
                 </p>
                 <p className="text-blue-800 text-base">
-                  {templateType === 'image' 
-                    ? 'Please select exactly 1 image for the image template.'
-                    : 'Please select exactly 2 visuals for the video template.'}
+                  Please select exactly 2 visuals for the video template.
                 </p>
               </CardContent>
             </Card>
 
-            <div className="flex gap-4">
-              {assets.length === 0 && (
-                <div className="w-full">
-                  <p className="text-lg text-muted-foreground mb-4">
-                    {isSearching ? 'Generating AI visuals... This may take a moment.' : 'AI visuals will be generated automatically based on your shot plan.'}
-                  </p>
-                </div>
-              )}
-              {assets.length > 0 && (
-                <>
-                  <Input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSearch();
-                      }
-                    }}
-                    placeholder={searchPlaceholder}
-                    className="text-lg h-12"
-                    aria-label={searchPlaceholder}
-                  />
-                  <Button
-                    onClick={() => handleSearch()}
-                    disabled={isSearching || !searchQuery.trim()}
-                    size="lg"
-                    className="py-6 px-8 text-lg"
-                    aria-label="Generate"
-                  >
-                    {isSearching ? (
+            {/* Search/Generate Controls - Different UI based on visual style */}
+            {visualStyle === 'ai_generation' ? (
+              // AI Generated Mode: Show Generate button
+              <div className="space-y-4">
+                {!hasSearched && assets.length === 0 && (
+                  <div className="w-full">
+                    <p className="text-lg text-muted-foreground mb-4">
+                      Click "Generate AI Images" to create unique visuals based on your shot plan.
+                    </p>
+                  </div>
+                )}
+                <Button
+                  onClick={async () => {
+                    if (generatedPlan && script && caption) {
+                      setHasSearched(true);
+                      await handleContextualSearch();
+                    }
+                  }}
+                  disabled={isSearching || !generatedPlan || !script || !caption}
+                  size="lg"
+                  className="w-full py-6 text-lg"
+                  aria-label="Generate AI Images"
+                >
+                  {isSearching ? (
+                    <>
                       <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Search className="w-5 h-5" aria-hidden="true" />
-                    )}
-                    <span className="ml-2">Generate</span>
-                  </Button>
-                </>
-              )}
-            </div>
+                      <span className="ml-2">Dreaming up images...</span>
+                    </>
+                  ) : (
+                    'Generate AI Images'
+                  )}
+                </Button>
+              </div>
+            ) : (
+              // Stock Video Mode: Show search bar
+              <div className="flex gap-4">
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isSearching && searchQuery.trim()) {
+                      handleSearch();
+                    }
+                  }}
+                  placeholder="Enter keywords to search for stock videos..."
+                  className="text-lg h-12"
+                  aria-label="Search for stock videos"
+                />
+                <Button
+                  onClick={() => handleSearch()}
+                  disabled={isSearching || !searchQuery.trim()}
+                  size="lg"
+                  className="py-6 px-8 text-lg"
+                  aria-label="Search videos"
+                >
+                  {isSearching ? (
+                    <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Search className="w-5 h-5" aria-hidden="true" />
+                  )}
+                  <span className="ml-2">Search</span>
+                </Button>
+              </div>
+            )}
 
             {searchError && (
               <Card className="border-destructive/20 bg-destructive/10">
@@ -448,9 +495,9 @@ export const NewPostWizard = () => {
               selectedIds={selectedAssetIds}
               selectedOrder={selectedAssetOrder}
               onSelectionChange={handleAssetSelectionChange}
-              maxSelection={maxSelection}
-              templateType={templateType as 'image' | 'video'}
-              onRegenerate={async (assetId: string, prompt: string) => {
+              maxSelection={requiredCount}
+              templateType="video"
+              onRegenerate={visualStyle === 'ai_generation' ? async (assetId: string, prompt: string) => {
                 try {
                   setIsSearching(true);
                   setSearchError(null);
@@ -464,10 +511,10 @@ export const NewPostWizard = () => {
                   // If the regenerated asset was selected, update selection
                   if (selectedAssetIds.has(assetId)) {
                     setSelectedAssetIds(prev => {
-                      const newSet = new Set(prev);
-                      newSet.delete(assetId);
-                      newSet.add(newAsset.id);
-                      return newSet;
+                      const next = new Set(prev);
+                      next.delete(assetId);
+                      next.add(newAsset.id);
+                      return next;
                     });
                     setSelectedAssetOrder(prev => 
                       prev.map(id => id === assetId ? newAsset.id : id)
@@ -481,7 +528,7 @@ export const NewPostWizard = () => {
                 } finally {
                   setIsSearching(false);
                 }
-              }}
+              } : undefined}
               assetPrompts={assetPrompts}
             />
 
@@ -493,10 +540,10 @@ export const NewPostWizard = () => {
                     selectedAssetIds.size === 0 ? "text-amber-800" : "text-destructive"
                   )}>
                     {selectedAssetIds.size === 0
-                      ? `Please select ${requiredCount} ${assetTypeLabel} to continue.`
+                      ? `Please select ${requiredCount} visuals to continue.`
                       : selectedAssetIds.size < requiredCount
-                      ? `Please select ${requiredCount - selectedAssetIds.size} more ${assetTypeLabel.slice(0, -1)} to continue.`
-                      : `Please select exactly ${requiredCount} ${assetTypeLabel}. You have selected ${selectedAssetIds.size}.`}
+                      ? `Please select ${requiredCount - selectedAssetIds.size} more visual${requiredCount - selectedAssetIds.size > 1 ? 's' : ''} to continue.`
+                      : `Please select exactly ${requiredCount} visuals. You have selected ${selectedAssetIds.size}.`}
                   </p>
                 </CardContent>
               </Card>
@@ -693,10 +740,7 @@ export const NewPostWizard = () => {
                 disabled={
                   currentStep === 5 ||
                   (currentStep >= 2 && !generatedPlan) ||
-                  (currentStep === 3 && (() => {
-                    const requiredCount = templateType === 'image' ? 1 : 2;
-                    return selectedAssetIds.size !== requiredCount;
-                  })()) ||
+                  (currentStep === 3 && selectedAssetIds.size !== 2) ||
                   (currentStep === 4 && !videoUrl)
                 }
                 size="lg"

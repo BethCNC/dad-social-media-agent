@@ -91,13 +91,40 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
             logger.warning(f"Video template requires 2 video clips, but only {len(asset_urls)} provided")
         
         if asset_urls:
+            # Helper function to detect if URL is an image (not a video)
+            def is_image_url(url: str) -> bool:
+                """Check if URL points to an image file."""
+                image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.webp')
+                # Also check if URL contains common image path patterns
+                return any(url.lower().endswith(ext) for ext in image_extensions) or '/static/uploads/' in url.lower()
+            
             # Use first two assets for Background-1 and Background-2
             if len(asset_urls) >= 1:
-                modifications["Background-1.source"] = asset_urls[0]
-                logger.info(f"Setting Background-1.source to: {asset_urls[0][:80]}...")
+                asset_url_1 = asset_urls[0]
+                modifications["Background-1.source"] = asset_url_1
+                logger.info(f"Setting Background-1.source to: {asset_url_1[:80]}...")
+                
+                # If it's an image, set duration explicitly (default 5 seconds per image)
+                # Note: Ken Burns animation should be configured in the Creatomate template itself
+                # The template can use keyframe animations or built-in effects for pan/zoom
+                if is_image_url(asset_url_1):
+                    logger.info("Detected static image for Background-1, setting duration to 5 seconds")
+                    # Set duration explicitly for static images (5 seconds default)
+                    modifications["Background-1.duration"] = 5.0
+                    # Note: For Ken Burns effect, configure the template to use:
+                    # - Scale animation (e.g., 100% to 110%)
+                    # - Position animation (subtle pan)
+                    # This can be done via template keyframes or animation presets
+                    
             if len(asset_urls) >= 2:
-                modifications["Background-2.source"] = asset_urls[1]
-                logger.info(f"Setting Background-2.source to: {asset_urls[1][:80]}...")
+                asset_url_2 = asset_urls[1]
+                modifications["Background-2.source"] = asset_url_2
+                logger.info(f"Setting Background-2.source to: {asset_url_2[:80]}...")
+                
+                # If it's an image, set duration explicitly
+                if is_image_url(asset_url_2):
+                    logger.info("Detected static image for Background-2, setting duration to 5 seconds")
+                    modifications["Background-2.duration"] = 5.0
             else:
                 logger.warning("Background-2.source not set - only 1 video clip provided")
             # If more than 2 assets, we'll use the first 2 (template only has 2 slots)

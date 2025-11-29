@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/lib/utils';
 
 interface ContentBriefFormProps {
-  onPlanGenerated: (plan: GeneratedPlan, templateType: string) => void;
+  onPlanGenerated: (plan: GeneratedPlan) => void;
 }
 
 export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => {
@@ -25,7 +25,6 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
   const [tone, setTone] = useState('friendly');
   const [platforms, setPlatforms] = useState<string[]>(['TikTok']);
   const [lengthSeconds, setLengthSeconds] = useState<number | null>(null);
-  const [templateType, setTemplateType] = useState<string>('video');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -111,11 +110,11 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
         platforms,
         tone,
         length_seconds: lengthSeconds || null,
-        template_type: templateType,
+        template_type: 'video', // Always use video template - backend handles Ken Burns for static images
       };
 
       const plan = await generatePlan(brief, imageFile || undefined);
-      onPlanGenerated(plan, templateType);
+      onPlanGenerated(plan);
     } catch (err: any) {
       setError(
         err.response?.data?.detail ||
@@ -198,7 +197,7 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
               {/* Optional Image Upload */}
               <div className="space-y-3 pt-2">
                 <Label htmlFor="imageUpload" className="text-lg font-semibold">
-                  Upload an inspiration image (optional)
+                  Snap a photo for inspiration (Optional)
                 </Label>
                 <Input
                   id="imageUpload"
@@ -314,25 +313,6 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
               )}
             </div>
           )}
-
-          {/* Content Type */}
-          <div className="space-y-3">
-            <Label htmlFor="templateType" className="text-lg font-semibold">
-              Content Type
-            </Label>
-            <Select value={templateType} onValueChange={setTemplateType}>
-              <SelectTrigger id="templateType" className="text-lg h-12">
-                <SelectValue placeholder="Select content type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="video">Video</SelectItem>
-                <SelectItem value="image">Image</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-base text-muted-foreground">
-              Choose whether to create a video or static image post
-            </p>
-          </div>
 
           {/* Tone */}
           <div className="space-y-3">

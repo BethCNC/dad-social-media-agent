@@ -32,6 +32,7 @@ class ContextualSearchRequest(BaseModel):
     content_pillar: str
     suggested_keywords: Optional[List[str]] = None
     max_results: int = 12
+    visual_style: str = "ai_generation"  # 'pexels' for stock videos, 'ai_generation' for AI images
 
 
 @router.get("/search", response_model=list[AssetResult])
@@ -92,6 +93,9 @@ async def search_assets_contextual(
         List of AssetResult objects, sorted by relevance
     """
     try:
+        # Map visual_style to mode parameter
+        mode = "pexels" if request.visual_style == "pexels" else "ai_generation"
+        
         return await search_relevant_assets(
             topic=request.topic,
             hook=request.hook,
@@ -100,7 +104,8 @@ async def search_assets_contextual(
             content_pillar=request.content_pillar,
             suggested_keywords=request.suggested_keywords,
             max_results=request.max_results,
-            db=db
+            db=db,
+            mode=mode
         )
     except Exception as e:
         error_message = str(e) if str(e) else "We couldn't search for videos. Please try again."
