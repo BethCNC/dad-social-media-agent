@@ -331,19 +331,24 @@ Remember: Optimize for WATCH TIME, HOOK, and CLARITY. Keep everything simple, su
     return system_message
 
 
-async def generate_nano_banana_image(prompt: str) -> str:
+async def generate_image_asset(prompt: str) -> str:
     """
-    Generate an image using Nano Banana Pro (Gemini 3 Pro Image).
+    Generate an image using Nano Banana Pro (Gemini 3 Pro Image) and save to disk.
     
     Args:
         prompt: Image generation prompt based on shot description
         
     Returns:
-        Placeholder URL string (S3 not set up yet)
+        Public URL string for the generated image (e.g., {API_BASE_URL}/static/uploads/{uuid}.png)
         
     Raises:
-        Exception: If API call fails
+        Exception: If API call fails or file save fails
     """
+    import uuid
+    import os
+    from PIL import Image
+    import io
+    
     try:
         response = client.models.generate_image(
             model="gemini-3-pro-image-preview",
@@ -354,22 +359,54 @@ async def generate_nano_banana_image(prompt: str) -> str:
             )
         )
         
-        # In a real app, you would save this bytes data to cloud storage
-        # response.generated_images[0].image.image_bytes
-        # For now, return placeholder URL
-        return "https://placeholder-url-for-generated-asset.com"
+        if not response.generated_images or len(response.generated_images) == 0:
+            raise ValueError("No images generated in response")
+        
+        # Get image bytes
+        image_bytes = response.generated_images[0].image.image_bytes
+        
+        # Generate unique filename
+        filename = f"{uuid.uuid4().hex}.png"
+        file_path = settings.UPLOAD_DIR / filename
+        
+        # Save image to disk
+        image = Image.open(io.BytesIO(image_bytes))
+        image.save(file_path, "PNG")
+        
+        logger.info(f"Saved generated image to {file_path}")
+        
+        # Return public URL
+        public_url = f"{settings.API_BASE_URL}/static/uploads/{filename}"
+        return public_url
+        
     except Exception as e:
         logger.error(f"Gemini image generation error: {type(e).__name__}: {str(e)}")
         raise
 
 
-async def generate_content_plan_gemini(brief: ContentBrief, holiday_context: Optional[dict] = None) -> GeneratedPlan:
+# Keep old function name for backward compatibility
+async def generate_nano_banana_image(prompt: str) -> str:
+    """
+    Backward compatibility wrapper - redirects to generate_image_asset.
+    """
+    return await generate_image_asset(prompt)
+
+
+async def generate_content_plan_gemini(
+    brief: ContentBrief, 
+    holiday_context: Optional[dict] = None,
+    image_bytes: Optional[bytes] = None
+) -> GeneratedPlan:
     """
     Generate content plan using Gemini 3.0 Pro with Unicity client profile.
+    
+    Supports multimodal input: if image_bytes is provided, the image will be used
+    to ground the script generation (e.g., user uploads an inspiration image).
     
     Args:
         brief: Content brief with idea, platforms, tone, and optional length
         holiday_context: Optional holiday context dictionary with holidays_on_date, upcoming_holidays, etc.
+        image_bytes: Optional image bytes for multimodal content generation
         
     Returns:
         GeneratedPlan with script, caption, and shot_plan
@@ -480,9 +517,29 @@ Generate a JSON object with the following fields:
         # Combine system message and user message for Gemini
         full_prompt = f"{system_message}\n\n{user_message}"
         
+        # Build contents - support multimodal input if image is provided
+        # For Google GenAI v1 SDK, contents can be a string or list
+        if image_bytes:
+            # Multimodal: image + text
+            # The v1 SDK accepts contents as a list with dict parts
+            # Image data needs to be base64 encoded
+            import base64
+            image_b64 = base64.b64encode(image_bytes).decode('utf-8')
+            contents = [
+                {
+                    "parts": [
+                        {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
+                        {"text": full_prompt}
+                    ]
+                }
+            ]
+        else:
+            # Text-only content (can be string or list)
+            contents = full_prompt
+        
         response = client.models.generate_content(
             model="gemini-3-pro-preview",
-            contents=full_prompt,
+            contents=contents,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 temperature=0.7,

@@ -28,6 +28,8 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
   const [templateType, setTemplateType] = useState<string>('video');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const toneOptions = [
     'friendly',
@@ -112,7 +114,7 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
         template_type: templateType,
       };
 
-      const plan = await generatePlan(brief);
+      const plan = await generatePlan(brief, imageFile || undefined);
       onPlanGenerated(plan, templateType);
     } catch (err: any) {
       setError(
@@ -192,6 +194,58 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
               <p id="topic-description" className="text-base text-muted-foreground">
                 Be as detailed as possible. The AI will use this to create your script and caption.
               </p>
+              
+              {/* Optional Image Upload */}
+              <div className="space-y-3 pt-2">
+                <Label htmlFor="imageUpload" className="text-lg font-semibold">
+                  Upload an inspiration image (optional)
+                </Label>
+                <Input
+                  id="imageUpload"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setImageFile(file);
+                      // Create preview
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setImagePreview(reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    } else {
+                      setImageFile(null);
+                      setImagePreview(null);
+                    }
+                  }}
+                  className="text-lg"
+                />
+                {imagePreview && (
+                  <div className="mt-2">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="max-w-xs max-h-48 rounded-lg border border-border"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                      }}
+                      className="mt-2"
+                    >
+                      Remove image
+                    </Button>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Upload an image to help guide the script generation. The AI will analyze the image and create content inspired by it.
+                </p>
+              </div>
             </div>
           )}
 

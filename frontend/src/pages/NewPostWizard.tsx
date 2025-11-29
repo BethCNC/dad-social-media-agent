@@ -11,7 +11,7 @@ import { ScheduleCalendar } from '../components/schedule/ScheduleCalendar';
 import { ContentPreviewModal } from '../components/schedule/ContentPreviewModal';
 import { type GeneratedPlan, type TikTokMusicHint } from '../lib/contentApi';
 import { type MonthlySchedule, type ScheduledContentItem } from '../lib/scheduleApi';
-import { searchAssets, searchAssetsContextual, type AssetResult } from '../lib/assetsApi';
+import { searchAssets, searchAssetsContextual, regenerateImage, type AssetResult } from '../lib/assetsApi';
 import { renderVideo, type VideoRenderRequest } from '../lib/videoApi';
 import { type ScheduleResponse } from '../lib/socialApi';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ export const NewPostWizard = () => {
   const [assets, setAssets] = useState<AssetResult[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set());
   const [selectedAssetOrder, setSelectedAssetOrder] = useState<string[]>([]); // Track selection order
+  const [assetPrompts, setAssetPrompts] = useState<Map<string, string>>(new Map()); // Track prompts for regeneration
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -136,6 +137,15 @@ export const NewPostWizard = () => {
         max_results: 12,
       });
       setAssets(results);
+      
+      // Store prompts for regeneration (map asset ID to shot description)
+      const promptsMap = new Map<string, string>();
+      results.forEach((asset, index) => {
+        if (generatedPlan.shot_plan[index]) {
+          promptsMap.set(asset.id, generatedPlan.shot_plan[index].description);
+        }
+      });
+      setAssetPrompts(promptsMap);
     } catch (err: any) {
       // Fallback to simple generation
       const keywords = generatedPlan.shot_plan
@@ -300,7 +310,7 @@ export const NewPostWizard = () => {
     'Step 1: Monthly Schedule (Optional)',
     'Step 2: Choose Your Topic',
     'Step 3: Review Your Script & Caption',
-    'Step 4: Generate AI Visuals',
+    'Step 4: AI Generated Visuals',
     `Step 5: Create Your ${templateType === 'image' ? 'Image' : 'Video'}`,
     'Step 6: Schedule Your Post',
   ];
@@ -440,6 +450,39 @@ export const NewPostWizard = () => {
               onSelectionChange={handleAssetSelectionChange}
               maxSelection={maxSelection}
               templateType={templateType as 'image' | 'video'}
+              onRegenerate={async (assetId: string, prompt: string) => {
+                try {
+                  setIsSearching(true);
+                  setSearchError(null);
+                  const newAsset = await regenerateImage(prompt);
+                  
+                  // Update the asset in the list
+                  setAssets(prev => prev.map(asset => 
+                    asset.id === assetId ? newAsset : asset
+                  ));
+                  
+                  // If the regenerated asset was selected, update selection
+                  if (selectedAssetIds.has(assetId)) {
+                    setSelectedAssetIds(prev => {
+                      const newSet = new Set(prev);
+                      newSet.delete(assetId);
+                      newSet.add(newAsset.id);
+                      return newSet;
+                    });
+                    setSelectedAssetOrder(prev => 
+                      prev.map(id => id === assetId ? newAsset.id : id)
+                    );
+                  }
+                } catch (err: any) {
+                  setSearchError(
+                    err.response?.data?.detail ||
+                    'We couldn\'t regenerate the image. Please try again.'
+                  );
+                } finally {
+                  setIsSearching(false);
+                }
+              }}
+              assetPrompts={assetPrompts}
             />
 
             {!hasCorrectSelection && assets.length > 0 && (

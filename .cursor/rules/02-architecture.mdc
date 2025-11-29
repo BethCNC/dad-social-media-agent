@@ -5,22 +5,11 @@ The project uses a **monorepo** layout:
 ```text
 /ai-social-copilot
   /frontend        # React + Vite app (TypeScript)
-    src/
-      components/
-      pages/
-      hooks/
-      lib/
   /backend         # FastAPI app (Python 3.10+)
     app/
-      api/
-      core/
-      models/
-      services/
-      main.py
+      services/    # Contains gemini_client.py, creatomate_client.py, etc.
   /deploy
     Dockerfile
-    docker-compose.yml   # optional, for local dev
-```
 
 ## Responsibilities
 
@@ -29,7 +18,7 @@ The project uses a **monorepo** layout:
 - Collect inputs: content brief, tone, platforms, length, optional user clips.
 - Display:
   - Generated script and caption.
-  - Stock video search results and selections.
+  - AI-generated visual assets and selections.
   - Render status and preview URL.
   - Scheduling options and confirmation.
 - Communicate only with the **FastAPI backend** via Axios.
@@ -38,11 +27,11 @@ The project uses a **monorepo** layout:
 
 - Expose REST API for the frontend.
 - Orchestrate calls to:
-  - OpenAI (plan, script, caption).
-  - Pexels (stock video search).
-  - Creatomate (video rendering).
+  - Google Gemini 3.0 Pro (`gemini-3-pro-preview`) for text generation (content plans, scripts, captions, schedules).
+  - Nano Banana Pro (`gemini-3-pro-image-preview`) for image generation (visual assets based on shot descriptions).
+  - Creatomate (video rendering using generated images or uploaded videos).
   - Ayrshare (social scheduling).
-- Contain business logic in `services/`.
+- Contain business logic in `services/`, including `gemini_client.py` for all Gemini API interactions.
 - Handle validation, errors, and configuration via Pydantic models and a `Settings` class.
 
 ### Infrastructure

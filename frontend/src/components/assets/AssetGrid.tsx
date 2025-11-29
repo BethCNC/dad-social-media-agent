@@ -10,6 +10,8 @@ interface AssetGridProps {
   onSelectionChange: (id: string, selected: boolean) => void;
   maxSelection?: number; // Maximum number of assets that can be selected
   templateType?: 'image' | 'video'; // Template type for display purposes
+  onRegenerate?: (assetId: string, prompt: string) => Promise<void>; // Optional regenerate handler
+  assetPrompts?: Map<string, string>; // Map of asset ID to original prompt for regeneration
 }
 
 export const AssetGrid = ({
@@ -19,9 +21,33 @@ export const AssetGrid = ({
   onSelectionChange,
   maxSelection,
   templateType = 'video',
+  onRegenerate,
+  assetPrompts,
 }: AssetGridProps) => {
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  
   const formatDuration = (seconds: number) => {
     return `${seconds}s`;
+  };
+  
+  const handleRegenerate = async (assetId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card selection
+    if (!onRegenerate || !assetPrompts) return;
+    
+    const prompt = assetPrompts.get(assetId);
+    if (!prompt) {
+      console.warn(`No prompt found for asset ${assetId}`);
+      return;
+    }
+    
+    setRegeneratingId(assetId);
+    try {
+      await onRegenerate(assetId, prompt);
+    } catch (error) {
+      console.error('Failed to regenerate asset:', error);
+    } finally {
+      setRegeneratingId(null);
+    }
   };
 
   const isSelectionLimitReached = maxSelection !== undefined && selectedIds.size >= maxSelection;
@@ -39,9 +65,9 @@ export const AssetGrid = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold">
+      <h3 className="text-xl font-semibold">
           Select {assetTypeLabel} ({selectionText})
-        </h3>
+      </h3>
         {maxSelection && (
           <div className={cn(
             "text-sm px-3 py-1 rounded-full",
@@ -68,7 +94,7 @@ export const AssetGrid = ({
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground text-lg">
-              No videos found. Try a different search term.
+              No visuals generated yet. Generating based on your shot plan...
             </p>
           </CardContent>
         </Card>
@@ -143,6 +169,25 @@ export const AssetGrid = ({
                     <div className="absolute bottom-2 right-2 bg-black/75 text-white px-2 py-1 rounded text-sm font-medium">
                       {formatDuration(asset.duration_seconds)}
                     </div>
+                    {/* Regenerate button */}
+                    {onRegenerate && assetPrompts && assetPrompts.has(asset.id) && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={(e) => handleRegenerate(asset.id, e)}
+                          disabled={regeneratingId === asset.id}
+                          className="bg-white/90 hover:bg-white shadow-md"
+                        >
+                          {regeneratingId === asset.id ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

@@ -44,7 +44,14 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     # Build modifications to pass to the template
     # Creatomate uses dot notation: "ElementName.property" to modify template elements
     # Extract video/image URLs from assets
+    # CRITICAL: asset.id must be a publicly accessible URL (full URL including domain)
+    # For generated images, this should be {API_BASE_URL}/static/uploads/{filename}.png
     asset_urls = [asset.id for asset in request.assets]
+    
+    # Validate URLs are absolute (Creatomate needs full URLs)
+    for i, url in enumerate(asset_urls):
+        if url and not url.startswith(('http://', 'https://')):
+            logger.warning(f"Asset URL {i} is not absolute: {url}. Creatomate requires full URLs.")
     
     # Build modifications object using dot notation
     # NOTE: Element names must match EXACTLY what's in your Creatomate template
@@ -68,29 +75,34 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     
     else:
         # Video template structure: Music, Background-1, Background-2, Text-1, Text-2
-        # Add Music source (optional - can be configured or use default)
-        music_source = getattr(settings, 'CREATOMATE_DEFAULT_MUSIC', None)
-        if music_source:
-            modifications["Music.source"] = music_source
-        
-    # Map assets to Background elements (Background-1, Background-2)
-    # Template expects exactly 2 video clips: Background-1 and Background-2
-    if len(asset_urls) < 2:
-        logger.warning(f"Video template requires 2 video clips, but only {len(asset_urls)} provided")
-    
-    if asset_urls:
-        # Use first two assets for Background-1 and Background-2
-        if len(asset_urls) >= 1:
-            modifications["Background-1.source"] = asset_urls[0]
-            logger.info(f"Setting Background-1.source to: {asset_urls[0][:80]}...")
-        if len(asset_urls) >= 2:
-            modifications["Background-2.source"] = asset_urls[1]
-            logger.info(f"Setting Background-2.source to: {asset_urls[1][:80]}...")
+        # Add Music source (optional - use explicit music_url first, then default)
+        if request.music_url:
+            modifications["Music.source"] = request.music_url
+            logger.info(f"Using per-post music URL for Music.source: {request.music_url[:80]}...")
         else:
-            logger.warning("Background-2.source not set - only 1 video clip provided")
-        # If more than 2 assets, we'll use the first 2 (template only has 2 slots)
-        if len(asset_urls) > 2:
-            logger.warning(f"Video template only supports 2 video clips, using first 2 of {len(asset_urls)} assets")
+            music_source = getattr(settings, "CREATOMATE_DEFAULT_MUSIC", None)
+            if music_source:
+                modifications["Music.source"] = music_source
+                logger.info("Using CREATOMATE_DEFAULT_MUSIC for Music.source")
+        
+        # Map assets to Background elements (Background-1, Background-2)
+        # Template expects exactly 2 video clips: Background-1 and Background-2
+        if len(asset_urls) < 2:
+            logger.warning(f"Video template requires 2 video clips, but only {len(asset_urls)} provided")
+        
+        if asset_urls:
+            # Use first two assets for Background-1 and Background-2
+            if len(asset_urls) >= 1:
+                modifications["Background-1.source"] = asset_urls[0]
+                logger.info(f"Setting Background-1.source to: {asset_urls[0][:80]}...")
+            if len(asset_urls) >= 2:
+                modifications["Background-2.source"] = asset_urls[1]
+                logger.info(f"Setting Background-2.source to: {asset_urls[1][:80]}...")
+            else:
+                logger.warning("Background-2.source not set - only 1 video clip provided")
+            # If more than 2 assets, we'll use the first 2 (template only has 2 slots)
+            if len(asset_urls) > 2:
+                logger.warning(f"Video template only supports 2 video clips, using first 2 of {len(asset_urls)} assets")
         
         # Map script text to Text elements (Text-1, Text-2)
         # Split script into two parts for better visual distribution
@@ -118,8 +130,14 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
             # Set Text-1 and Text-2
             modifications["Text-1.text"] = text_1 if text_1 else script_text
             modifications["Text-2.text"] = text_2 if text_2 else ""
-            logger.info(f"Setting Text-1.text (length: {len(text_1 if text_1 else script_text)}): {text_1[:50] if text_1 else script_text[:50]}...")
-            logger.info(f"Setting Text-2.text (length: {len(text_2)}): {text_2[:50] if text_2 else '(empty)'}...")
+            logger.info(
+                f"Setting Text-1.text (length: {len(text_1 if text_1 else script_text)}): "
+                f"{(text_1 if text_1 else script_text)[:50]}..."
+            )
+            logger.info(
+                f"Setting Text-2.text (length: {len(text_2)}): "
+                f"{(text_2[:50] if text_2 else '(empty)')}..."
+            )
     
     # Build payload with template_id and modifications
     payload = {

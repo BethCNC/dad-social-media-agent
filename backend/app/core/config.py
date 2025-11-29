@@ -40,15 +40,18 @@ class Settings(BaseSettings):
     ENV: str = "development"
     PORT: int = 8000
     LOG_LEVEL: str = "INFO"
-
+    API_BASE_URL: str = "http://localhost:8000"  # For constructing public URLs
+    
     # Audio system settings
     AUDIO_MODE: str = AudioMode.AUTO_STOCK_WITH_TIKTOK_HINTS.value
     
     # File upload settings (computed property)
     @property
     def UPLOAD_DIR(self) -> Path:
-        """Get the upload directory path."""
-        return PROJECT_ROOT / "uploads" / "videos"
+        """Get the upload directory path for generated images."""
+        upload_dir = PROJECT_ROOT / "static" / "uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        return upload_dir
     
     model_config = SettingsConfigDict(
         # Don't specify env_file here - we load it manually with load_dotenv above

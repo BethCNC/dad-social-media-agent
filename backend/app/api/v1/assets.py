@@ -4,7 +4,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.models.video import AssetResult
-from app.services.gemini_client import generate_nano_banana_image
+from app.services.gemini_client import generate_image_asset
 from app.services.asset_search_service import generate_relevant_assets, search_relevant_assets
 from app.database.database import get_db
 from app.database.models import UserVideo
@@ -54,7 +54,7 @@ async def search_assets(
         from app.models.video import AssetResult
         
         # Generate a single image for the query
-        image_url = await generate_nano_banana_image(query)
+        image_url = await generate_image_asset(query)
         
         # Create AssetResult object
         asset = AssetResult(
@@ -274,3 +274,39 @@ async def serve_video(filename: str):
         path=str(file_path),
         media_type="video/mp4"
     )
+
+
+@router.post("/regenerate-image", response_model=AssetResult)
+async def regenerate_image(
+    prompt: str = Body(..., embed=True, description="Image generation prompt"),
+) -> AssetResult:
+    """
+    Regenerate a single image using Nano Banana Pro.
+    
+    This endpoint allows users to regenerate a specific image with a new prompt.
+    Useful for the "Regenerate" button in the frontend.
+    
+    Args:
+        prompt: Image generation prompt (scene description)
+        
+    Returns:
+        AssetResult with the newly generated image URL
+        
+    Raises:
+        HTTPException: If image generation fails
+    """
+    try:
+        image_url = await generate_image_asset(prompt)
+        
+        return AssetResult(
+            id=image_url,
+            thumbnail_url=image_url,
+            video_url=image_url,
+            duration_seconds=10  # Default duration for static images
+        )
+    except Exception as e:
+        error_message = str(e) if str(e) else "We couldn't generate the image. Please try again."
+        raise HTTPException(
+            status_code=500,
+            detail=error_message
+        ) from e

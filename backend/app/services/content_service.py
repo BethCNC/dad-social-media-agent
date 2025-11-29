@@ -10,12 +10,13 @@ from app.services.holiday_service import get_holiday_context_for_date, get_holid
 logger = logging.getLogger(__name__)
 
 
-async def create_content_plan(brief: ContentBrief) -> GeneratedPlan:
+async def create_content_plan(brief: ContentBrief, image_bytes: Optional[bytes] = None) -> GeneratedPlan:
     """
     Create content plan from brief.
     
     Args:
         brief: Content brief (supports manual/auto mode with holiday integration)
+        image_bytes: Optional image bytes for multimodal content generation
         
     Returns:
         GeneratedPlan with script, caption, and shot plan
@@ -70,7 +71,7 @@ async def create_content_plan(brief: ContentBrief) -> GeneratedPlan:
             except Exception as e:
                 logger.warning(f"Failed to fetch holiday context for date: {e}, continuing without holidays")
         
-        return await generate_content_plan_gemini(brief, holiday_context=holiday_context)
+        return await generate_content_plan_gemini(brief, holiday_context=holiday_context, image_bytes=image_bytes)
     except ValueError as e:
         logger.error(f"Content generation validation error: {e}")
         raise HTTPException(
