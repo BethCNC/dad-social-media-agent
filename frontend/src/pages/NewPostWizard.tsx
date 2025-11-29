@@ -9,7 +9,7 @@ import { ScheduleForm } from '../components/social/ScheduleForm';
 import { ScheduleGenerator } from '../components/schedule/ScheduleGenerator';
 import { ScheduleCalendar } from '../components/schedule/ScheduleCalendar';
 import { ContentPreviewModal } from '../components/schedule/ContentPreviewModal';
-import { type GeneratedPlan } from '../lib/contentApi';
+import { type GeneratedPlan, type TikTokMusicHint } from '../lib/contentApi';
 import { type MonthlySchedule, type ScheduledContentItem } from '../lib/scheduleApi';
 import { searchAssets, searchAssetsContextual, type AssetResult } from '../lib/assetsApi';
 import { renderVideo, type VideoRenderRequest } from '../lib/videoApi';
@@ -90,13 +90,13 @@ export const NewPostWizard = () => {
     }
   }, [currentStep]);
 
-  // Auto-search when entering step 3 using contextual search
+  // Auto-generate images when entering step 3 using contextual generation
   useEffect(() => {
     if (currentStep === 3 && generatedPlan && assets.length === 0 && script && caption) {
-      // Use contextual search for better relevance
+      // Use contextual generation for better relevance
       handleContextualSearch();
     } else if (currentStep === 3 && generatedPlan && assets.length === 0) {
-      // Fallback: extract keywords from shot plan if contextual search not ready
+      // Fallback: extract keywords from shot plan if contextual generation not ready
       const keywords = generatedPlan.shot_plan
         .map((shot) => shot.description)
         .join(' ')
@@ -125,7 +125,7 @@ export const NewPostWizard = () => {
     setSearchError(null);
 
     try {
-      // Use contextual search for better relevance
+      // Use contextual generation for better relevance
       const results = await searchAssetsContextual({
         topic: '', // We don't have topic in wizard, use first shot description
         hook: caption.split('\n')[0] || '', // First line is usually hook
@@ -137,7 +137,7 @@ export const NewPostWizard = () => {
       });
       setAssets(results);
     } catch (err: any) {
-      // Fallback to simple search
+      // Fallback to simple generation
       const keywords = generatedPlan.shot_plan
         .map((shot) => shot.description)
         .join(' ')
@@ -149,7 +149,7 @@ export const NewPostWizard = () => {
       } else {
         setSearchError(
           err.response?.data?.detail ||
-          'We couldn\'t search for videos. Please try again.'
+          'We couldn\'t generate visuals. Please try again.'
         );
         setIsSearching(false);
       }
@@ -171,7 +171,7 @@ export const NewPostWizard = () => {
     } catch (err: any) {
       setSearchError(
         err.response?.data?.detail ||
-        'We couldn\'t search for videos right now. Please try again.'
+        'We couldn\'t generate visuals right now. Please try again.'
       );
     } finally {
       setIsSearching(false);
@@ -186,7 +186,7 @@ export const NewPostWizard = () => {
       if (selected) {
         // Check if we can add more (respect maxSelection)
         if (next.size < maxSelection) {
-          next.add(id);
+        next.add(id);
         }
       } else {
         next.delete(id);
@@ -278,7 +278,7 @@ export const NewPostWizard = () => {
         if (currentStep === 3) {
           const requiredCount = templateType === 'image' ? 1 : 2;
           if (selectedAssetIds.size !== requiredCount) {
-            return;
+          return;
           }
         }
         // For step 4, require video to be rendered
@@ -300,7 +300,7 @@ export const NewPostWizard = () => {
     'Step 1: Monthly Schedule (Optional)',
     'Step 2: Choose Your Topic',
     'Step 3: Review Your Script & Caption',
-    'Step 4: Select Video Clips',
+    'Step 4: Generate AI Visuals',
     `Step 5: Create Your ${templateType === 'image' ? 'Image' : 'Video'}`,
     'Step 6: Schedule Your Post',
   ];
@@ -363,10 +363,10 @@ export const NewPostWizard = () => {
         const maxSelection = templateType === 'image' ? 1 : 2;
         const requiredCount = maxSelection;
         const hasCorrectSelection = selectedAssetIds.size === requiredCount;
-        const assetTypeLabel = templateType === 'image' ? 'image' : 'video clips';
+        const assetTypeLabel = templateType === 'image' ? 'image' : 'visuals';
         const searchPlaceholder = templateType === 'image' 
-          ? 'Search for images...' 
-          : 'Search for video clips...';
+          ? 'Enter image description...' 
+          : 'Enter visual description...';
 
         return (
           <div className="space-y-6">
@@ -379,39 +379,50 @@ export const NewPostWizard = () => {
                 <p className="text-blue-800 text-base">
                   {templateType === 'image' 
                     ? 'Please select exactly 1 image for the image template.'
-                    : 'Please select exactly 2 video clips for the video template.'}
+                    : 'Please select exactly 2 visuals for the video template.'}
                 </p>
               </CardContent>
             </Card>
 
             <div className="flex gap-4">
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearch();
-                  }
-                }}
-                placeholder={searchPlaceholder}
-                className="text-lg h-12"
-                aria-label={searchPlaceholder}
-              />
-              <Button
-                onClick={() => handleSearch()}
-                disabled={isSearching || !searchQuery.trim()}
-                size="lg"
-                className="py-6 px-8 text-lg"
-                aria-label="Search"
-              >
-                {isSearching ? (
-                  <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Search className="w-5 h-5" aria-hidden="true" />
-                )}
-                <span className="ml-2">Search</span>
-              </Button>
+              {assets.length === 0 && (
+                <div className="w-full">
+                  <p className="text-lg text-muted-foreground mb-4">
+                    {isSearching ? 'Generating AI visuals... This may take a moment.' : 'AI visuals will be generated automatically based on your shot plan.'}
+                  </p>
+                </div>
+              )}
+              {assets.length > 0 && (
+                <>
+                  <Input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSearch();
+                      }
+                    }}
+                    placeholder={searchPlaceholder}
+                    className="text-lg h-12"
+                    aria-label={searchPlaceholder}
+                  />
+                  <Button
+                    onClick={() => handleSearch()}
+                    disabled={isSearching || !searchQuery.trim()}
+                    size="lg"
+                    className="py-6 px-8 text-lg"
+                    aria-label="Generate"
+                  >
+                    {isSearching ? (
+                      <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Search className="w-5 h-5" aria-hidden="true" />
+                    )}
+                    <span className="ml-2">Generate</span>
+                  </Button>
+                </>
+              )}
             </div>
 
             {searchError && (
@@ -450,64 +461,112 @@ export const NewPostWizard = () => {
           </div>
         );
       case 4:
-        if (renderError) {
-          return (
+        // Render + Music & Audio info
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6">
+            <div>
+              {renderError && (
+                <div className="space-y-4 mb-6">
+                  <Card className="border-destructive/20 bg-destructive/10">
+                    <CardContent className="py-4">
+                      <p className="text-destructive text-lg font-medium">{renderError}</p>
+                    </CardContent>
+                  </Card>
+                  <Button
+                    onClick={startRender}
+                    disabled={isRendering}
+                    size="lg"
+                    className="w-full py-6 text-lg"
+                    aria-label="Retry video rendering"
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              )}
+
+              {videoUrl ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-green-600 text-2xl">Your video is ready!</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <video
+                      src={videoUrl}
+                      controls
+                      className="w-full rounded-lg shadow-lg"
+                      aria-label="Rendered video preview"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </CardContent>
+                </Card>
+              ) : renderJobId ? (
+                <RenderStatusCard
+                  jobId={renderJobId}
+                  onComplete={handleRenderComplete}
+                  onError={handleRenderError}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" aria-hidden="true" />
+                    <p className="text-muted-foreground text-xl">
+                      We're building your video, this may take under a minute.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Music & Audio side card */}
             <div className="space-y-4">
-              <Card className="border-destructive/20 bg-destructive/10">
-                <CardContent className="py-4">
-                  <p className="text-destructive text-lg font-medium">{renderError}</p>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Music & Audio</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    This quick preview is focused on visuals and script. When posts are generated in your weekly
+                    schedule, the app will auto-select a safe background track based on the mood of your script.
+                  </p>
+                  {generatedPlan?.music_mood && (
+                    <p className="text-sm">
+                      <span className="font-medium">Suggested mood:</span>{' '}
+                      <span className="capitalize">{generatedPlan.music_mood}</span>
+                    </p>
+                  )}
                 </CardContent>
               </Card>
-              <Button
-                onClick={startRender}
-                disabled={isRendering}
-                size="lg"
-                className="w-full py-6 text-lg"
-                aria-label="Retry video rendering"
-              >
-                Try Again
-              </Button>
+
+              {generatedPlan?.tiktok_music_hints && generatedPlan.tiktok_music_hints.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Suggested TikTok music searches</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      When you upload this video to TikTok or Instagram, tap “Add sound” and paste one of these phrases
+                      into the search bar to find safe background music.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {generatedPlan.tiktok_music_hints.map((hint: TikTokMusicHint, index: number) => (
+                        <Button
+                          key={`${hint.label}-${index}`}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs px-3 py-1 rounded-full"
+                          onClick={() => navigator.clipboard.writeText(hint.searchPhrase)}
+                        >
+                          {hint.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
-          );
-        }
-
-        if (videoUrl) {
-          return (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-green-600 text-2xl">Your video is ready!</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <video
-                  src={videoUrl}
-                  controls
-                  className="w-full rounded-lg shadow-lg"
-                  aria-label="Rendered video preview"
-                >
-                  Your browser does not support the video tag.
-                </video>
-              </CardContent>
-            </Card>
-          );
-        }
-
-        if (renderJobId) {
-          return (
-            <RenderStatusCard
-              jobId={renderJobId}
-              onComplete={handleRenderComplete}
-              onError={handleRenderError}
-            />
-          );
-        }
-
-        return (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" aria-hidden="true" />
-              <p className="text-muted-foreground text-xl">We're building your video, this may take under a minute.</p>
-            </CardContent>
-          </Card>
+          </div>
         );
       case 5:
         if (!videoUrl) {

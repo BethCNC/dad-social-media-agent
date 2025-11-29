@@ -4,7 +4,7 @@ from datetime import date
 from typing import Optional
 from fastapi import HTTPException
 from app.models.content import ContentBrief, GeneratedPlan
-from app.services.openai_client import generate_content_plan
+from app.services.gemini_client import generate_content_plan_gemini
 from app.services.holiday_service import get_holiday_context_for_date, get_holidays_on_date, get_upcoming_holidays
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ async def create_content_plan(brief: ContentBrief) -> GeneratedPlan:
             except Exception as e:
                 logger.warning(f"Failed to fetch holiday context for date: {e}, continuing without holidays")
         
-        return await generate_content_plan(brief, holiday_context=holiday_context)
+        return await generate_content_plan_gemini(brief, holiday_context=holiday_context)
     except ValueError as e:
         logger.error(f"Content generation validation error: {e}")
         raise HTTPException(

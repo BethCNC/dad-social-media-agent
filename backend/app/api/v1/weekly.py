@@ -9,7 +9,7 @@ from app.database.models import ScheduledPost as ScheduledPostDB
 from app.database.content_repository import get_quotes_by_category
 from app.models.weekly_schedule import WeeklyScheduleRequest, WeeklySchedule, WeeklyPost
 from app.services.weekly_schedule_service import create_weekly_schedule, get_weekly_schedule, auto_render_post_preview
-from app.services.openai_client import generate_content_plan
+from app.services.gemini_client import generate_content_plan_gemini
 from app.models.content import ContentBrief, ShotInstruction
 
 logger = logging.getLogger(__name__)
@@ -335,8 +335,11 @@ async def regenerate_post_text(
             template_type=post_db.template_type
         )
         
-        # Generate new content using OpenAI with quotes
-        from app.services.openai_client import build_system_message_with_quotes, load_client_profile
+        # Generate new content using Gemini with quotes
+        from app.services.gemini_client import build_system_message_with_quotes, load_client_profile, client
+        from google.genai import types
+        import json
+        
         client_profile = load_client_profile()
         system_message = build_system_message_with_quotes(client_profile, quotes)
         
@@ -363,22 +366,21 @@ Generate:
 
 Use the Unicity quotes provided in the system message as inspiration for authentic language."""
         
-        from app.services.openai_client import client
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_message},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
+        full_prompt = f"{system_message}\n\n{user_message}"
+        
+        response = client.models.generate_content(
+            model="gemini-3-pro-preview",
+            contents=full_prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0.7,
+            )
         )
         
-        content = response.choices[0].message.content
+        content = response.text
         if not content:
-            raise ValueError("Empty response from OpenAI")
+            raise ValueError("Empty response from Gemini")
         
-        import json
         data = json.loads(content)
         
         # Update post with new content

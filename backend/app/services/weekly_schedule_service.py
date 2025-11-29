@@ -9,10 +9,12 @@ from sqlalchemy.orm import Session
 from app.database.content_repository import get_all_quotes
 from app.database.models import WeeklySchedule as WeeklyScheduleDB, ScheduledPost as ScheduledPostDB
 from app.models.weekly_schedule import WeeklyScheduleRequest, WeeklyPost, WeeklySchedule
-from app.services.openai_client import generate_weekly_schedule
+from app.models.content import TikTokMusicHint
+from app.services.gemini_client import generate_weekly_schedule
 from app.services.asset_search_service import search_relevant_assets
 from app.services.video_service import render_video, check_render_status
 from app.models.video import VideoRenderRequest, AssetSelection
+from app.services.audio_service import pick_track_for_plan
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +65,8 @@ async def auto_render_post_preview(post: WeeklyPost, db: Session) -> str | None:
             shot_plan=shot_plan_dict,
             content_pillar=post.content_pillar,
             suggested_keywords=post.suggested_keywords or [],
-            max_results=12
+            max_results=12,
+            db=db
         )
         
         if not assets:
@@ -96,7 +99,8 @@ async def auto_render_post_preview(post: WeeklyPost, db: Session) -> str | None:
             ],
             script=post.script,
             title=None,
-            template_type="video"  # Always use video template for now
+            template_type="video",  # Always use video template for now
+            music_url=None,  # Will be applied based on AudioMode and audio selection when scheduling full renders
         )
         
         logger.info(f"Created render request for post {post.id}: {len(selected_assets)} assets, template_type=video")
@@ -202,7 +206,17 @@ async def create_weekly_schedule(
                 shot_plan = [
                     ShotInstruction(**shot) for shot in (post_db.shot_plan or [])
                 ]
-                
+
+                # Parse TikTok music hints from JSON if present
+                raw_hints = post_db.tiktok_music_hints or []
+                tiktok_hints: list[TikTokMusicHint] = []
+                for hint in raw_hints:
+                    try:
+                        if isinstance(hint, dict):
+                            tiktok_hints.append(TikTokMusicHint(**hint))
+                    except Exception as e:
+                        logger.warning(f"Skipping invalid TikTokMusicHint from DB: {hint} ({e})")
+
                 posts.append(WeeklyPost(
                     id=post_db.id,
                     post_date=post_db.post_date,
@@ -218,6 +232,10 @@ async def create_weekly_schedule(
                     suggested_keywords=post_db.suggested_keywords or [],
                     status=post_db.status,
                     media_url=post_db.media_url,
+                    audio_track_id=post_db.audio_track_id,
+                    audio_track_title=None,  # Title not stored separately; can be filled later if needed
+                    audio_music_mood=post_db.audio_music_mood,
+                    tiktok_music_hints=tiktok_hints,
                 ))
             
             series_breakdown = calculate_series_breakdown(posts)
@@ -257,6 +275,35 @@ async def create_weekly_schedule(
                 {"description": shot.description, "duration_seconds": shot.duration_seconds}
                 for shot in post.shot_plan
             ]
+
+            # Infer music mood heuristically if not provided (education/story → energetic, routine → calm, product → inspirational)
+            inferred_mood = None
+            if hasattr(post, "audio_music_mood") and post.audio_music_mood:
+                inferred_mood = post.audio_music_mood
+            else:
+                pillar = (post.content_pillar or "").lower()
+                if pillar in ["routine"]:
+                    inferred_mood = "calm"
+                elif pillar in ["story", "education"]:
+                    inferred_mood = "energetic"
+                elif pillar in ["product_integration"]:
+                    inferred_mood = "inspirational"
+
+            # For now, estimate video length as 30 seconds
+            estimated_length_seconds = 30
+
+            audio_track = None
+            try:
+                audio_track = pick_track_for_plan(
+                    music_mood=inferred_mood,
+                    estimated_length_seconds=estimated_length_seconds,
+                    db=db,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to select audio track for post '{post.topic}': {e}")
+
+            audio_track_id = audio_track.id if audio_track else None
+            audio_music_mood = audio_track.mood if audio_track else inferred_mood
             
             post_db = ScheduledPostDB(
                 schedule_id=schedule_db.id,
@@ -272,6 +319,9 @@ async def create_weekly_schedule(
                 shot_plan=shot_plan_json,
                 suggested_keywords=post.suggested_keywords,
                 status=post.status,
+                audio_track_id=audio_track_id,
+                audio_music_mood=audio_music_mood,
+                tiktok_music_hints=[hint.model_dump() for hint in getattr(post, "tiktok_music_hints", [])],
             )
             db.add(post_db)
         
