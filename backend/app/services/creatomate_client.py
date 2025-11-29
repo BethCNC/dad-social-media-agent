@@ -1,5 +1,6 @@
 """Creatomate API client for video rendering."""
 import logging
+import re
 import httpx
 from app.core.config import get_settings
 from app.models.video import VideoRenderRequest, RenderJob
@@ -40,44 +41,67 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     asset_urls = [asset.id for asset in request.assets]
     
     # Build modifications object using dot notation
-    # Based on template structure: Music, Background-1, Background-2, Text-1, Text-2, etc.
+    # Image templates use: Image.source, Text.text
+    # Video templates use: Music.source, Background-1.source, Background-2.source, Text-1.text, Text-2.text
     modifications = {}
     
-    # Add Music source (optional - can be configured or use default)
-    # Using a default background music from Creatomate assets if available
-    # You can override this in config if needed
-    music_source = getattr(settings, 'CREATOMATE_DEFAULT_MUSIC', None)
-    if music_source:
-        modifications["Music.source"] = music_source
+    if template_type == "image":
+        # Image template structure: Image.source, Text.text
+        if asset_urls:
+            # Use first asset as the image source
+            modifications["Image.source"] = asset_urls[0]
+            if len(asset_urls) > 1:
+                logger.warning(f"Image template only supports 1 image, using first of {len(asset_urls)} assets")
+        
+        # Map script text to Text.text (single text element for images)
+        if request.script:
+            modifications["Text.text"] = request.script.strip()
     
-    # Map assets to Background elements (Background-1, Background-2, etc.)
-    # Templates typically have Background-1, Background-2 for video clips
-    if asset_urls:
-        for i, url in enumerate(asset_urls, start=1):
-            element_name = f"Background-{i}.source"
-            modifications[element_name] = url
-    
-    # Map script text to Text elements (Text-1, Text-2)
-    # Split script into two parts for better visual distribution
-    if request.script:
-        script_lines = request.script.strip().split('\n')
-        # Split script roughly in half
-        mid_point = len(script_lines) // 2
+    else:
+        # Video template structure: Music, Background-1, Background-2, Text-1, Text-2
+        # Add Music source (optional - can be configured or use default)
+        music_source = getattr(settings, 'CREATOMATE_DEFAULT_MUSIC', None)
+        if music_source:
+            modifications["Music.source"] = music_source
         
-        # Text-1: First half of script
-        text_1 = '\n'.join(script_lines[:mid_point]).strip()
-        if text_1:
-            modifications["Text-1.text"] = text_1
+        # Map assets to Background elements (Background-1, Background-2)
+        # Template expects exactly 2 video clips: Background-1 and Background-2
+        if asset_urls:
+            # Use first two assets for Background-1 and Background-2
+            if len(asset_urls) >= 1:
+                modifications["Background-1.source"] = asset_urls[0]
+            if len(asset_urls) >= 2:
+                modifications["Background-2.source"] = asset_urls[1]
+            # If more than 2 assets, we'll use the first 2 (template only has 2 slots)
+            if len(asset_urls) > 2:
+                logger.warning(f"Video template only supports 2 video clips, using first 2 of {len(asset_urls)} assets")
         
-        # Text-2: Second half of script
-        text_2 = '\n'.join(script_lines[mid_point:]).strip()
-        if text_2:
-            modifications["Text-2.text"] = text_2
-        
-        # If script is short, put it all in Text-1 and leave Text-2 empty
-        if not text_2 and text_1:
-            modifications["Text-1.text"] = request.script
-            modifications["Text-2.text"] = ""  # Clear Text-2 if not used
+        # Map script text to Text elements (Text-1, Text-2)
+        # Split script into two parts for better visual distribution
+        if request.script:
+            script_text = request.script.strip()
+            
+            # Try to split by newlines first (if script has structured sections)
+            if '\n' in script_text:
+                lines = [line.strip() for line in script_text.split('\n') if line.strip()]
+                mid_point = len(lines) // 2
+                
+                text_1 = '\n'.join(lines[:mid_point]).strip()
+                text_2 = '\n'.join(lines[mid_point:]).strip()
+            else:
+                # Split by sentences (period, exclamation, question mark)
+                sentences = re.split(r'([.!?]\s+)', script_text)
+                # Rejoin sentences with their punctuation
+                sentences = [sentences[i] + (sentences[i+1] if i+1 < len(sentences) else '') 
+                            for i in range(0, len(sentences), 2) if sentences[i].strip()]
+                
+                mid_point = len(sentences) // 2
+                text_1 = ''.join(sentences[:mid_point]).strip()
+                text_2 = ''.join(sentences[mid_point:]).strip()
+            
+            # Set Text-1 and Text-2
+            modifications["Text-1.text"] = text_1 if text_1 else script_text
+            modifications["Text-2.text"] = text_2 if text_2 else ""
     
     # Build payload with template_id and modifications
     payload = {
