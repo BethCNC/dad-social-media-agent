@@ -17,7 +17,7 @@ export const Dashboard = () => {
   const [accountsConnected, setAccountsConnected] = useState(false); // Placeholder
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   
-  // Auto-refresh schedule every 30 seconds to show real-time updates
+  // Auto-refresh schedule every 10 seconds to show real-time updates (faster for preview rendering)
   useEffect(() => {
     if (!currentSchedule) return;
     
@@ -32,10 +32,51 @@ export const Dashboard = () => {
           console.error('Background schedule refresh failed:', err);
         }
       }
-    }, 30000); // Refresh every 30 seconds
+    }, 10000); // Refresh every 10 seconds to catch preview updates faster
     
     return () => clearInterval(interval);
   }, [currentSchedule]);
+
+  // Auto-trigger preview rendering for posts without media_url
+  useEffect(() => {
+    if (!currentSchedule || !currentSchedule.posts) return;
+    
+    const postsNeedingPreview = currentSchedule.posts.filter(
+      post => post.id && !post.media_url && post.shot_plan.length > 0
+    );
+    
+    if (postsNeedingPreview.length === 0) return;
+    
+    // Trigger preview rendering for posts that need it
+    const triggerPreviews = async () => {
+      for (const post of postsNeedingPreview) {
+        if (!post.id) continue;
+        
+        try {
+          const { renderPostPreview } = await import('@/lib/weeklyApi');
+          console.log(`🎬 Triggering preview render for post ${post.id}: ${post.topic}`);
+          await renderPostPreview(post.id);
+          // Refresh schedule after a short delay to get updated media_url
+          setTimeout(async () => {
+            try {
+              const monday = getCurrentWeekMonday();
+              const schedule = await getWeeklySchedule(format(monday, 'yyyy-MM-dd'));
+              setCurrentSchedule(schedule);
+            } catch (err) {
+              console.error('Failed to refresh after preview render:', err);
+            }
+          }, 3000);
+        } catch (err: any) {
+          console.error(`❌ Failed to trigger preview for post ${post.id}:`, err);
+          // Don't show error to user - just log it
+        }
+      }
+    };
+    
+    // Wait a bit after schedule generation before triggering renders
+    const timeout = setTimeout(triggerPreviews, 2000);
+    return () => clearTimeout(timeout);
+  }, [currentSchedule?.id]); // Only run when schedule ID changes (new schedule generated)
 
   // Get current week's Monday
   const getCurrentWeekMonday = () => {
@@ -103,16 +144,16 @@ export const Dashboard = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Social Media Co-Pilot</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-2 text-base">
             Create and manage your weekly content schedule
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-4">
           {!accountsConnected && (
             <Button variant="outline" onClick={() => setAccountsConnected(true)}>
               <LinkIcon className="mr-2 h-4 w-4" />
@@ -166,9 +207,9 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
       ) : currentSchedule ? (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* View Mode Toggle */}
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-4">
             <Button
               variant={viewMode === 'calendar' ? 'default' : 'outline'}
               size="sm"
