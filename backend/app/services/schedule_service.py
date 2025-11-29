@@ -1,10 +1,11 @@
 """Schedule generation service."""
 import logging
 from datetime import date, timedelta
-from typing import Dict
+from typing import Dict, Optional
 from fastapi import HTTPException
 from app.models.schedule import ScheduleRequest, ScheduledContentItem, MonthlySchedule
 from app.services.openai_client import generate_monthly_schedule
+from app.services.holiday_service import get_holiday_context_for_date
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +118,23 @@ async def create_monthly_schedule(request: ScheduleRequest) -> MonthlySchedule:
         posting_days = calculate_posting_days(request.start_date, request.posts_per_week)
         logger.info(f"Generating schedule for {len(posting_days)} posting days")
         
+        # Fetch holiday context for posting days
+        holiday_contexts = {}
+        try:
+            for posting_date in posting_days:
+                context = get_holiday_context_for_date(posting_date, window_days=7)
+                date_str = posting_date.isoformat()
+                holiday_contexts[date_str] = {
+                    "holidays_on_date": [{"name": h.name, "date": str(h.date)} for h in context.holidays_on_date],
+                    "upcoming_holidays": [{"name": h.name, "date": str(h.date)} for h in context.upcoming_holidays],
+                    "marketing_relevant_holidays": [{"name": h.name, "date": str(h.date)} for h in context.marketing_relevant_holidays],
+                }
+        except Exception as e:
+            logger.warning(f"Failed to fetch holiday contexts: {e}, continuing without holidays")
+            holiday_contexts = None
+        
         # Generate content for all posting days
-        schedule_items = await generate_monthly_schedule(request)
+        schedule_items = await generate_monthly_schedule(request, holiday_contexts=holiday_contexts)
         
         # Filter items to only include posting days and sort by date
         posting_dates_set = set(posting_days)

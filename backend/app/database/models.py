@@ -1,5 +1,5 @@
 """SQLAlchemy models for content database and schedules."""
-from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Time, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Time, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database.database import Base
@@ -28,6 +28,20 @@ class ContentTemplate(Base):
     content_pillar = Column(String(50), nullable=False)  # education, routine, story, product_integration
     use_case = Column(String(100), nullable=False)  # e.g., "morning_routine", "energy_tip", "product_intro"
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class Holiday(Base):
+    """US holidays for content planning."""
+    __tablename__ = "holidays"
+
+    id = Column(String(36), primary_key=True, index=True)  # UUID as string
+    date = Column(Date, nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    source = Column(String(100), nullable=False, default="google_us_holidays")
+    category = Column(String(50), nullable=True)  # e.g., "public_holiday", "observance"
+    is_marketing_relevant = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
 class WeeklySchedule(Base):
@@ -68,4 +82,3 @@ class ScheduledPost(Base):
 
     # Relationship to schedule
     schedule = relationship("WeeklySchedule", back_populates="posts")
-

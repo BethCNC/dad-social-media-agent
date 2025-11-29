@@ -1,0 +1,223 @@
+---
+alwaysApply: false
+---
+# How to Update the Dad Social Media Agent App
+
+This document is a practical checklist for updating the **dad-social-media-agent** app from its current state to a “ready for Dad to use” version.
+
+Use it as a step‑by‑step guide when you come back to this project in Cursor or any IDE.
+
+---
+
+## 0. Prerequisites
+
+1. **Local setup**
+   - Node.js + pnpm (or npm/yarn).
+   - Python 3.10+.
+   - Docker (for Coolify deployment).
+2. **Environment variables** (already partly wired in `config.py` and `.env.example`):
+   - `OPENAI_API_KEY`
+   - `PEXELS_API_KEY`
+   - `CREATOMATE_API_KEY`
+   - `AYRSHARE_API_KEY`
+   - Any future holiday sync secrets (if you choose a paid holiday API instead of public ICS).
+3. **Repo**
+   ```bash
+   git clone https://github.com/BethCNC/dad-social-media-agent.git
+   cd dad-social-media-agent
+   ```
+
+---
+
+## 1. Backend Updates
+
+### 1.1. Add US Holiday Support
+
+**Goal:** Give the app a way to know about upcoming US holidays so the AI can generate holiday‑aware content and you can surface upcoming holidays in the UI.
+
+1. **Create a Holiday model**
+   - Add a `Holiday` SQLAlchemy model under `backend/app/models/holiday.py` with fields like:
+     - `id` (UUID / PK)
+     - `date` (date)
+     - `name` (string)
+     - `source` (e.g. `"google_us_holidays"`)
+     - `category` (optional: `public_holiday`, `observance`, etc.)
+     - `is_marketing_relevant` (bool)
+   - Add corresponding Pydantic schemas in `backend/app/schemas/holiday.py`.
+
+2. **Implement a holiday service**
+   - New file: `backend/app/services/holiday_service.py`.
+   - Responsibilities:
+     - Fetch US holidays from a public source (e.g. Google US Holidays ICS).
+     - Parse events and upsert into the database.
+     - Provide helper functions:
+       - `get_upcoming_holidays(days: int)`
+       - `get_holidays_on_date(date)`
+       - `get_holiday_context_for_date(date, window_days=7)`.
+
+3. **Create holiday API routes**
+   - New file: `backend/app/api/v1/holidays.py`.
+   - Endpoints:
+     - `GET /api/v1/holidays/upcoming?days=30`
+     - `GET /api/v1/holidays/on-date?date=YYYY-MM-DD`
+   - Wire router into `main.py` alongside other v1 routers.
+
+4. **Optionally add a sync task**
+   - Add a startup event in `main.py` or a CLI script that calls `holiday_service.sync_us_holidays()` once a week/month.
+   - For Coolify, you can trigger this via a cron hitting a protected endpoint if needed.
+
+### 1.2. Integrate Holidays Into AI Planning
+
+**Goal:** When generating plans or single posts, the AI can incorporate holiday context.
+
+1. **Monthly schedule generation**
+   - In `backend/app/services/schedule_service.py`, update the logic that builds the OpenAI prompt to include:
+     - A `holiday_context` for each planned date using `holiday_service.get_holiday_context_for_date()`.
+   - Pass this as part of the JSON payload to `openai_client.generate_monthly_schedule`.
+
+2. **Single post generation**
+   - In the endpoint that powers the New Post wizard (content generation route in `content.py` / `content_service`):
+     - Extend the request model to include:
+       - `mode: "manual" | "auto"`
+       - `useHolidays: bool`
+       - `selectedHolidayId: Optional[str]`
+       - `userTopic: Optional[str]`
+     - When `mode == "auto"`:
+       - If `useHolidays` is true, call the holiday service to find upcoming marketing‑relevant holidays and pass the result as `holiday_context` to OpenAI.
+     - When `mode == "manual"`:
+       - Use the user’s topic, but **optionally** still pass holiday context if the chosen date is a holiday.
+
+3. **Prompt updates**
+   - In `openai_client.py`, update the system/user messages so the model understands:
+     - When `holiday_context` is present, it should **tastefully** mention the holiday (greetings, themes, gratitude) while staying compliant (no medical/income promises).
+
+---
+
+## 2. Frontend Updates
+
+### 2.1. New Post Wizard: Manual vs Auto Topic
+
+**Goal:** Step 1 of the wizard should let Dad either type his own idea or ask the agent to suggest one, optionally using holidays.
+
+1. **Update Step 1 UI in `NewPostWizard.tsx`**
+   - Replace the single “brief” input with two options:
+
+     **Option A – “I already have a topic”**
+     - Radio or segmented control.
+     - When selected, show:
+       - Textarea: “Describe what you want this video to be about.”
+       - This maps to `mode: "manual"` and `userTopic`.
+
+     **Option B – “Suggest a topic for me”**
+     - When selected, show:
+       - Checkbox: “Use upcoming holidays if relevant.”
+       - A row of holiday chips (if any) from `GET /api/v1/holidays/upcoming?days=14`:
+         - `Thanksgiving – Nov 27`, `New Year’s Day – Jan 1`, etc.
+       - Chip click sets `selectedHolidayId`.
+
+   - On “Next”, call the backend with the full payload:
+     - `mode`
+     - `useHolidays`
+     - `selectedHolidayId`
+     - `userTopic` (or `null`)
+
+2. **Create a small `useHolidays` hook or API wrapper**
+   - In `frontend/src/lib`, add a helper (e.g. `holidaysApi.ts`) with a `getUpcomingHolidays(days)` function using Axios.
+   - Use React Query or plain state to fetch and cache holidays for the wizard.
+
+### 2.2. UX for Older Users
+
+**Goal:** Make the flow comfortable and low‑stress for your dad.
+
+1. **Typography & spacing**
+   - Increase base font size for wizard screens (`text-base` → `text-lg` where appropriate).
+   - Ensure buttons have large click targets (full width at mobile sizes, `py-3` / `py-4`).
+
+2. **Copywriting**
+   - Replace technical labels like “brief”, “content pillar” with plain text like:
+     - “What do you want to talk about?”
+     - “We’ll help you write the words for your video.”
+   - Add one‑sentence helper text under each key field.
+
+3. **Error states & loading**
+   - Show simple, friendly messages when:
+     - AI generation fails (e.g., “The helper got stuck. Try again.”).
+     - Pexels or Creatomate calls fail.
+   - Use spinners + progress text during video render: “We’re building your video, this may take under a minute.”
+
+4. **Help section (later)**
+   - Add a simple “Help” page with:
+     - 1–2 screenshots.
+     - A short bullet list: “Step 1: Choose topic, Step 2: Approve words, Step 3: Approve video, Step 4: Schedule.”
+
+---
+
+## 3. Testing & Validation
+
+1. **Backend tests**
+   - Add tests for `holiday_service` (parsing ICS, upcoming windows, holiday context).
+   - Test the updated content/schedule endpoints with and without `holiday_context`.
+
+2. **Frontend sanity checks**
+   - Walk through the entire wizard in dev:
+     - Manual topic flow → generate script/caption → select assets → render → schedule.
+     - Auto topic with holiday selected → verify the script references the holiday naturally.
+
+3. **Accessibility quick checks**
+   - Ensure labels are associated with inputs.
+   - Make sure keyboard navigation works in the wizard.
+
+---
+
+## 4. Deploying Updates to Coolify
+
+1. **Build & test locally**
+   ```bash
+   # Backend
+   cd backend
+   uvicorn app.main:app --reload
+
+   # Frontend
+   cd ../frontend
+   pnpm dev   # or npm/yarn
+   ```
+
+2. **Update Docker image**
+   - Ensure the Dockerfile builds both backend and frontend.
+   - Build locally:
+     ```bash
+     docker build -t dad-social-media-agent:latest .
+     ```
+
+3. **Push to GitHub**
+   - Commit all backend + frontend changes.
+   - Push to the main branch or deployment branch used by Coolify.
+
+4. **Coolify service**
+   - In Coolify, trigger a redeploy for the app.
+   - Confirm all required environment variables are set in Coolify for the new version.
+
+5. **Post‑deploy smoke test**
+   - Open the deployed URL.
+   - Run through:
+     - Creating a manual topic post.
+     - Trying an auto‑generated topic.
+     - Verifying that holidays show up in Step 1 when you’re near a major holiday.
+
+---
+
+## 5. High‑Level Checklist
+
+When you’re not sure where you left off, check this list:
+
+- [ ] Holiday model + service created
+- [ ] `/api/v1/holidays/upcoming` and `/api/v1/holidays/on-date` implemented
+- [ ] AI planning/generation updated to accept `holiday_context`
+- [ ] New Post wizard Step 1 supports **manual vs auto** topic
+- [ ] Holiday chips appear when auto mode + “use holidays” enabled
+- [ ] Script/caption generation feels good and mentions holidays tastefully
+- [ ] Flow feels readable and low‑stress for Dad
+- [ ] App builds and deploys on Coolify with all env vars set
+- [ ] End‑to‑end test (topic → script → video → schedule) passes on the live app
+
+This doc lives outside the code comments so you can always come back, skim it, and know exactly what the next step in the project should be.

@@ -1,5 +1,7 @@
 """FastAPI application entry point."""
 import os
+import asyncio
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -8,8 +10,10 @@ from fastapi.responses import FileResponse
 from app.core.config import get_settings
 from app.api.v1 import api_router
 from app.database.database import init_db
+from app.services.holiday_service import sync_us_holidays
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="AI Social Media Co-Pilot",
@@ -20,8 +24,21 @@ app = FastAPI(
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database tables on application startup."""
+    """Initialize database tables and sync holidays on application startup."""
     init_db()
+    
+    # Sync holidays in background (non-blocking)
+    # This ensures holidays are available but doesn't block startup if it fails
+    async def sync_holidays_background():
+        try:
+            logger.info("Syncing US holidays...")
+            count = sync_us_holidays()
+            logger.info(f"Successfully synced {count} holidays")
+        except Exception as e:
+            logger.warning(f"Failed to sync holidays on startup (will retry on next request): {e}")
+    
+    # Run holiday sync in background
+    asyncio.create_task(sync_holidays_background())
 
 # CORS configuration
 app.add_middleware(

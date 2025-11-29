@@ -2,7 +2,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from openai import AsyncOpenAI
 from app.core.config import get_settings
 from app.models.content import ContentBrief, GeneratedPlan, ShotInstruction
@@ -308,12 +308,13 @@ Remember: Optimize for WATCH TIME, HOOK, and CLARITY. Keep everything simple, su
     return system_message
 
 
-async def generate_content_plan(brief: ContentBrief) -> GeneratedPlan:
+async def generate_content_plan(brief: ContentBrief, holiday_context: Optional[dict] = None) -> GeneratedPlan:
     """
     Generate content plan using OpenAI gpt-4o with Unicity client profile.
     
     Args:
         brief: Content brief with idea, platforms, tone, and optional length
+        holiday_context: Optional holiday context dictionary with holidays_on_date, upcoming_holidays, etc.
         
     Returns:
         GeneratedPlan with script, caption, and shot_plan
@@ -333,19 +334,49 @@ async def generate_content_plan(brief: ContentBrief) -> GeneratedPlan:
     # Build system message with profile
     system_message = build_system_message(client_profile)
     
+    # Determine the topic/idea based on mode
+    topic = brief.user_topic or brief.idea or ""
+    
+    # If mode is "auto" and we have holiday context, use holiday-based topic
+    if brief.mode == "auto" and holiday_context:
+        marketing_holidays = holiday_context.get("marketing_relevant_holidays", [])
+        if marketing_holidays:
+            # Use the first marketing-relevant holiday as the topic
+            holiday = marketing_holidays[0]
+            topic = f"Create content related to {holiday['name']} (holiday on {holiday['date']})"
+        elif brief.use_holidays:
+            topic = "Create wellness content that could be relevant for upcoming holidays or seasonal themes"
+    
     # Build user message from brief
     length_hint = ""
     if brief.length_seconds:
         length_hint = f" Target approximately {brief.length_seconds} seconds of spoken content."
     else:
         length_hint = " Target 20-40 seconds of spoken content."
+    
+    # Build holiday context section if available
+    holiday_section = ""
+    if holiday_context:
+        holidays_on_date = holiday_context.get("holidays_on_date", [])
+        upcoming_holidays = holiday_context.get("marketing_relevant_holidays", [])
+        
+        if holidays_on_date or upcoming_holidays:
+            holiday_section = "\n\nHOLIDAY CONTEXT:\n"
+            if holidays_on_date:
+                holiday_names = [h["name"] for h in holidays_on_date]
+                holiday_section += f"- Today is: {', '.join(holiday_names)}\n"
+            if upcoming_holidays:
+                upcoming_list = [f"{h['name']} ({h['date']})" for h in upcoming_holidays[:3]]
+                holiday_section += f"- Upcoming holidays: {', '.join(upcoming_list)}\n"
+            holiday_section += "- If relevant, tastefully mention the holiday (greetings, themes, gratitude) while staying compliant.\n"
+            holiday_section += "- Keep holiday mentions natural and wellness-focused, not forced.\n"
 
     user_message = f"""Create a short-form video plan for the following:
 
-Idea/Topic: {brief.idea}
+Idea/Topic: {topic}
 Tone: {brief.tone}
 Platforms: {', '.join(brief.platforms)}
-{length_hint}
+{length_hint}{holiday_section}
 
 CRITICAL REQUIREMENTS:
 1. HOOK (first 1-3 seconds): Must grab attention immediately with a pain point or clear value promise
@@ -417,12 +448,13 @@ Generate:
         raise
 
 
-async def generate_monthly_schedule(request: ScheduleRequest) -> list[ScheduledContentItem]:
+async def generate_monthly_schedule(request: ScheduleRequest, holiday_contexts: Optional[dict] = None) -> list[ScheduledContentItem]:
     """
     Generate a monthly schedule with full content for each posting day.
     
     Args:
         request: ScheduleRequest with start_date, platforms, posts_per_week
+        holiday_contexts: Optional dictionary mapping dates (ISO strings) to holiday context
         
     Returns:
         List of ScheduledContentItem with full content for each posting day
@@ -450,6 +482,22 @@ async def generate_monthly_schedule(request: ScheduleRequest) -> list[ScheduledC
     # Calculate end date (30 days from start)
     end_date = request.start_date + timedelta(days=29)
     
+    # Build holiday context section if available
+    holiday_section = ""
+    if holiday_contexts:
+        holiday_section = "\n\nHOLIDAY CONTEXT FOR THIS MONTH:\n"
+        for date_str, context in holiday_contexts.items():
+            holidays_on_date = context.get("holidays_on_date", [])
+            upcoming = context.get("marketing_relevant_holidays", [])
+            if holidays_on_date:
+                names = [h["name"] for h in holidays_on_date]
+                holiday_section += f"- {date_str}: {', '.join(names)}\n"
+            if upcoming:
+                upcoming_list = [f"{h['name']} ({h['date']})" for h in upcoming[:2]]
+                holiday_section += f"  Upcoming: {', '.join(upcoming_list)}\n"
+        holiday_section += "- When relevant, tastefully mention holidays (greetings, themes, gratitude) while staying compliant.\n"
+        holiday_section += "- Keep holiday mentions natural and wellness-focused, not forced.\n"
+    
     # Build user message for schedule generation
     user_message = f"""Generate a monthly posting schedule for {request.start_date} to {end_date}.
 
@@ -458,6 +506,7 @@ Requirements:
 - Platforms: {', '.join(request.platforms)}
 - Content mix: 60-70% pure value, 20-30% value + product, <10% direct CTA
 - Create 3-5 recurring series (e.g., "Energy Tip Tuesday", "Evening Reset Routines", "My 40+ Wellness Check-in")
+{holiday_section}
 - Each post must include:
   - Hook (1-3 seconds, MUST grab attention immediately or viewers scroll - use pain points)
   - Full script (15-45 seconds, following structure: Hook → Context/Empathy → Value Steps → Soft CTA)

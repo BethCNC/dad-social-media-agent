@@ -159,7 +159,7 @@ export const NewPostWizard = () => {
     } catch (err: any) {
       setSearchError(
         err.response?.data?.detail ||
-        'We couldn\'t search for videos. Please try again.'
+        'We couldn\'t search for videos right now. Please try again.'
       );
     } finally {
       setIsSearching(false);
@@ -209,7 +209,7 @@ export const NewPostWizard = () => {
     } catch (err: any) {
       setRenderError(
         err.response?.data?.detail ||
-        'We couldn\'t start video rendering. Please try again.'
+        'We couldn\'t start creating your video. Please try again.'
       );
       setIsRendering(false);
     }
@@ -249,12 +249,12 @@ export const NewPostWizard = () => {
   };
 
   const stepTitles = [
-    'Step 0: Monthly Schedule (Optional)',
-    'Step 1: Describe Your Content',
-    'Step 2: Review Script & Caption',
-    'Step 3: Select Assets',
-    `Step 4: Render ${templateType === 'image' ? 'Image' : 'Video'}`,
-    'Step 5: Schedule Post',
+    'Step 1: Monthly Schedule (Optional)',
+    'Step 2: Choose Your Topic',
+    'Step 3: Review Your Script & Caption',
+    'Step 4: Select Video Clips',
+    `Step 5: Create Your ${templateType === 'image' ? 'Image' : 'Video'}`,
+    'Step 6: Schedule Your Post',
   ];
 
   const renderStepContent = () => {
@@ -291,9 +291,9 @@ export const NewPostWizard = () => {
         if (!generatedPlan) {
           return (
             <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground text-lg">
-                  Please complete Step 1 first.
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground text-xl">
+                  Please complete the previous step first.
                 </p>
               </CardContent>
             </Card>
@@ -325,13 +325,14 @@ export const NewPostWizard = () => {
                   }
                 }}
                 placeholder="Search for video clips..."
-                className="text-base h-11"
+                className="text-lg h-12"
                 aria-label="Search for video clips"
               />
               <Button
                 onClick={() => handleSearch()}
                 disabled={isSearching || !searchQuery.trim()}
                 size="lg"
+                className="py-6 px-8 text-lg"
                 aria-label="Search videos"
               >
                 {isSearching ? (
@@ -346,7 +347,7 @@ export const NewPostWizard = () => {
             {searchError && (
               <Card className="border-destructive/20 bg-destructive/10">
                 <CardContent className="py-4">
-                  <p className="text-destructive text-base font-medium">{searchError}</p>
+                  <p className="text-destructive text-lg font-medium">{searchError}</p>
                 </CardContent>
               </Card>
             )}
@@ -360,7 +361,7 @@ export const NewPostWizard = () => {
             {selectedAssetIds.size === 0 && assets.length > 0 && (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <p className="text-amber-600 text-base">
+                  <p className="text-amber-600 text-lg">
                     Please select at least one video clip to continue.
                   </p>
                 </CardContent>
@@ -374,13 +375,14 @@ export const NewPostWizard = () => {
             <div className="space-y-4">
               <Card className="border-destructive/20 bg-destructive/10">
                 <CardContent className="py-4">
-                  <p className="text-destructive text-base font-medium">{renderError}</p>
+                  <p className="text-destructive text-lg font-medium">{renderError}</p>
                 </CardContent>
               </Card>
               <Button
                 onClick={startRender}
                 disabled={isRendering}
                 size="lg"
+                className="w-full py-6 text-lg"
                 aria-label="Retry video rendering"
               >
                 Try Again
@@ -393,7 +395,7 @@ export const NewPostWizard = () => {
           return (
             <Card>
               <CardHeader>
-                <CardTitle className="text-green-600">Your video is ready!</CardTitle>
+                <CardTitle className="text-green-600 text-2xl">Your video is ready!</CardTitle>
               </CardHeader>
               <CardContent>
                 <video
@@ -423,7 +425,7 @@ export const NewPostWizard = () => {
           <Card>
             <CardContent className="py-12 text-center">
               <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" aria-hidden="true" />
-              <p className="text-muted-foreground text-base">Starting video render...</p>
+              <p className="text-muted-foreground text-xl">We're building your video, this may take under a minute.</p>
             </CardContent>
           </Card>
         );
@@ -431,8 +433,8 @@ export const NewPostWizard = () => {
         if (!videoUrl) {
           return (
             <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground text-lg">
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground text-xl">
                   Please complete the previous steps first.
                 </p>
               </CardContent>
@@ -457,16 +459,16 @@ export const NewPostWizard = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <Card>
-        <CardHeader className="space-y-4">
+        <CardHeader className="space-y-6">
             <CardTitle className="text-3xl font-bold">
             {stepTitles[currentStep]}
           </CardTitle>
-          <div className="flex items-center gap-2" role="progressbar" aria-valuenow={currentStep} aria-valuemin={0} aria-valuemax={5} aria-label={`Step ${currentStep} of 5`}>
+          <div className="flex items-center gap-2" role="progressbar" aria-valuenow={currentStep} aria-valuemin={0} aria-valuemax={5} aria-label={`Step ${currentStep + 1} of 6`}>
             {[0, 1, 2, 3, 4, 5].map((step) => (
               <div
                 key={step}
                 className={cn(
-                  "flex-1 h-2 rounded-full transition-colors",
+                  "flex-1 h-3 rounded-full transition-colors",
                   step <= currentStep
                     ? 'bg-primary'
                     : 'bg-muted'
@@ -481,12 +483,13 @@ export const NewPostWizard = () => {
             {renderStepContent()}
           </div>
 
-          <div className="flex justify-between items-center pt-6 border-t border-border">
+          <div className="flex justify-between items-center pt-8 border-t border-border">
             <Button
               onClick={handlePrevious}
               disabled={currentStep === 0}
               variant="outline"
               size="lg"
+              className="py-6 px-8 text-lg"
               aria-label="Go to previous step"
             >
               <ChevronLeft className="w-5 h-5" aria-hidden="true" />
@@ -496,6 +499,7 @@ export const NewPostWizard = () => {
               <Button
                 onClick={handleSkipSchedule}
                 size="lg"
+                className="py-6 px-8 text-lg"
                 aria-label="Skip to manual content creation"
               >
                 Skip to Manual Content
@@ -511,6 +515,7 @@ export const NewPostWizard = () => {
                   (currentStep === 4 && !videoUrl)
                 }
                 size="lg"
+                className="py-6 px-8 text-lg"
                 aria-label="Go to next step"
               >
                 Next
