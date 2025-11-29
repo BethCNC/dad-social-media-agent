@@ -84,3 +84,13 @@ export const regeneratePostText = async (
   return response.data;
 };
 
+/**
+ * Manually trigger preview rendering for a post.
+ */
+export const renderPostPreview = async (
+  postId: number
+): Promise<WeeklyPost> => {
+  const response = await api.post<WeeklyPost>(`/api/weekly/posts/${postId}/render-preview`);
+  return response.data;
+};
+

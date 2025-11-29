@@ -1,5 +1,6 @@
 """Weekly schedule generation service."""
 import logging
+import asyncio
 from datetime import date, timedelta
 from typing import Dict
 from fastapi import HTTPException
@@ -9,6 +10,9 @@ from app.database.content_repository import get_all_quotes
 from app.database.models import WeeklySchedule as WeeklyScheduleDB, ScheduledPost as ScheduledPostDB
 from app.models.weekly_schedule import WeeklyScheduleRequest, WeeklyPost, WeeklySchedule
 from app.services.openai_client import generate_weekly_schedule
+from app.services.asset_search_service import search_relevant_assets
+from app.services.video_service import render_video, check_render_status
+from app.models.video import VideoRenderRequest, AssetSelection
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +34,118 @@ def calculate_series_breakdown(posts: list[WeeklyPost]) -> Dict[str, int]:
             series_counts[post.series_name] = series_counts.get(post.series_name, 0) + 1
     
     return series_counts
+
+
+async def auto_render_post_preview(post: WeeklyPost, db: Session) -> str | None:
+    """
+    Automatically select assets and render a preview for a post.
+    
+    Args:
+        post: WeeklyPost to render preview for
+        db: Database session
+        
+    Returns:
+        Media URL if successful, None if failed
+    """
+    try:
+        # Search for relevant assets using contextual search
+        logger.info(f"Searching assets for post {post.id}: {post.topic}")
+        
+        shot_plan_dict = [
+            {"description": shot.description, "duration_seconds": shot.duration_seconds}
+            for shot in post.shot_plan
+        ]
+        
+        assets = await search_relevant_assets(
+            topic=post.topic,
+            hook=post.hook,
+            script=post.script,
+            shot_plan=shot_plan_dict,
+            content_pillar=post.content_pillar,
+            suggested_keywords=post.suggested_keywords or [],
+            max_results=12
+        )
+        
+        if not assets:
+            logger.warning(f"No assets found for post {post.id}")
+            return None
+        
+        # Always require 2 videos since we're using video template
+        required_count = 2
+        selected_assets = assets[:required_count]
+        
+        if len(selected_assets) < required_count:
+            logger.warning(f"Not enough assets found for post {post.id}: need {required_count} videos, got {len(selected_assets)}")
+            return None
+        
+        logger.info(f"Selected {len(selected_assets)} video assets for post {post.id}:")
+        for i, asset in enumerate(selected_assets, 1):
+            logger.info(f"   Video {i}: {asset.video_url[:80]}... (duration: {asset.duration_seconds}s)")
+        
+        logger.info(f"Selected {len(selected_assets)} assets for post {post.id}, rendering preview...")
+        
+        # Create render request - always use video template for now
+        render_request = VideoRenderRequest(
+            assets=[
+                AssetSelection(
+                    id=asset.video_url,
+                    start_at=None,
+                    end_at=None
+                )
+                for asset in selected_assets
+            ],
+            script=post.script,
+            title=None,
+            template_type="video"  # Always use video template for now
+        )
+        
+        logger.info(f"Created render request for post {post.id}: {len(selected_assets)} assets, template_type=video")
+        
+        # Start render
+        logger.info(f"Starting Creatomate render for post {post.id}, job will be created...")
+        try:
+            job = await render_video(render_request)
+            logger.info(f"Creatomate render job created for post {post.id}: job_id={job.job_id}, status={job.status}")
+        except Exception as e:
+            logger.error(f"Failed to start Creatomate render for post {post.id}: {type(e).__name__}: {e}", exc_info=True)
+            return None
+        
+        if not job.job_id:
+            logger.error(f"No job_id returned from Creatomate for post {post.id}")
+            return None
+        
+        # Poll for completion (max 120 seconds = 2 minutes)
+        max_attempts = 60
+        attempts = 0
+        
+        logger.info(f"Polling for render completion for post {post.id}, job_id={job.job_id}")
+        while attempts < max_attempts:
+            await asyncio.sleep(2)  # Check every 2 seconds
+            try:
+                status = await check_render_status(job.job_id)
+                logger.debug(f"Post {post.id} render status check {attempts+1}/{max_attempts}: status={status.status}")
+                
+                if status.status == "succeeded" and status.video_url:
+                    logger.info(f"✅ Preview rendered successfully for post {post.id}: {status.video_url[:80]}...")
+                    return status.video_url
+                elif status.status in ["failed", "error"]:
+                    logger.warning(f"❌ Preview render failed for post {post.id}: status={status.status}")
+                    return None
+                elif status.status == "pending" or status.status == "rendering":
+                    # Still processing, continue polling
+                    pass
+            except Exception as e:
+                logger.error(f"Error checking render status for post {post.id}: {type(e).__name__}: {e}")
+                # Continue polling despite error
+            
+            attempts += 1
+        
+        logger.warning(f"⏱️ Preview render timeout for post {post.id} after {max_attempts * 2} seconds")
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error auto-rendering preview for post {post.id}: {type(e).__name__}: {e}")
+        return None
 
 
 async def create_weekly_schedule(
@@ -165,6 +281,12 @@ async def create_weekly_schedule(
         # Add IDs to posts
         for i, post in enumerate(weekly_posts):
             post.id = schedule_db.posts[i].id
+        
+        # Auto-render previews for all posts (in background, don't block)
+        logger.info(f"Starting auto-render of previews for {len(weekly_posts)} posts...")
+        
+        # Note: Preview rendering will happen in background via API endpoint
+        # The frontend can trigger rendering, or we can add a background task endpoint
         
         return WeeklySchedule(
             id=schedule_db.id,

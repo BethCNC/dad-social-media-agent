@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { PostMockup } from '@/components/calendar/PostMockup';
 import { 
   ArrowLeft, 
   RefreshCw, 
@@ -203,8 +204,11 @@ export const PostDetail = () => {
   };
 
   const handleFindMoreOptions = async () => {
-    setShowMoreOptions(true);
-    await loadAlternativeMedia();
+    if (!showMoreOptions) {
+      setShowMoreOptions(true);
+    } else {
+      setShowMoreOptions(false);
+    }
   };
 
   if (isLoading) {
@@ -283,12 +287,29 @@ export const PostDetail = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Visual Preview */}
+        {/* Left Column: Visual Preview with Mockup */}
         <Card>
           <CardHeader>
             <CardTitle>Visual Preview</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Post Mockup - Show how it looks on social platforms */}
+            <div className="space-y-2">
+              <Label>Social Media Preview</Label>
+              <div className="flex justify-center w-full">
+                <div className="w-full max-w-[390px]">
+                  <PostMockup
+                    mediaUrl={previewUrl || post.media_url || undefined}
+                    caption={post.caption}
+                    username="@username"
+                    templateType={post.template_type as 'image' | 'video'}
+                    platform="tiktok" // Default to TikTok, could be determined from schedule
+                    status={post.status}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Preview Media - Show preview if available, otherwise show current media */}
             {(previewUrl || post.media_url) ? (
               <div className="space-y-2">
@@ -306,7 +327,7 @@ export const PostDetail = () => {
                     </div>
                   </div>
                 ) : (
-                  <>
+                  <div className="w-full max-w-md mx-auto space-y-4">
                     {post.template_type === 'image' ? (
                       <img
                         src={previewUrl || post.media_url!}
@@ -327,7 +348,7 @@ export const PostDetail = () => {
                         <p className="text-xs text-gray-600">
                           This is a preview rendered with your Creatomate template. Click "Apply" to save it to this post.
                         </p>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Button
                             size="sm"
                             variant="default"
@@ -349,6 +370,7 @@ export const PostDetail = () => {
                                 setError(err.response?.data?.detail || 'Failed to apply preview');
                               }
                             }}
+                            className="flex-1"
                           >
                             Apply This Preview
                           </Button>
@@ -359,13 +381,14 @@ export const PostDetail = () => {
                               setPreviewUrl(null);
                               setSelectedAlternativeId(null);
                             }}
+                            className="flex-1"
                           >
                             Cancel Preview
                           </Button>
                         </div>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             ) : (
@@ -432,21 +455,40 @@ export const PostDetail = () => {
           {/* Change Media Section */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Change Media</CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleFindMoreOptions}
-                  disabled={isSearchingAlternatives}
-                >
-                  {isSearchingAlternatives ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="mr-2 h-4 w-4" />
-                  )}
-                  Find More Options
-                </Button>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle>Alternative Media Options</CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setAlternativeMedia([]);
+                      setShowMoreOptions(false);
+                      await loadAlternativeMedia();
+                    }}
+                    disabled={isSearchingAlternatives}
+                  >
+                    {isSearchingAlternatives ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                    )}
+                    Refresh Options
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleFindMoreOptions}
+                    disabled={isSearchingAlternatives}
+                  >
+                    {isSearchingAlternatives ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="mr-2 h-4 w-4" />
+                    )}
+                    {showMoreOptions ? 'Show Less' : 'Show More'}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -470,10 +512,20 @@ export const PostDetail = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-blue-900 mb-1">
+                      Template Requirements
+                    </p>
+                    <p className="text-sm text-blue-800">
+                      {post.template_type === 'image' 
+                        ? 'Please select exactly 1 image for the image template.'
+                        : 'Please select exactly 2 video clips for the video template.'}
+                    </p>
+                  </div>
                   <p className="text-sm text-gray-600">
-                    Select an alternative video/image option:
+                    Select an alternative {post.template_type === 'image' ? 'image' : 'video clip'} option:
                   </p>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     {(showMoreOptions ? alternativeMedia : alternativeMedia.slice(0, 3)).map((asset) => {
                       const isSelected = selectedAlternativeId === asset.id;
                       const isRendering = isSelected && isRenderingPreview;

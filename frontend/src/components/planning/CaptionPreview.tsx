@@ -27,7 +27,12 @@ export const CaptionPreview = ({ caption, onCaptionChange }: CaptionPreviewProps
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Caption</CardTitle>
+          <div>
+            <CardTitle>Caption</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Auto-generated with hashtags - edit if needed
+            </p>
+          </div>
           {!isEditing && (
             <Button
               variant="ghost"
