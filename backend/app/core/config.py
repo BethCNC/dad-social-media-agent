@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     CREATOMATE_VIDEO_TEMPLATE_ID: str
     AYRSHARE_API_KEY: str
     
+    # Optional: Default background music for Creatomate videos
+    CREATOMATE_DEFAULT_MUSIC: str = ""  # URL to music file (Creatomate asset or external URL)
+    
     # Application settings
     FRONTEND_URL: str = "http://localhost:5173"
     ENV: str = "development"

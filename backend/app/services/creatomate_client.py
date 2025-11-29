@@ -40,26 +40,44 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     asset_urls = [asset.id for asset in request.assets]
     
     # Build modifications object using dot notation
-    # Based on template structure: Background-1, Background-2, Text-1, Text-2, etc.
+    # Based on template structure: Music, Background-1, Background-2, Text-1, Text-2, etc.
     modifications = {}
     
+    # Add Music source (optional - can be configured or use default)
+    # Using a default background music from Creatomate assets if available
+    # You can override this in config if needed
+    music_source = getattr(settings, 'CREATOMATE_DEFAULT_MUSIC', None)
+    if music_source:
+        modifications["Music.source"] = music_source
+    
     # Map assets to Background elements (Background-1, Background-2, etc.)
-    # Templates typically have Background-1, Background-2, Background-3, etc.
+    # Templates typically have Background-1, Background-2 for video clips
     if asset_urls:
         for i, url in enumerate(asset_urls, start=1):
             element_name = f"Background-{i}.source"
             modifications[element_name] = url
     
-    # Map script text to Text elements
-    # For now, we'll put the full script in Text-1
-    # If the template has multiple text elements, you might want to split the script
+    # Map script text to Text elements (Text-1, Text-2)
+    # Split script into two parts for better visual distribution
     if request.script:
-        # Put script in first text element
-        modifications["Text-1.text"] = request.script
-        # If you want to split script across multiple text elements, you could do:
-        # script_parts = split_script_into_parts(request.script, num_parts=2)
-        # for i, part in enumerate(script_parts, start=1):
-        #     modifications[f"Text-{i}.text"] = part
+        script_lines = request.script.strip().split('\n')
+        # Split script roughly in half
+        mid_point = len(script_lines) // 2
+        
+        # Text-1: First half of script
+        text_1 = '\n'.join(script_lines[:mid_point]).strip()
+        if text_1:
+            modifications["Text-1.text"] = text_1
+        
+        # Text-2: Second half of script
+        text_2 = '\n'.join(script_lines[mid_point:]).strip()
+        if text_2:
+            modifications["Text-2.text"] = text_2
+        
+        # If script is short, put it all in Text-1 and leave Text-2 empty
+        if not text_2 and text_1:
+            modifications["Text-1.text"] = request.script
+            modifications["Text-2.text"] = ""  # Clear Text-2 if not used
     
     # Build payload with template_id and modifications
     payload = {
