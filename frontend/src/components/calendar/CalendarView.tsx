@@ -208,7 +208,7 @@ export const CalendarView = ({ posts, weekStartDate, onPostClick, onWeekChange }
             const post = dayPosts[0];
             const thumbnailUrl = post.id ? previewThumbnails[post.id] : undefined;
             const platform = getPlatform(post);
-
+            
             return (
               <Card
                 key={day.toISOString()}
@@ -232,7 +232,7 @@ export const CalendarView = ({ posts, weekStartDate, onPostClick, onWeekChange }
                         {format(day, 'MMM d')}
                       </div>
                     </div>
-                    <div className={cn(
+                <div className={cn(
                       "px-2 py-1 rounded-full text-xs font-semibold",
                       post.status === 'published' && 'bg-green-100 text-green-800',
                       post.status === 'scheduled' && 'bg-blue-100 text-blue-800',
@@ -254,8 +254,8 @@ export const CalendarView = ({ posts, weekStartDate, onPostClick, onWeekChange }
                       platform={platform}
                       status={post.status}
                     />
-                  </div>
-
+                </div>
+                
                   {/* Post Info */}
                   <div className="space-y-2 pt-4 border-t">
                     {post.series_name && (
@@ -269,12 +269,12 @@ export const CalendarView = ({ posts, weekStartDate, onPostClick, onWeekChange }
                     <div className="text-xs text-muted-foreground line-clamp-2">
                       {post.hook}
                     </div>
-                    {post.post_time && (
+                      {post.post_time && (
                       <div className="text-xs text-muted-foreground">
-                        {format(new Date(`2000-01-01T${post.post_time}`), 'h:mm a')}
-                      </div>
-                    )}
-                  </div>
+                          {format(new Date(`2000-01-01T${post.post_time}`), 'h:mm a')}
+                        </div>
+                      )}
+                </div>
                 </CardContent>
               </Card>
             );

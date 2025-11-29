@@ -23,6 +23,8 @@ class VideoRenderRequest(BaseModel):
     script: str
     title: str | None = None
     template_type: str = "video"  # "image" or "video"
+    # Optional background music URL to use for Music.source in Creatomate template
+    music_url: str | None = None
 
 
 class RenderJob(BaseModel):

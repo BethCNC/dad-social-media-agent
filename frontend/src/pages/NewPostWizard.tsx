@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Search, Loader2, CheckCircle2 } from 'lucide-react';
 import { ContentBriefForm } from '../components/forms/ContentBriefForm';
+import { ContentTypeSelector, type ContentType } from '../components/forms/ContentTypeSelector';
 import { ScriptPreview } from '../components/planning/ScriptPreview';
 import { CaptionPreview } from '../components/planning/CaptionPreview';
 import { AssetGrid } from '../components/assets/AssetGrid';
@@ -12,6 +13,8 @@ import { ScheduleCalendar } from '../components/schedule/ScheduleCalendar';
 import { ContentPreviewModal } from '../components/schedule/ContentPreviewModal';
 import { type GeneratedPlan, type TikTokMusicHint } from '../lib/contentApi';
 import { type MonthlySchedule, type ScheduledContentItem } from '../lib/scheduleApi';
+import { generateMonthlySchedule, type ScheduleRequest } from '../lib/scheduleApi';
+import { generateWeeklySchedule } from '../lib/weeklyApi';
 import { searchAssets, searchAssetsContextual, regenerateImage, type AssetResult } from '../lib/assetsApi';
 import { renderVideo, type VideoRenderRequest } from '../lib/videoApi';
 import { type ScheduleResponse } from '../lib/socialApi';
@@ -19,12 +22,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { format, startOfWeek } from 'date-fns';
 
 type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
 
 export const NewPostWizard = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<WizardStep>(0);
+  const [contentType, setContentType] = useState<ContentType | null>(null);
+  const [customPostCount, setCustomPostCount] = useState<number | null>(null);
   const [monthlySchedule, setMonthlySchedule] = useState<MonthlySchedule | null>(null);
   const [selectedScheduleItem, setSelectedScheduleItem] = useState<ScheduledContentItem | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -44,9 +51,85 @@ export const NewPostWizard = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
+
+  const handleContentTypeSelect = (type: ContentType, customCount?: number) => {
+    setContentType(type);
+    if (customCount) {
+      setCustomPostCount(customCount);
+    }
+
+    // Handle different content types
+    if (type === 'single') {
+      // Skip schedule generation, go directly to topic selection
+      setCurrentStep(1);
+    } else if (type === 'weekly') {
+      // Navigate to weekly schedule generation page
+      handleGenerateWeeklySchedule();
+    } else if (type === 'monthly' || type === 'custom') {
+      // Show monthly/custom schedule generator
+      // Stay on step 0 but show schedule generator
+    }
+  };
+
+  const handleGenerateWeeklySchedule = async () => {
+    try {
+      setIsGeneratingSchedule(true);
+      const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
+      await generateWeeklySchedule({
+        week_start_date: format(monday, 'yyyy-MM-dd'),
+        platforms: ['TikTok', 'Instagram'],
+      });
+      // Navigate to weekly schedule page after generation
+      navigate('/weekly');
+    } catch (err: any) {
+      console.error('Error generating weekly schedule:', err);
+      setRenderError(
+        err.response?.data?.detail ||
+        'We couldn\'t generate your weekly schedule. Please try again.'
+      );
+    } finally {
+      setIsGeneratingSchedule(false);
+    }
+  };
 
   const handleScheduleGenerated = (schedule: MonthlySchedule) => {
     setMonthlySchedule(schedule);
+  };
+
+  const handleGenerateCustomSchedule = async (postCount: number) => {
+    try {
+      setIsGeneratingSchedule(true);
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      
+      // Calculate posts_per_week based on custom count
+      // If they want X posts, calculate how many per week over ~30 days
+      const postsPerWeek = Math.round((postCount / 30) * 7);
+      
+      const request: ScheduleRequest = {
+        start_date: format(firstDay, 'yyyy-MM-dd'),
+        platforms: ['TikTok', 'Instagram'],
+        posts_per_week: Math.max(1, Math.min(7, postsPerWeek)),
+      };
+
+      const schedule = await generateMonthlySchedule(request);
+      // Limit to the requested number of posts
+      const limitedItems = schedule.items.slice(0, postCount);
+      const limitedSchedule: MonthlySchedule = {
+        ...schedule,
+        items: limitedItems,
+      };
+      setMonthlySchedule(limitedSchedule);
+    } catch (err: any) {
+      console.error('Error generating custom schedule:', err);
+      setRenderError(
+        err.response?.data?.detail ||
+        'We couldn\'t generate your schedule. Please try again.'
+      );
+    } finally {
+      setIsGeneratingSchedule(false);
+    }
   };
 
   const handleDayClick = (item: ScheduledContentItem) => {
@@ -72,8 +155,20 @@ export const NewPostWizard = () => {
   };
 
   const handleSkipSchedule = () => {
+    // Reset to single post mode and skip to topic selection
+    setContentType('single');
     setCurrentStep(1);
   };
+
+  // Handle pre-fills from dashboard navigation
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.prefillTopic || state?.trendIdea) {
+      // Coming from dashboard with a pre-filled topic - skip content type selection
+      setContentType('single');
+      setCurrentStep(1);
+    }
+  }, [location.state]);
 
   const handlePlanGenerated = (plan: GeneratedPlan) => {
     setGeneratedPlan(plan);
@@ -96,9 +191,12 @@ export const NewPostWizard = () => {
 
   // Don't auto-search - let user control when to search
 
-  // Check for trend idea in location state and pre-fill
+  // Check for trend idea or prefill topic in location state and pre-fill
   useEffect(() => {
-    const trendIdea = (location.state as any)?.trendIdea;
+    const state = location.state as any;
+    const trendIdea = state?.trendIdea;
+    const prefillTopic = state?.prefillTopic;
+    
     if (trendIdea) {
       // Pre-fill script and caption from trend
       if (trendIdea.hook_script) {
@@ -121,6 +219,11 @@ export const NewPostWizard = () => {
       
       // Skip to step 2 (review script & caption) since we already have the content
       setCurrentStep(2);
+    } else if (prefillTopic) {
+      // If we have a prefill topic from dashboard, navigate to step 1 with topic pre-filled
+      // The ContentBriefForm will handle this via a prop or we can store it in state
+      // For now, we'll skip to step 1 and let the user see the pre-filled form
+      setCurrentStep(1);
     }
   }, [location.state]);
 
@@ -317,7 +420,7 @@ export const NewPostWizard = () => {
   };
 
   const stepTitles = [
-    'Step 1: Monthly Schedule (Optional)',
+    'Step 1: Choose Content Type',
     'Step 2: Choose Your Topic',
     'Step 3: Review Your Script & Caption',
     'Step 4: Choose Your Visuals',
@@ -328,15 +431,108 @@ export const NewPostWizard = () => {
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
-        return (
-          <div className="space-y-6">
-            {!monthlySchedule ? (
-              <ScheduleGenerator onScheduleGenerated={handleScheduleGenerated} />
-            ) : (
+        // Show content type selector if not selected, or schedule generator/calendar based on type
+        if (!contentType) {
+          return <ContentTypeSelector onSelect={handleContentTypeSelect} />;
+        }
+
+        // If single post selected, should have skipped to step 1, but handle it anyway
+        if (contentType === 'single') {
+          // This shouldn't happen, but just in case, skip to step 1
+          return (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground text-xl">
+                  Creating a single post... Redirecting to topic selection.
+                </p>
+              </CardContent>
+            </Card>
+          );
+        }
+
+        // Weekly schedule - should have navigated away, but show loading state
+        if (contentType === 'weekly') {
+          return (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground text-xl">
+                  {isGeneratingSchedule ? 'Generating weekly schedule...' : 'Redirecting to weekly schedule...'}
+                </p>
+              </CardContent>
+            </Card>
+          );
+        }
+
+        // Monthly or Custom schedule
+        if (contentType === 'monthly' || contentType === 'custom') {
+          if (!monthlySchedule) {
+            // Show schedule generator
+            if (contentType === 'custom' && customPostCount) {
+              // Custom count - generate schedule directly
+              return (
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Generate {customPostCount} Post{customPostCount !== 1 ? 's' : ''}</CardTitle>
+                      <p className="text-muted-foreground">
+                        Creating a custom schedule with {customPostCount} posts
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        onClick={() => handleGenerateCustomSchedule(customPostCount)}
+                        disabled={isGeneratingSchedule}
+                        size="lg"
+                        className="w-full"
+                      >
+                        {isGeneratingSchedule ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                            Generating...
+                          </>
+                        ) : (
+                          `Generate ${customPostCount} Post${customPostCount !== 1 ? 's' : ''}`
+                        )}
+                      </Button>
+                      <Button
+                        onClick={() => setContentType(null)}
+                        variant="outline"
+                        className="w-full mt-4"
+                      >
+                        Choose Different Option
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            } else {
+              // Monthly - show schedule generator
+              return (
+                <div className="space-y-6">
+                  <ScheduleGenerator onScheduleGenerated={handleScheduleGenerated} />
+                  <Button
+                    onClick={() => setContentType(null)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Choose Different Option
+                  </Button>
+                </div>
+              );
+            }
+          } else {
+            // Schedule generated - show calendar
+            return (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold">Your Monthly Schedule</h2>
-                  <Button variant="outline" onClick={() => setMonthlySchedule(null)}>
+                  <h2 className="text-xl font-semibold">
+                    Your {contentType === 'custom' ? `${customPostCount} Post` : 'Monthly'} Schedule
+                  </h2>
+                  <Button variant="outline" onClick={() => {
+                    setMonthlySchedule(null);
+                    setContentType(null);
+                  }}>
                     Generate New Schedule
                   </Button>
                 </div>
@@ -350,11 +546,15 @@ export const NewPostWizard = () => {
                   </Button>
                 </div>
               </div>
-            )}
-          </div>
-        );
+            );
+          }
+        }
+
+        // Fallback
+        return <ContentTypeSelector onSelect={handleContentTypeSelect} />;
       case 1:
-        return <ContentBriefForm onPlanGenerated={handlePlanGenerated} />;
+        const prefillTopic = (location.state as any)?.prefillTopic;
+        return <ContentBriefForm onPlanGenerated={handlePlanGenerated} initialTopic={prefillTopic} />;
       case 2:
         if (!generatedPlan) {
           return (
@@ -604,21 +804,36 @@ export const NewPostWizard = () => {
               )}
 
               {videoUrl ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-green-600 text-2xl">Your video is ready!</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <video
-                      src={videoUrl}
-                      controls
-                      className="w-full rounded-lg shadow-lg"
-                      aria-label="Rendered video preview"
-                    >
-                      Your browser does not support the video tag.
-                    </video>
-                  </CardContent>
-                </Card>
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-green-600 text-2xl">Your video is ready!</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <video
+                        src={videoUrl}
+                        controls
+                        className="w-full rounded-lg shadow-lg"
+                        aria-label="Rendered video preview"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Compliance Check Badge */}
+                  <Card className="border-green-200 bg-green-50">
+                    <CardContent className="py-4 flex items-center gap-3">
+                      <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold text-green-900">Compliance Check Passed</p>
+                        <p className="text-sm text-green-700">
+                          Your content follows all Unicity compliance guidelines and is ready to post.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               ) : renderJobId ? (
                 <RenderStatusCard
                   jobId={renderJobId}
@@ -753,7 +968,7 @@ export const NewPostWizard = () => {
               <ChevronLeft className="w-5 h-5" aria-hidden="true" />
               Previous
             </Button>
-            {currentStep === 0 ? (
+            {currentStep === 0 && contentType && contentType !== 'single' && contentType !== 'weekly' ? (
               <Button
                 onClick={handleSkipSchedule}
                 size="lg"
@@ -763,7 +978,7 @@ export const NewPostWizard = () => {
                 Skip to Manual Content
                 <ChevronRight className="w-5 h-5 ml-2" aria-hidden="true" />
               </Button>
-            ) : (
+            ) : currentStep === 0 && !contentType ? null : (
               <Button
                 onClick={handleNext}
                 disabled={

@@ -1,173 +1,62 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Link as LinkIcon, Calendar, Loader2, Grid3x3, CalendarDays } from 'lucide-react';
+import { Plus, Sparkles, Calendar, TrendingUp, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { WeeklyScheduleView } from '@/components/weekly/WeeklyScheduleView';
-import { CalendarView } from '@/components/calendar/CalendarView';
-import { TrendAlertCard, type TrendAlert } from '@/components/trends/TrendAlertCard';
-import { generateWeeklySchedule, getWeeklySchedule, type WeeklySchedule, type WeeklyPost } from '@/lib/weeklyApi';
-import { getLatestTrends } from '@/lib/trendsApi';
-import { format, startOfWeek, parseISO } from 'date-fns';
+import { getDailyBriefing, type DailyBriefing, type TrendAlert } from '@/lib/dashboardApi';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const [currentSchedule, setCurrentSchedule] = useState<WeeklySchedule | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [accountsConnected, setAccountsConnected] = useState(false); // Placeholder
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
-  const [trendAlert, setTrendAlert] = useState<TrendAlert | null>(null);
-  const [isLoadingTrends, setIsLoadingTrends] = useState(false);
-  
-  // Auto-refresh schedule every 10 seconds to show real-time updates (faster for preview rendering)
-  useEffect(() => {
-    if (!currentSchedule) return;
-    
-    const interval = setInterval(async () => {
-      try {
-        const monday = getCurrentWeekMonday();
-        const schedule = await getWeeklySchedule(format(monday, 'yyyy-MM-dd'));
-        setCurrentSchedule(schedule);
-      } catch (err: any) {
-        // Silently fail on refresh - don't show errors for background updates
-        if (err.response?.status !== 404) {
-          console.error('Background schedule refresh failed:', err);
-        }
-      }
-    }, 10000); // Refresh every 10 seconds to catch preview updates faster
-    
-    return () => clearInterval(interval);
-  }, [currentSchedule]);
 
-  // Auto-trigger preview rendering for posts without media_url
+  // Load daily briefing on mount
   useEffect(() => {
-    if (!currentSchedule || !currentSchedule.posts) return;
-    
-    const postsNeedingPreview = currentSchedule.posts.filter(
-      post => post.id && !post.media_url && post.shot_plan.length > 0
-    );
-    
-    if (postsNeedingPreview.length === 0) return;
-    
-    // Trigger preview rendering for posts that need it
-    const triggerPreviews = async () => {
-      for (const post of postsNeedingPreview) {
-        if (!post.id) continue;
-        
-        try {
-          const { renderPostPreview } = await import('@/lib/weeklyApi');
-          console.log(`🎬 Triggering preview render for post ${post.id}: ${post.topic}`);
-          await renderPostPreview(post.id);
-          // Refresh schedule after a short delay to get updated media_url
-          setTimeout(async () => {
-            try {
-              const monday = getCurrentWeekMonday();
-              const schedule = await getWeeklySchedule(format(monday, 'yyyy-MM-dd'));
-              setCurrentSchedule(schedule);
-            } catch (err) {
-              console.error('Failed to refresh after preview render:', err);
-            }
-          }, 3000);
-        } catch (err: any) {
-          console.error(`❌ Failed to trigger preview for post ${post.id}:`, err);
-          // Don't show error to user - just log it
-        }
-      }
-    };
-    
-    // Wait a bit after schedule generation before triggering renders
-    const timeout = setTimeout(triggerPreviews, 2000);
-    return () => clearTimeout(timeout);
-  }, [currentSchedule?.id]); // Only run when schedule ID changes (new schedule generated)
-
-  // Get current week's Monday
-  const getCurrentWeekMonday = () => {
-    const today = new Date();
-    return startOfWeek(today, { weekStartsOn: 1 }); // Monday = 1
-  };
-
-  // Load current week's schedule on mount
-  useEffect(() => {
-    const loadCurrentWeek = async () => {
+    const loadBriefing = async () => {
       try {
         setIsLoading(true);
-        setError(null); // Clear any previous errors
-        const monday = getCurrentWeekMonday();
-        const schedule = await getWeeklySchedule(format(monday, 'yyyy-MM-dd'));
-        setCurrentSchedule(schedule);
+        setError(null);
+        const data = await getDailyBriefing();
+        setBriefing(data);
       } catch (err: any) {
-        // 404 is expected when no schedule exists yet - that's fine
-        if (err.response?.status === 404 || err.code === 'ERR_NETWORK') {
-          // No schedule exists or network error - user can generate one
-          setCurrentSchedule(null);
-          setError(null); // Don't show error for 404 or network issues
-        } else {
-          // Actual error occurred
-          console.error('Failed to load schedule:', err);
-          const errorMessage = err.response?.data?.detail || err.message || 'Failed to load schedule. Please try again.';
-          setError(errorMessage);
+        console.error('Failed to load briefing:', err);
+        
+        // Better error handling for network issues
+        let errorMessage = 'Failed to load your briefing. Please try again.';
+        
+        if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error') || !err.response) {
+          errorMessage = 'Could not connect to the server. Please make sure the backend server is running on port 8000.';
+        } else if (err.response?.data?.detail) {
+          errorMessage = err.response.data.detail;
+        } else if (err.message) {
+          errorMessage = err.message;
         }
+        
+        setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadCurrentWeek();
+    loadBriefing();
   }, []);
 
-  // Load trending content on mount
-  useEffect(() => {
-    const loadTrends = async () => {
-      try {
-        setIsLoadingTrends(true);
-        const trend = await getLatestTrends();
-        setTrendAlert(trend);
-      } catch (err: any) {
-        // Silently fail - trends are optional
-        console.log('Trends not available:', err.response?.data?.detail || err.message);
-        setTrendAlert(null);
-      } finally {
-        setIsLoadingTrends(false);
-      }
-    };
-
-    loadTrends();
-  }, []);
-
-  const handleNewPost = () => {
-    navigate('/wizard');
-  };
-
-  const handleGenerateWeek = async () => {
-    try {
-      setIsGenerating(true);
-      setError(null);
-      const monday = getCurrentWeekMonday();
-      const schedule = await generateWeeklySchedule({
-        week_start_date: format(monday, 'yyyy-MM-dd'),
-        platforms: ['TikTok', 'Instagram'],
+  const handleCreateThisPost = () => {
+    // Navigate to wizard with pre-filled prompt from suggested action
+    if (briefing?.suggested_action) {
+      navigate('/wizard', {
+        state: {
+          prefillTopic: briefing.suggested_action,
+        },
       });
-      setCurrentSchedule(schedule);
-      setError(null); // Clear any previous errors on success
-    } catch (err: any) {
-      console.error('Error generating schedule:', err);
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to generate weekly schedule. Please try again.';
-      setError(errorMessage);
-    } finally {
-      setIsGenerating(false);
+    } else {
+      navigate('/wizard');
     }
   };
 
-  const handlePostClick = (post: WeeklyPost) => {
-    if (post.id) {
-      navigate(`/posts/${post.id}`);
-    }
-  };
-
-  const handleUseTrendIdea = (trend: TrendAlert) => {
-    // Navigate to wizard with trend data in location state
+  const handleUseTrend = (trend: TrendAlert) => {
+    // Navigate to wizard with trend data
     navigate('/wizard', {
       state: {
         trendIdea: {
@@ -179,163 +68,232 @@ export const Dashboard = () => {
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground text-lg">Loading your briefing...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-lg text-red-700 font-medium">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!briefing) {
+    return null;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Social Media Co-Pilot</h1>
-          <p className="text-muted-foreground mt-2 text-base">
-            Create and manage your weekly content schedule
-          </p>
-        </div>
-        <div className="flex gap-4">
-          {!accountsConnected && (
-            <Button variant="outline" onClick={() => setAccountsConnected(true)}>
-              <LinkIcon className="mr-2 h-4 w-4" />
-              Connect Accounts
-            </Button>
+      <div className="space-y-2">
+        <h1 className="text-4xl font-bold">{briefing.greeting}</h1>
+        <div className="flex items-center gap-4 text-muted-foreground">
+          <p className="text-lg">{briefing.current_date}</p>
+          {briefing.daily_theme && (
+            <>
+              <span>•</span>
+              <p className="text-lg font-medium">{briefing.daily_theme}</p>
+            </>
           )}
-          <Button variant="outline" onClick={handleNewPost}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Custom Post
-          </Button>
         </div>
       </div>
 
+      {/* Hero Card - Today's Mission */}
+      <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center gap-2">
+            <Sparkles className="w-6 h-6 text-primary" />
+            Today's Mission
+          </CardTitle>
+          <CardDescription className="text-base">
+            Your suggested action for today
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <p className="text-xl font-medium text-foreground">
+            {briefing.suggested_action}
+          </p>
+          <Button
+            onClick={handleCreateThisPost}
+            size="lg"
+            className="w-full sm:w-auto py-6 px-8 text-lg font-semibold"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Create This Post
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Trend Alert Card */}
-      {trendAlert && (
-        <TrendAlertCard trend={trendAlert} onUseIdea={handleUseTrendIdea} />
+      {briefing.trend_alert && (
+        <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+          <CardHeader>
+            <CardTitle className="text-2xl flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-orange-600" />
+              🔥 Trending Now
+            </CardTitle>
+            <CardDescription className="text-base">
+              {briefing.trend_alert.title}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-base text-muted-foreground">
+              {briefing.trend_alert.why_it_works}
+            </p>
+            <div className="bg-white/60 rounded-lg p-4 border border-orange-200">
+              <p className="text-sm font-semibold text-orange-900 mb-2">Hook Preview:</p>
+              <p className="text-sm text-orange-800 italic">
+                "{briefing.trend_alert.hook_script.substring(0, 100)}..."
+              </p>
+            </div>
+            <Button
+              onClick={() => handleUseTrend(briefing.trend_alert!)}
+              variant="default"
+              size="lg"
+              className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700"
+            >
+              Use This Trend
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Connect Accounts Info (Placeholder) */}
-      {!accountsConnected && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-blue-900">Connect Your Social Accounts</h3>
-                <p className="text-sm text-blue-700 mt-1">
-                  Connect your TikTok and Instagram accounts via Ayrshare to schedule posts.
-                </p>
-              </div>
-              <Button variant="default" onClick={() => setAccountsConnected(true)}>
-                Connect Accounts
-              </Button>
+      {/* Upcoming Holidays */}
+      {briefing.upcoming_holidays && briefing.upcoming_holidays.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Upcoming Holidays
+            </CardTitle>
+            <CardDescription>
+              Opportunities for seasonal content
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {briefing.upcoming_holidays.map((holiday, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium">{holiday.name}</p>
+                    <p className="text-sm text-muted-foreground">{holiday.date}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigate('/wizard', {
+                        state: {
+                          prefillTopic: `Create content related to ${holiday.name}`,
+                        },
+                      });
+                    }}
+                  >
+                    Use
+                  </Button>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Error Message */}
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <p className="text-lg text-red-700 font-medium">{error}</p>
-            <p className="text-sm text-red-600 mt-2">
-              If this problem continues, check that the backend server is running on port 8000.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Generate Week Button or Schedule View */}
-      {isLoading ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground text-lg">Loading schedule...</p>
-          </CardContent>
-        </Card>
-      ) : currentSchedule ? (
-        <div className="space-y-8">
-          {/* View Mode Toggle */}
-          <div className="flex justify-end gap-4">
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Button
-              variant={viewMode === 'calendar' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('calendar')}
+              variant="outline"
+              size="lg"
+              className="h-auto py-6 flex-col items-start"
+              onClick={() => navigate('/wizard')}
             >
-              <CalendarDays className="w-4 h-4 mr-2" />
-              Calendar
+              <div className="flex items-center gap-2 mb-2">
+                <Plus className="w-5 h-5" />
+                <span className="text-lg font-semibold">Create Custom Post</span>
+              </div>
+              <span className="text-sm text-muted-foreground text-left">
+                Start from scratch with your own idea
+              </span>
             </Button>
             <Button
-              variant={viewMode === 'list' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('list')}
+              variant="outline"
+              size="lg"
+              className="h-auto py-6 flex-col items-start"
+              onClick={() => navigate('/weekly')}
             >
-              <Grid3x3 className="w-4 h-4 mr-2" />
-              List
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-5 h-5" />
+                <span className="text-lg font-semibold">View Weekly Schedule</span>
+              </div>
+              <span className="text-sm text-muted-foreground text-left">
+                See your planned posts for the week
+              </span>
             </Button>
           </div>
-          
-          {/* Calendar or List View */}
-          {viewMode === 'calendar' ? (
-            <CalendarView
-              posts={currentSchedule.posts}
-              weekStartDate={parseISO(currentSchedule.week_start_date)}
-              onPostClick={handlePostClick}
-              onWeekChange={(newWeekStart) => {
-                // Reload schedule for new week
-                const loadWeek = async () => {
-                  try {
-                    setIsLoading(true);
-                    const schedule = await getWeeklySchedule(format(newWeekStart, 'yyyy-MM-dd'));
-                    setCurrentSchedule(schedule);
-                  } catch (err: any) {
-                    if (err.response?.status === 404) {
-                      setCurrentSchedule(null);
-                    } else {
-                      setError(err.response?.data?.detail || 'Failed to load schedule.');
-                    }
-                  } finally {
-                    setIsLoading(false);
-                  }
-                };
-                loadWeek();
-              }}
-            />
-          ) : (
-            <WeeklyScheduleView
-              schedule={currentSchedule}
-              onPostClick={handlePostClick}
-            />
-          )}
-        </div>
-      ) : (
-        <Card className="text-center">
-          <CardHeader className="space-y-4 pb-8">
-            <CardTitle className="text-2xl font-bold">
-              Generate This Week's Content
-            </CardTitle>
-            <CardDescription className="text-base">
-              Create a complete week of AI-generated posts following TikTok best practices
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={handleGenerateWeek}
-              size="lg"
-              disabled={isGenerating}
-              className="inline-flex items-center gap-3 px-8 py-6 text-lg font-semibold"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                  Generating Schedule...
-                </>
-              ) : (
-                <>
-                  <Calendar className="w-6 h-6" />
-                  Generate This Week
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+        </CardContent>
+      </Card>
 
+      {/* Stats (Placeholder) */}
+      {briefing.stats && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Posts This Week
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{briefing.stats.posts_this_week}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Scheduled Posts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{briefing.stats.scheduled_posts}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Engagement Rate
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">
+                {briefing.stats.engagement_rate !== null
+                  ? `${briefing.stats.engagement_rate}%`
+                  : '—'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
-
