@@ -5,6 +5,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.services.dashboard_service import get_daily_briefing
+from app.services.trend_analytics_service import analyze_trend_pulse
 from app.database.database import get_db
 
 router = APIRouter()
@@ -51,5 +52,34 @@ async def get_briefing(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate daily briefing: {str(e)}"
+        ) from e
+
+
+@router.get("/trends-pulse")
+async def get_trends_pulse(
+    db: Session = Depends(get_db)
+):
+    """
+    Get social trends pulse data for the Trends Pulse dashboard.
+    
+    Returns aggregated trend metrics from Apify data:
+    - New viral trends count
+    - Rising templates count
+    - Breakout shorts count
+    - Highest velocity trends list
+    
+    Returns:
+        Dictionary with trend pulse data
+    """
+    try:
+        pulse_data = analyze_trend_pulse(
+            hashtags=["feelgreatsystem", "unicity", "insulinresistance"],
+            max_results=15
+        )
+        return pulse_data
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve trends pulse: {str(e)}"
         ) from e
 

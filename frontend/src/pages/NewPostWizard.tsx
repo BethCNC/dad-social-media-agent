@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Search, Loader2, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Loader2, CheckCircle2, Download } from 'lucide-react';
 import { ContentBriefForm } from '../components/forms/ContentBriefForm';
 import { ContentTypeSelector, type ContentType } from '../components/forms/ContentTypeSelector';
 import { ScriptPreview } from '../components/planning/ScriptPreview';
@@ -102,11 +102,11 @@ export const NewPostWizard = () => {
       setIsGeneratingSchedule(true);
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-      
+
       // Calculate posts_per_week based on custom count
       // If they want X posts, calculate how many per week over ~30 days
       const postsPerWeek = Math.round((postCount / 30) * 7);
-      
+
       const request: ScheduleRequest = {
         start_date: format(firstDay, 'yyyy-MM-dd'),
         platforms: ['TikTok', 'Instagram'],
@@ -144,7 +144,7 @@ export const NewPostWizard = () => {
       caption: item.caption,
       shot_plan: item.shot_plan,
     };
-    
+
     setGeneratedPlan(plan);
     // Always use 'video' template - backend handles Ken Burns for static images
     setScript(item.script);
@@ -196,8 +196,27 @@ export const NewPostWizard = () => {
     const state = location.state as any;
     const trendIdea = state?.trendIdea;
     const prefillTopic = state?.prefillTopic;
-    
-    if (trendIdea) {
+    const preselectedVideo = state?.preselectedVideo;
+
+    if (preselectedVideo) {
+      // Map UserVideo to AssetResult
+      const asset: AssetResult = {
+        id: preselectedVideo.id,
+        thumbnail_url: preselectedVideo.thumbnail_url || '',
+        video_url: preselectedVideo.video_url || '', // Ensure video_url exists on UserVideo or handle it
+        duration_seconds: preselectedVideo.duration_seconds || 0,
+      };
+
+      // Set assets and select it
+      setAssets([asset]);
+      setSelectedAssetIds(new Set([asset.id]));
+      setSelectedAssetOrder([asset.id]);
+
+      // Set content type to single and go to topic selection
+      // We could skip to visuals, but they need a script first
+      setContentType('single');
+      setCurrentStep(1);
+    } else if (trendIdea) {
       // Pre-fill script and caption from trend
       if (trendIdea.hook_script) {
         setScript(trendIdea.hook_script);
@@ -205,7 +224,7 @@ export const NewPostWizard = () => {
       if (trendIdea.suggested_caption) {
         setCaption(trendIdea.suggested_caption);
       }
-      
+
       // Create a minimal plan to allow progression
       const plan: GeneratedPlan = {
         script: trendIdea.hook_script || '',
@@ -216,7 +235,7 @@ export const NewPostWizard = () => {
         ],
       };
       setGeneratedPlan(plan);
-      
+
       // Skip to step 2 (review script & caption) since we already have the content
       setCurrentStep(2);
     } else if (prefillTopic) {
@@ -253,7 +272,7 @@ export const NewPostWizard = () => {
         visual_style: visualStyle, // Pass visual style preference
       });
       setAssets(results);
-      
+
       // Store prompts for regeneration (map asset ID to shot description)
       const promptsMap = new Map<string, string>();
       results.forEach((asset, index) => {
@@ -306,20 +325,20 @@ export const NewPostWizard = () => {
 
   const handleAssetSelectionChange = (id: string, selected: boolean) => {
     const maxSelection = 2; // Always allow 2 selections for video template
-    
+
     setSelectedAssetIds((prev) => {
       const next = new Set(prev);
       if (selected) {
         // Check if we can add more (respect maxSelection)
         if (next.size < maxSelection) {
-        next.add(id);
+          next.add(id);
         }
       } else {
         next.delete(id);
       }
       return next;
     });
-    
+
     // Update selection order - maintain order of selection
     setSelectedAssetOrder((prev) => {
       if (selected) {
@@ -401,7 +420,7 @@ export const NewPostWizard = () => {
         if (currentStep === 3) {
           const requiredCount = 2;
           if (selectedAssetIds.size !== requiredCount) {
-          return;
+            return;
           }
         }
         // For step 4, require video to be rendered
@@ -626,7 +645,7 @@ export const NewPostWizard = () => {
                   </button>
                 </div>
                 <p className="text-sm text-muted-foreground mt-3">
-                  {visualStyle === 'pexels' 
+                  {visualStyle === 'pexels'
                     ? 'Search for real stock videos that match your content.'
                     : 'Create unique AI-generated images for each scene.'}
                 </p>
@@ -731,12 +750,12 @@ export const NewPostWizard = () => {
                   setIsSearching(true);
                   setSearchError(null);
                   const newAsset = await regenerateImage(prompt);
-                  
+
                   // Update the asset in the list
-                  setAssets(prev => prev.map(asset => 
+                  setAssets(prev => prev.map(asset =>
                     asset.id === assetId ? newAsset : asset
                   ));
-                  
+
                   // If the regenerated asset was selected, update selection
                   if (selectedAssetIds.has(assetId)) {
                     setSelectedAssetIds(prev => {
@@ -745,7 +764,7 @@ export const NewPostWizard = () => {
                       next.add(newAsset.id);
                       return next;
                     });
-                    setSelectedAssetOrder(prev => 
+                    setSelectedAssetOrder(prev =>
                       prev.map(id => id === assetId ? newAsset.id : id)
                     );
                   }
@@ -771,8 +790,8 @@ export const NewPostWizard = () => {
                     {selectedAssetIds.size === 0
                       ? `Please select ${requiredCount} visuals to continue.`
                       : selectedAssetIds.size < requiredCount
-                      ? `Please select ${requiredCount - selectedAssetIds.size} more visual${requiredCount - selectedAssetIds.size > 1 ? 's' : ''} to continue.`
-                      : `Please select exactly ${requiredCount} visuals. You have selected ${selectedAssetIds.size}.`}
+                        ? `Please select ${requiredCount - selectedAssetIds.size} more visual${requiredCount - selectedAssetIds.size > 1 ? 's' : ''} to continue.`
+                        : `Please select exactly ${requiredCount} visuals. You have selected ${selectedAssetIds.size}.`}
                   </p>
                 </CardContent>
               </Card>
@@ -818,9 +837,24 @@ export const NewPostWizard = () => {
                       >
                         Your browser does not support the video tag.
                       </video>
+                      <Button
+                        variant="outline"
+                        className="w-full mt-4"
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = videoUrl;
+                          link.download = `rendered-video.mp4`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Video
+                      </Button>
                     </CardContent>
                   </Card>
-                  
+
                   {/* Compliance Check Badge */}
                   <Card className="border-green-200 bg-green-50">
                     <CardContent className="py-4 flex items-center gap-3">
@@ -933,7 +967,7 @@ export const NewPostWizard = () => {
     <div className="max-w-4xl mx-auto">
       <Card>
         <CardHeader className="space-y-6">
-            <CardTitle className="text-3xl font-bold">
+          <CardTitle className="text-3xl font-bold">
             {stepTitles[currentStep]}
           </CardTitle>
           <div className="flex items-center gap-2" role="progressbar" aria-valuenow={currentStep} aria-valuemin={0} aria-valuemax={5} aria-label={`Step ${currentStep + 1} of 6`}>
@@ -998,7 +1032,7 @@ export const NewPostWizard = () => {
           </div>
         </CardContent>
       </Card>
-      
+
       {showScheduleModal && selectedScheduleItem && (
         <ContentPreviewModal
           item={selectedScheduleItem}

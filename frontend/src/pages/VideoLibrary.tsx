@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Upload, Trash2, Video, Loader2, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Upload, Trash2, Video, Loader2, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { listUserVideos, uploadVideo, deleteUserVideo, type UserVideo } from '@/
 import { cn } from '@/lib/utils';
 
 export const VideoLibrary = () => {
+  const navigate = useNavigate();
   const [videos, setVideos] = useState<UserVideo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -56,13 +58,13 @@ export const VideoLibrary = () => {
     try {
       setIsUploading(true);
       setError(null);
-      
+
       await uploadVideo(
         uploadFile,
         uploadTags || undefined,
         uploadDescription || undefined
       );
-      
+
       // Reset form
       setUploadFile(null);
       setUploadTags('');
@@ -71,7 +73,7 @@ export const VideoLibrary = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      
+
       // Reload videos
       await loadVideos();
     } catch (err: any) {
@@ -197,15 +199,35 @@ export const VideoLibrary = () => {
                   <span>Used {video.use_count} times</span>
                   <span>{formatDate(video.created_at)}</span>
                 </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="w-full mt-2"
-                  onClick={() => handleDelete(parseInt(video.id))}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      // Navigate to wizard with this video pre-selected
+                      // We need to map UserVideo to AssetResult-like structure if needed, 
+                      // but passing the whole object is fine for now
+                      navigate('/wizard', {
+                        state: {
+                          preselectedVideo: video
+                        }
+                      });
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Post
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => handleDelete(parseInt(video.id))}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

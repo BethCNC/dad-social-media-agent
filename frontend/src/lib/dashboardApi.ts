@@ -1,4 +1,5 @@
 import api from './api';
+import type { TrendsPulseData, TrendItem } from '../components/trends/SocialTrendsPulse';
 
 export interface DailyBriefing {
   greeting: string;
@@ -10,6 +11,7 @@ export interface DailyBriefing {
     date: string;
   }>;
   trend_alert: TrendAlert | null;
+  trend_pulse: TrendsPulseData | null;
   stats: {
     posts_this_week: number;
     scheduled_posts: number;
@@ -23,6 +25,8 @@ export interface TrendAlert {
   hook_script: string;
   suggested_caption: string;
 }
+
+export type { TrendsPulseData, TrendItem };
 
 /**
  * Get daily briefing for Myles Hub.
