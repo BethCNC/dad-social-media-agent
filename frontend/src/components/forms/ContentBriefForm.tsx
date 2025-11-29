@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { generatePlan, type ContentBrief, type GeneratedPlan } from '../../lib/contentApi';
+import { getUpcomingHolidays, type Holiday } from '../../lib/holidaysApi';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,13 +9,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface ContentBriefFormProps {
   onPlanGenerated: (plan: GeneratedPlan, templateType: string) => void;
 }
 
 export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => {
-  const [idea, setIdea] = useState('');
+  const [mode, setMode] = useState<'manual' | 'auto'>('manual');
+  const [userTopic, setUserTopic] = useState('');
+  const [useHolidays, setUseHolidays] = useState(false);
+  const [selectedHolidayId, setSelectedHolidayId] = useState<string | null>(null);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [isLoadingHolidays, setIsLoadingHolidays] = useState(false);
   const [tone, setTone] = useState('friendly');
   const [platforms, setPlatforms] = useState<string[]>(['TikTok']);
   const [lengthSeconds, setLengthSeconds] = useState<number | null>(null);
@@ -33,6 +40,30 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
 
   const platformOptions = ['TikTok', 'Instagram'];
 
+  // Fetch holidays when auto mode is selected
+  useEffect(() => {
+    if (mode === 'auto') {
+      setIsLoadingHolidays(true);
+      getUpcomingHolidays(14)
+        .then((data) => {
+          // Filter to marketing-relevant holidays only
+          const marketingRelevant = data.filter((h) => h.is_marketing_relevant);
+          setHolidays(marketingRelevant);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch holidays:', err);
+          setHolidays([]);
+        })
+        .finally(() => {
+          setIsLoadingHolidays(false);
+        });
+    } else {
+      setHolidays([]);
+      setUseHolidays(false);
+      setSelectedHolidayId(null);
+    }
+  }, [mode]);
+
   const handlePlatformToggle = (platform: string) => {
     setPlatforms((prev) =>
       prev.includes(platform)
@@ -41,14 +72,40 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
     );
   };
 
+  const formatHolidayDate = (dateStr: string): string => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Validation
+    if (mode === 'manual' && !userTopic.trim()) {
+      setError('Please describe what you want your video to be about.');
+      return;
+    }
+
+    if (platforms.length === 0) {
+      setError('Please select at least one platform.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const brief: ContentBrief = {
-        idea,
+        mode,
+        user_topic: mode === 'manual' ? userTopic : null,
+        use_holidays: mode === 'auto' ? useHolidays : false,
+        selected_holiday_id: mode === 'auto' && useHolidays ? selectedHolidayId : null,
+        // Legacy field for backward compatibility
+        idea: mode === 'manual' ? userTopic : null,
         platforms,
         tone,
         length_seconds: lengthSeconds || null,
@@ -60,7 +117,7 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
     } catch (err: any) {
       setError(
         err.response?.data?.detail ||
-        'We couldn\'t generate your content plan. Please try again.'
+        'The helper got stuck. Please try again.'
       );
     } finally {
       setIsLoading(false);
@@ -70,38 +127,147 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Content Brief</CardTitle>
-        <CardDescription>
-          Describe your video idea and preferences
+        <CardTitle className="text-2xl font-bold">What do you want to talk about?</CardTitle>
+        <CardDescription className="text-lg">
+          We'll help you write the words for your video.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="idea" className="text-base font-semibold">
-              What's your video idea?
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Mode Selection */}
+          <div className="space-y-4">
+            <Label className="text-lg font-semibold">
+              Choose how you'd like to create your content
             </Label>
-            <Textarea
-              id="idea"
-              value={idea}
-              onChange={(e) => setIdea(e.target.value)}
-              required
-              rows={6}
-              className="text-base min-h-[120px]"
-              placeholder="Describe what you want your video to be about..."
-              aria-describedby="idea-description"
-            />
-            <p id="idea-description" className="text-sm text-muted-foreground">
-              Be as detailed as possible. The AI will use this to create your script and caption.
-            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setMode('manual')}
+                className={cn(
+                  'p-6 border-2 rounded-lg text-left transition-all',
+                  mode === 'manual'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                <div className="font-semibold text-lg mb-2">I already have a topic</div>
+                <div className="text-sm text-muted-foreground">
+                  Describe what you want your video to be about, and we'll create the script and caption for you.
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('auto')}
+                className={cn(
+                  'p-6 border-2 rounded-lg text-left transition-all',
+                  mode === 'auto'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                <div className="font-semibold text-lg mb-2">Suggest a topic for me</div>
+                <div className="text-sm text-muted-foreground">
+                  Let the AI suggest a topic based on what's relevant right now, including upcoming holidays.
+                </div>
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="templateType" className="text-base font-semibold">
+          {/* Manual Mode: User Topic */}
+          {mode === 'manual' && (
+            <div className="space-y-3">
+              <Label htmlFor="userTopic" className="text-lg font-semibold">
+                Describe what you want this video to be about
+              </Label>
+              <Textarea
+                id="userTopic"
+                value={userTopic}
+                onChange={(e) => setUserTopic(e.target.value)}
+                required={mode === 'manual'}
+                rows={6}
+                className="text-lg min-h-[140px]"
+                placeholder="For example: '3 tips for feeling more stable energy throughout the day' or 'My morning routine for better focus'..."
+                aria-describedby="topic-description"
+              />
+              <p id="topic-description" className="text-base text-muted-foreground">
+                Be as detailed as possible. The AI will use this to create your script and caption.
+              </p>
+            </div>
+          )}
+
+          {/* Auto Mode: Holiday Selection */}
+          {mode === 'auto' && (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="useHolidays"
+                  checked={useHolidays}
+                  onCheckedChange={(checked) => {
+                    setUseHolidays(checked as boolean);
+                    if (!checked) {
+                      setSelectedHolidayId(null);
+                    }
+                  }}
+                />
+                <Label htmlFor="useHolidays" className="text-lg font-normal cursor-pointer">
+                  Use upcoming holidays if relevant
+                </Label>
+              </div>
+
+              {useHolidays && (
+                <div className="space-y-3">
+                  <Label className="text-lg font-semibold">
+                    Select a holiday (optional)
+                  </Label>
+                  {isLoadingHolidays ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Loading holidays...</span>
+                    </div>
+                  ) : holidays.length > 0 ? (
+                    <div className="flex flex-wrap gap-3">
+                      {holidays.map((holiday) => (
+                        <button
+                          key={holiday.id}
+                          type="button"
+                          onClick={() =>
+                            setSelectedHolidayId(
+                              selectedHolidayId === holiday.id ? null : holiday.id
+                            )
+                          }
+                          className={cn(
+                            'px-4 py-2 rounded-lg border-2 transition-all text-base',
+                            selectedHolidayId === holiday.id
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border hover:border-primary/50'
+                          )}
+                        >
+                          {holiday.name} – {formatHolidayDate(holiday.date)}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-base text-muted-foreground">
+                      No upcoming holidays found. The AI will suggest a general wellness topic.
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    {selectedHolidayId
+                      ? 'The AI will create content related to the selected holiday.'
+                      : 'The AI will choose a relevant holiday or suggest a general wellness topic.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Content Type */}
+          <div className="space-y-3">
+            <Label htmlFor="templateType" className="text-lg font-semibold">
               Content Type
             </Label>
             <Select value={templateType} onValueChange={setTemplateType}>
-              <SelectTrigger id="templateType" className="text-base h-11">
+              <SelectTrigger id="templateType" className="text-lg h-12">
                 <SelectValue placeholder="Select content type" />
               </SelectTrigger>
               <SelectContent>
@@ -109,17 +275,18 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
                 <SelectItem value="image">Image</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Choose whether to create a video or static image post
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tone" className="text-base font-semibold">
+          {/* Tone */}
+          <div className="space-y-3">
+            <Label htmlFor="tone" className="text-lg font-semibold">
               Tone
             </Label>
             <Select value={tone} onValueChange={setTone}>
-              <SelectTrigger id="tone" className="text-base h-11">
+              <SelectTrigger id="tone" className="text-lg h-12">
                 <SelectValue placeholder="Select a tone" />
               </SelectTrigger>
               <SelectContent>
@@ -132,10 +299,9 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
             </Select>
           </div>
 
+          {/* Platforms */}
           <div className="space-y-3">
-            <Label className="text-base font-semibold">
-              Platforms
-            </Label>
+            <Label className="text-lg font-semibold">Platforms</Label>
             <div className="space-y-3">
               {platformOptions.map((platform) => (
                 <div key={platform} className="flex items-center space-x-3">
@@ -147,7 +313,7 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
                   />
                   <Label
                     htmlFor={`platform-${platform}`}
-                    className="text-base font-normal cursor-pointer"
+                    className="text-lg font-normal cursor-pointer"
                   >
                     {platform}
                   </Label>
@@ -155,14 +321,15 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
               ))}
             </div>
             {platforms.length === 0 && (
-              <p className="text-sm text-destructive">
+              <p className="text-base text-destructive">
                 Please select at least one platform
               </p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="length" className="text-base font-semibold">
+          {/* Video Length (Optional) */}
+          <div className="space-y-3">
+            <Label htmlFor="length" className="text-lg font-semibold">
               Video Length (seconds) - Optional
             </Label>
             <Input
@@ -174,32 +341,41 @@ export const ContentBriefForm = ({ onPlanGenerated }: ContentBriefFormProps) => 
               onChange={(e) =>
                 setLengthSeconds(e.target.value ? parseInt(e.target.value) : null)
               }
-              className="text-base h-11"
+              className="text-lg h-12"
               placeholder="e.g., 30"
               aria-describedby="length-description"
             />
-            <p id="length-description" className="text-sm text-muted-foreground">
+            <p id="length-description" className="text-base text-muted-foreground">
               Recommended: 15-60 seconds for short-form content
             </p>
           </div>
 
+          {/* Error Message */}
           {error && (
-            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg" role="alert">
-              <p className="text-destructive text-base font-medium">{error}</p>
+            <div
+              className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg"
+              role="alert"
+            >
+              <p className="text-destructive text-lg font-medium">{error}</p>
             </div>
           )}
 
+          {/* Submit Button */}
           <Button
             type="submit"
-            disabled={isLoading || !idea.trim() || platforms.length === 0}
+            disabled={
+              isLoading ||
+              (mode === 'manual' && !userTopic.trim()) ||
+              platforms.length === 0
+            }
             size="lg"
-            className="w-full text-base font-semibold"
+            className="w-full text-lg font-semibold py-6"
             aria-label="Generate content plan"
           >
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                Generating...
+                <span className="ml-2">Generating...</span>
               </>
             ) : (
               'Generate Content Plan'
