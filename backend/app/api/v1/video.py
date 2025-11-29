@@ -46,3 +46,25 @@ async def get_render_status(job_id: str) -> RenderJob:
             status_code=500,
             detail=error_message
         ) from e
+
+
+@router.post("/render/preview", response_model=RenderJob)
+async def render_preview(request: VideoRenderRequest) -> RenderJob:
+    """
+    Render a quick preview using Creatomate template.
+    Used for showing previews when user selects alternative assets.
+    
+    Args:
+        request: Video render request with assets, script, and template_type
+        
+    Returns:
+        RenderJob with job_id and initial status
+    """
+    try:
+        return await render_video(request)
+    except Exception as e:
+        error_message = str(e) if str(e) else "We couldn't render preview. Please try again."
+        raise HTTPException(
+            status_code=500,
+            detail=error_message
+        ) from e

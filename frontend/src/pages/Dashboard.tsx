@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Link as LinkIcon, Calendar, Loader2 } from 'lucide-react';
+import { Plus, Link as LinkIcon, Calendar, Loader2, Grid3x3, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { WeeklyScheduleView } from '@/components/weekly/WeeklyScheduleView';
-import { PostEditor } from '@/components/weekly/PostEditor';
+import { CalendarView } from '@/components/calendar/CalendarView';
 import { generateWeeklySchedule, getWeeklySchedule, type WeeklySchedule, type WeeklyPost } from '@/lib/weeklyApi';
 import { format, startOfWeek, parseISO } from 'date-fns';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const [currentSchedule, setCurrentSchedule] = useState<WeeklySchedule | null>(null);
-  const [selectedPost, setSelectedPost] = useState<WeeklyPost | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accountsConnected, setAccountsConnected] = useState(false); // Placeholder
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
 
   // Get current week's Monday
   const getCurrentWeekMonday = () => {
@@ -28,13 +28,21 @@ export const Dashboard = () => {
     const loadCurrentWeek = async () => {
       try {
         setIsLoading(true);
+        setError(null); // Clear any previous errors
         const monday = getCurrentWeekMonday();
         const schedule = await getWeeklySchedule(format(monday, 'yyyy-MM-dd'));
         setCurrentSchedule(schedule);
       } catch (err: any) {
-        // Schedule doesn't exist yet, that's okay
-        if (err.response?.status !== 404) {
-          setError(err.response?.data?.detail || 'Failed to load schedule');
+        // 404 is expected when no schedule exists yet - that's fine
+        if (err.response?.status === 404 || err.code === 'ERR_NETWORK') {
+          // No schedule exists or network error - user can generate one
+          setCurrentSchedule(null);
+          setError(null); // Don't show error for 404 or network issues
+        } else {
+          // Actual error occurred
+          console.error('Failed to load schedule:', err);
+          const errorMessage = err.response?.data?.detail || err.message || 'Failed to load schedule. Please try again.';
+          setError(errorMessage);
         }
       } finally {
         setIsLoading(false);
@@ -68,27 +76,7 @@ export const Dashboard = () => {
   const handlePostClick = (post: WeeklyPost) => {
     if (post.id) {
       navigate(`/posts/${post.id}`);
-    } else {
-      setSelectedPost(post);
     }
-  };
-
-  const handlePostUpdate = (updatedPost: WeeklyPost) => {
-    if (!currentSchedule) return;
-    
-    const updatedPosts = currentSchedule.posts.map((p) =>
-      p.id === updatedPost.id ? updatedPost : p
-    );
-    
-    setCurrentSchedule({
-      ...currentSchedule,
-      posts: updatedPosts,
-    });
-    setSelectedPost(updatedPost);
-  };
-
-  const handleCloseEditor = () => {
-    setSelectedPost(null);
   };
 
   return (
@@ -148,14 +136,64 @@ export const Dashboard = () => {
         <Card>
           <CardContent className="py-12 text-center">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading schedule...</p>
+            <p className="text-muted-foreground text-lg">Loading schedule...</p>
           </CardContent>
         </Card>
       ) : currentSchedule ? (
-        <WeeklyScheduleView
-          schedule={currentSchedule}
-          onPostClick={handlePostClick}
-        />
+        <div className="space-y-6">
+          {/* View Mode Toggle */}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant={viewMode === 'calendar' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('calendar')}
+            >
+              <CalendarDays className="w-4 h-4 mr-2" />
+              Calendar
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <Grid3x3 className="w-4 h-4 mr-2" />
+              List
+            </Button>
+          </div>
+          
+          {/* Calendar or List View */}
+          {viewMode === 'calendar' ? (
+            <CalendarView
+              posts={currentSchedule.posts}
+              weekStartDate={parseISO(currentSchedule.week_start_date)}
+              onPostClick={handlePostClick}
+              onWeekChange={(newWeekStart) => {
+                // Reload schedule for new week
+                const loadWeek = async () => {
+                  try {
+                    setIsLoading(true);
+                    const schedule = await getWeeklySchedule(format(newWeekStart, 'yyyy-MM-dd'));
+                    setCurrentSchedule(schedule);
+                  } catch (err: any) {
+                    if (err.response?.status === 404) {
+                      setCurrentSchedule(null);
+                    } else {
+                      setError(err.response?.data?.detail || 'Failed to load schedule.');
+                    }
+                  } finally {
+                    setIsLoading(false);
+                  }
+                };
+                loadWeek();
+              }}
+            />
+          ) : (
+            <WeeklyScheduleView
+              schedule={currentSchedule}
+              onPostClick={handlePostClick}
+            />
+          )}
+        </div>
       ) : (
         <Card className="text-center">
           <CardHeader className="space-y-4 pb-8">
@@ -189,14 +227,6 @@ export const Dashboard = () => {
         </Card>
       )}
 
-      {/* Post Editor Modal */}
-      {selectedPost && (
-        <PostEditor
-          post={selectedPost}
-          onClose={handleCloseEditor}
-          onUpdate={handlePostUpdate}
-        />
-      )}
     </div>
   );
 };
