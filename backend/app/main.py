@@ -27,6 +27,13 @@ async def startup_event():
     """Initialize database tables and sync holidays on application startup."""
     init_db()
     
+    # Log Creatomate template configuration
+    logger.info("=" * 60)
+    logger.info("Creatomate Template Configuration:")
+    logger.info(f"  Image Template ID: {settings.CREATOMATE_IMAGE_TEMPLATE_ID}")
+    logger.info(f"  Video Template ID: {settings.CREATOMATE_VIDEO_TEMPLATE_ID}")
+    logger.info("=" * 60)
+    
     # Sync holidays in background (non-blocking)
     # This ensures holidays are available but doesn't block startup if it fails
     async def sync_holidays_background():

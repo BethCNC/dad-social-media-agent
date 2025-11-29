@@ -32,8 +32,14 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     template_type = request.template_type.lower() if request.template_type else "video"
     if template_type == "image":
         template_id = settings.CREATOMATE_IMAGE_TEMPLATE_ID
+        logger.info(f"Using image template ID: {template_id}")
     else:
         template_id = settings.CREATOMATE_VIDEO_TEMPLATE_ID
+        logger.info(f"Using video template ID: {template_id}")
+    
+    # Validate template ID is not empty
+    if not template_id or not template_id.strip():
+        raise ValueError(f"Template ID for {template_type} is empty. Please set CREATOMATE_{template_type.upper()}_TEMPLATE_ID in your .env file.")
     
     # Build modifications to pass to the template
     # Creatomate uses dot notation: "ElementName.property" to modify template elements
