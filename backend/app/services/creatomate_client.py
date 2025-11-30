@@ -49,10 +49,43 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     # (using API endpoint instead of static files to avoid ngrok browser warning issues)
     asset_urls = [asset.id for asset in request.assets]
     
-    # Validate URLs are absolute (Creatomate needs full URLs)
+    # Convert relative URLs to absolute URLs using API_BASE_URL
+    api_base = settings.API_BASE_URL.rstrip('/')
+    absolute_urls = []
     for i, url in enumerate(asset_urls):
-        if url and not url.startswith(('http://', 'https://')):
-            error_msg = f"Asset URL {i} is not absolute: {url}. Creatomate requires full URLs."
+        if not url:
+            error_msg = f"Asset URL {i} is empty."
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        # If URL is already absolute (starts with http:// or https://), use as-is
+        if url.startswith(('http://', 'https://')):
+            absolute_urls.append(url)
+            logger.info(f"Asset URL {i} is already absolute: {url[:80]}...")
+        # If URL is relative (starts with /), make it absolute
+        elif url.startswith('/'):
+            absolute_url = f"{api_base}{url}"
+            absolute_urls.append(absolute_url)
+            logger.info(f"Converted relative URL {i} to absolute: {url} -> {absolute_url[:80]}...")
+        # If URL doesn't start with /, assume it's a filename and construct full path
+        else:
+            # Determine if it's an image or video based on extension or path
+            if any(url.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp']):
+                absolute_url = f"{api_base}/api/assets/images/{url}"
+            elif any(url.lower().endswith(ext) for ext in ['.mp4', '.mov', '.avi', '.webm']):
+                absolute_url = f"{api_base}/api/assets/videos/{url}"
+            else:
+                # Default to images endpoint
+                absolute_url = f"{api_base}/api/assets/images/{url}"
+            absolute_urls.append(absolute_url)
+            logger.info(f"Constructed absolute URL {i} from filename: {url} -> {absolute_url[:80]}...")
+    
+    asset_urls = absolute_urls
+    
+    # Validate all URLs are now absolute
+    for i, url in enumerate(asset_urls):
+        if not url.startswith(('http://', 'https://')):
+            error_msg = f"Asset URL {i} is still not absolute after conversion: {url}. Creatomate requires full URLs."
             logger.error(error_msg)
             raise ValueError(error_msg)
         

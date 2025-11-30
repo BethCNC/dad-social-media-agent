@@ -141,12 +141,28 @@ export const AssetGrid = ({
                 <CardContent className="p-0">
                   <div className="aspect-video bg-muted relative">
                     <img
-                      src={
-                        // Use proxy endpoint for ngrok URLs to bypass browser warning
-                        asset.thumbnail_url.includes('ngrok')
-                          ? `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/assets/proxy-image?url=${encodeURIComponent(asset.thumbnail_url)}`
-                          : asset.thumbnail_url
-                      }
+                      src={(() => {
+                        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+                        const thumbnailUrl = asset.thumbnail_url;
+                        
+                        // If URL is relative (starts with /), make it absolute
+                        if (thumbnailUrl.startsWith('/')) {
+                          return `${apiBase}${thumbnailUrl}`;
+                        }
+                        
+                        // If URL includes ngrok, use proxy to bypass browser warning
+                        if (thumbnailUrl.includes('ngrok')) {
+                          return `${apiBase}/api/assets/proxy-image?url=${encodeURIComponent(thumbnailUrl)}`;
+                        }
+                        
+                        // For AI-generated images using /api/assets/images/ endpoint, ensure it's absolute
+                        if (thumbnailUrl.includes('/api/assets/images/') && !thumbnailUrl.startsWith('http')) {
+                          return `${apiBase}${thumbnailUrl.startsWith('/') ? '' : '/'}${thumbnailUrl}`;
+                        }
+                        
+                        // Otherwise use as-is
+                        return thumbnailUrl;
+                      })()}
                       alt="Video thumbnail"
                       className="w-full h-full object-cover"
                       loading="lazy"
@@ -154,7 +170,7 @@ export const AssetGrid = ({
                       onError={(e) => {
                         // Fallback: show placeholder on error
                         const img = e.currentTarget;
-                        console.error('Failed to load image:', asset.thumbnail_url);
+                        console.error('Failed to load image:', asset.thumbnail_url, 'Resolved URL:', img.src);
                         img.style.display = 'none';
                         if (!img.parentElement?.querySelector('.error-placeholder')) {
                           const placeholder = document.createElement('div');

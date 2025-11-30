@@ -47,7 +47,12 @@ export const NewPostWizard = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [visualStyle, setVisualStyle] = useState<'pexels' | 'ai_generation'>('pexels'); // Default to stock videos (works better with Creatomate)
+  // Default visual style based on template type: images default to AI, videos default to stock
+  const [visualStyle, setVisualStyle] = useState<'pexels' | 'ai_generation'>(() => {
+    // Will be updated when templateType changes
+    return 'pexels';
+  });
+  const [templateType, setTemplateType] = useState<'image' | 'video'>('video'); // Template type: image or video
   const [hasSearched, setHasSearched] = useState(false); // Track if user has triggered a search
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -173,9 +178,15 @@ export const NewPostWizard = () => {
     }
   }, [location.state]);
 
-  const handlePlanGenerated = (plan: GeneratedPlan) => {
+  const handlePlanGenerated = (plan: GeneratedPlan, templateTypeFromBrief?: 'image' | 'video') => {
     setGeneratedPlan(plan);
-    // Always use 'video' template - backend handles Ken Burns for static images
+    // Use template type from brief if provided, otherwise default to video
+    if (templateTypeFromBrief) {
+      setTemplateType(templateTypeFromBrief);
+      // Set default visual style based on template type
+      // Images work better with AI generation, videos work better with stock videos
+      setVisualStyle(templateTypeFromBrief === 'image' ? 'ai_generation' : 'pexels');
+    }
     setScript(plan.script);
     setCaption(plan.caption);
     setCurrentStep(2);
@@ -258,16 +269,22 @@ export const NewPostWizard = () => {
     }
   }, [currentStep]);
 
-  // Auto-search for stock videos when entering step 3 with stock videos mode
+  // Auto-search when entering step 3
   useEffect(() => {
-    if (currentStep === 3 && visualStyle === 'pexels' && generatedPlan && !hasSearched && assets.length === 0) {
-      // Auto-trigger contextual search for stock videos based on shot plan
+    if (currentStep === 3 && generatedPlan && !hasSearched && assets.length === 0) {
+      // For image posts, always use AI generation (force it)
+      if (templateType === 'image') {
+        setVisualStyle('ai_generation');
+      }
+      // Auto-trigger contextual search based on shot plan
+      // For images, this will use AI generation; for videos, it uses the selected visual style
       if (generatedPlan.shot_plan && generatedPlan.shot_plan.length > 0 && script && caption) {
         setHasSearched(true); // Mark as searched to prevent re-triggering
-        handleContextualSearch();
+        // Use a small delay to ensure visualStyle is updated for image posts
+        setTimeout(() => handleContextualSearch(), 100);
       }
     }
-  }, [currentStep]); // Only depend on currentStep to avoid infinite loops
+  }, [currentStep, templateType]); // Depend on currentStep and templateType
 
   const handleContextualSearch = async () => {
     if (!generatedPlan || !script || !caption) return;
@@ -276,6 +293,10 @@ export const NewPostWizard = () => {
     setSearchError(null);
 
     try {
+      // For image posts, always use AI generation regardless of visualStyle state
+      // For video posts, use the selected visual style
+      const effectiveVisualStyle = templateType === 'image' ? 'ai_generation' : visualStyle;
+      
       // Use contextual generation for better relevance with visual style preference
       const results = await searchAssetsContextual({
         topic: '', // We don't have topic in wizard, use first shot description
@@ -285,7 +306,7 @@ export const NewPostWizard = () => {
         content_pillar: 'education', // Default, could be enhanced
         suggested_keywords: [],
         max_results: 12,
-        visual_style: visualStyle, // Pass visual style preference
+        visual_style: effectiveVisualStyle, // Use AI generation for images, selected style for videos
       });
       setAssets(results);
       setHasSearched(true); // Mark as searched after successful search
@@ -416,13 +437,15 @@ export const NewPostWizard = () => {
 
       const renderRequest: VideoRenderRequest = {
         assets: assetsToRender.map((asset) => ({
-          id: asset.video_url, // Use video URL for Creatomate
+          // Use asset.id (which should be the URL) or fallback to video_url
+          // Backend will convert relative URLs to absolute
+          id: asset.id || asset.video_url || asset.thumbnail_url,
           start_at: null,
           end_at: null,
         })),
         script: script,
         title: null,
-        template_type: 'video', // Always use video template - backend handles Ken Burns for static images
+        template_type: templateType, // Use selected template type (image or video)
       };
 
       const job = await renderVideo(renderRequest);
@@ -477,7 +500,7 @@ export const NewPostWizard = () => {
     'Step 2: Choose Your Topic',
     'Step 3: Review Your Script & Caption',
     'Step 4: Choose Your Visuals',
-    'Step 5: Create Your Video',
+    `Step 5: Create Your ${templateType === 'image' ? 'Image' : 'Video'}`,
     'Step 6: Schedule Your Post',
   ];
 
@@ -633,66 +656,96 @@ export const NewPostWizard = () => {
           </div>
         );
       case 3:
-        const requiredCount = 2; // Always require 2 assets for video template
+        const requiredCount = templateType === 'image' ? 1 : 2; // 1 for image template, 2 for video template
         const hasCorrectSelection = selectedAssetIds.size === requiredCount;
 
         return (
           <div className="space-y-6">
-            {/* Visual Style Segmented Control */}
-            <Card className="bg-gray-50 border-gray-200">
-              <CardContent className="py-4">
-                <p className="text-gray-900 font-semibold text-lg mb-4">
-                  Choose Your Visual Style
-                </p>
-                <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-300">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Don't clear assets - persist selections when switching tabs
-                      setVisualStyle('ai_generation');
-                    }}
-                    className={cn(
-                      "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all",
-                      visualStyle === 'ai_generation'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    )}
-                    disabled={isSearching}
-                  >
-                    AI Generated
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Don't clear assets - persist selections when switching tabs
-                      setVisualStyle('pexels');
-                      // Auto-search when switching to stock videos
-                      if (generatedPlan && generatedPlan.shot_plan.length > 0 && !hasSearched) {
-                        const firstShot = generatedPlan.shot_plan[0];
-                        if (firstShot?.description) {
-                          setSearchQuery(firstShot.description);
-                          setTimeout(() => handleContextualSearch(), 100);
+            {/* Visual Style Segmented Control - Only show for video posts */}
+            {templateType === 'video' && (
+              <Card className="bg-gray-50 border-gray-200">
+                <CardContent className="py-4">
+                  <p className="text-gray-900 font-semibold text-lg mb-4">
+                    Choose Your Visual Style
+                  </p>
+                  <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-300">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Don't clear assets - persist selections when switching tabs
+                        setVisualStyle('ai_generation');
+                      }}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all",
+                        visualStyle === 'ai_generation'
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      )}
+                      disabled={isSearching}
+                    >
+                      AI Generated
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Don't clear assets - persist selections when switching tabs
+                        setVisualStyle('pexels');
+                        // Auto-search when switching to stock videos
+                        if (generatedPlan && generatedPlan.shot_plan.length > 0 && !hasSearched) {
+                          const firstShot = generatedPlan.shot_plan[0];
+                          if (firstShot?.description) {
+                            setSearchQuery(firstShot.description);
+                            setTimeout(() => handleContextualSearch(), 100);
+                          }
                         }
-                      }
-                    }}
-                    className={cn(
-                      "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all relative",
-                      visualStyle === 'pexels'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    )}
-                    disabled={isSearching}
-                  >
-                    Stock Video
-                    {visualStyle === 'pexels' && (
-                      <span className="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Recommended</span>
-                    )}
-                  </button>
-                </div>
-                <p className="text-sm text-muted-foreground mt-3">
-                  {visualStyle === 'pexels'
-                    ? '✅ Recommended: Stock videos work reliably with Creatomate. Search for real videos that match your content.'
-                    : '⚠️ Note: AI-generated images may not work in local development. Consider using stock videos instead.'}
+                      }}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all relative",
+                        visualStyle === 'pexels'
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      )}
+                      disabled={isSearching}
+                    >
+                      Stock Video
+                      {visualStyle === 'pexels' && (
+                        <span className="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Recommended</span>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-3">
+                    {visualStyle === 'pexels'
+                      ? '✅ Recommended: Stock videos work reliably with Creatomate. Search for real videos that match your content.'
+                      : '⚠️ Note: AI-generated images may not work in local development. Consider using stock videos instead.'}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* For image posts, show info card about AI generation */}
+            {templateType === 'image' && (
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="py-4">
+                  <p className="text-blue-900 font-semibold text-lg mb-2">
+                    AI-Generated Images
+                  </p>
+                  <p className="text-sm text-blue-800">
+                    ✅ We'll create unique AI-generated images for your image post. Click "Generate AI Images" below to get started.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Template Type Display (read-only, selected in Step 1) */}
+            <Card className="bg-purple-50 border-purple-200">
+              <CardContent className="py-4">
+                <p className="text-purple-900 font-semibold text-lg mb-2">
+                  Content Type: {templateType === 'image' ? '📸 Image Post' : '🎬 Video Post'}
+                </p>
+                <p className="text-sm text-purple-800">
+                  {templateType === 'image'
+                    ? 'You selected Image Post in Step 1. Select 1 visual to create an animated image post.'
+                    : 'You selected Video Post in Step 1. Select 2 visuals to create a video post.'}
                 </p>
               </CardContent>
             </Card>
@@ -704,7 +757,7 @@ export const NewPostWizard = () => {
                   Template Requirements
                 </p>
                 <p className="text-blue-800 text-base">
-                  Please select exactly 2 visuals for the video template.
+                  Please select exactly {requiredCount} {requiredCount === 1 ? 'visual' : 'visuals'} for the {templateType} template.
                 </p>
               </CardContent>
             </Card>
@@ -730,19 +783,19 @@ export const NewPostWizard = () => {
                   disabled={isSearching || !generatedPlan || !script || !caption}
                   size="lg"
                   className="w-full py-6 text-lg"
-                  aria-label="Generate AI Images"
+                  aria-label={`Generate AI ${templateType === 'image' ? 'Images' : 'Images'}`}
                 >
                   {isSearching ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                      <span className="ml-2">Dreaming up images...</span>
+                      <span className="ml-2">Dreaming up {templateType === 'image' ? 'images' : 'images'}...</span>
                     </>
                   ) : (
-                    'Generate AI Images'
+                    `Generate AI ${templateType === 'image' ? 'Images' : 'Images'}`
                   )}
                 </Button>
               </div>
-            ) : (
+            ) : templateType === 'video' ? (
               // Stock Video Mode: Show search bar with auto-search
               <div className="space-y-4">
                 {assets.length === 0 && !hasSearched && generatedPlan && (
@@ -795,7 +848,7 @@ export const NewPostWizard = () => {
                     variant="outline"
                     size="lg"
                     className="w-full py-6 text-lg"
-                    aria-label="Search videos based on content"
+                    aria-label={`Search ${templateType === 'image' ? 'images' : 'videos'} based on content`}
                   >
                     {isSearching ? (
                       <>
@@ -805,13 +858,13 @@ export const NewPostWizard = () => {
                     ) : (
                       <>
                         <Search className="w-5 h-5" aria-hidden="true" />
-                        <span className="ml-2">Auto-Search Videos Based on Your Content</span>
+                        <span className="ml-2">Auto-Search {templateType === 'image' ? 'Images' : 'Videos'} Based on Your Content</span>
                       </>
                     )}
                   </Button>
                 )}
               </div>
-            )}
+            ) : null}
 
             {searchError && (
               <Card className="border-destructive/20 bg-destructive/10">
@@ -832,7 +885,7 @@ export const NewPostWizard = () => {
               selectedOrder={selectedAssetOrder}
               onSelectionChange={handleAssetSelectionChange}
               maxSelection={requiredCount}
-              templateType="video"
+              templateType={templateType}
               onRegenerate={visualStyle === 'ai_generation' ? async (assetId: string, prompt: string) => {
                 try {
                   setIsSearching(true);
@@ -908,7 +961,7 @@ export const NewPostWizard = () => {
                     disabled={isRendering}
                     size="lg"
                     className="w-full py-6 text-lg"
-                    aria-label="Retry video rendering"
+                    aria-label={`Retry ${templateType} rendering`}
                   >
                     Try Again
                   </Button>
@@ -919,31 +972,41 @@ export const NewPostWizard = () => {
                 <div className="space-y-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-green-600 text-2xl">Your video is ready!</CardTitle>
+                      <CardTitle className="text-green-600 text-2xl">
+                        Your {templateType === 'image' ? 'image' : 'video'} is ready!
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <video
-                        src={videoUrl}
-                        controls
-                        className="w-full rounded-lg shadow-lg"
-                        aria-label="Rendered video preview"
-                      >
-                        Your browser does not support the video tag.
-                      </video>
+                      {templateType === 'image' ? (
+                        <img
+                          src={videoUrl}
+                          alt="Rendered image"
+                          className="w-full rounded-lg shadow-lg"
+                        />
+                      ) : (
+                        <video
+                          src={videoUrl}
+                          controls
+                          className="w-full rounded-lg shadow-lg"
+                          aria-label="Rendered video preview"
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      )}
                       <Button
                         variant="outline"
                         className="w-full mt-4"
                         onClick={() => {
                           const link = document.createElement('a');
                           link.href = videoUrl;
-                          link.download = `rendered-video.mp4`;
+                          link.download = templateType === 'image' ? `rendered-image.png` : `rendered-video.mp4`;
                           document.body.appendChild(link);
                           link.click();
                           document.body.removeChild(link);
                         }}
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        Download Video
+                        Download {templateType === 'image' ? 'Image' : 'Video'}
                       </Button>
                     </CardContent>
                   </Card>
@@ -972,7 +1035,7 @@ export const NewPostWizard = () => {
                   <CardContent className="py-12 text-center">
                     <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" aria-hidden="true" />
                     <p className="text-muted-foreground text-xl">
-                      We're building your video, this may take under a minute.
+                      We're building your {templateType === 'image' ? 'image' : 'video'}, this may take under a minute.
                     </p>
                   </CardContent>
                 </Card>

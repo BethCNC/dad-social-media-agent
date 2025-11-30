@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/lib/utils';
 
 interface ContentBriefFormProps {
-  onPlanGenerated: (plan: GeneratedPlan) => void;
+  onPlanGenerated: (plan: GeneratedPlan, templateType?: 'image' | 'video') => void;
   initialTopic?: string;
 }
 
@@ -26,6 +26,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
   const [tone, setTone] = useState('friendly');
   const [platforms, setPlatforms] = useState<string[]>(['TikTok']);
   const [lengthSeconds, setLengthSeconds] = useState<number | null>(null);
+  const [templateType, setTemplateType] = useState<'image' | 'video'>('video');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -97,7 +98,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
 
     // Validation
     if (mode === 'manual' && !userTopic.trim()) {
-      setError('Please describe what you want your video to be about.');
+      setError(`Please describe what you want your ${templateType === 'image' ? 'image post' : 'video'} to be about.`);
       return;
     }
 
@@ -119,11 +120,11 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
         platforms,
         tone,
         length_seconds: lengthSeconds || null,
-        template_type: 'video', // Always use video template - backend handles Ken Burns for static images
+        template_type: templateType,
       };
 
       const plan = await generatePlan(brief, imageFile || undefined);
-      onPlanGenerated(plan);
+      onPlanGenerated(plan, templateType);
     } catch (err: any) {
       setError(
         err.response?.data?.detail ||
@@ -139,11 +140,54 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
       <CardHeader>
         <CardTitle className="text-2xl font-bold">What do you want to talk about?</CardTitle>
         <CardDescription className="text-lg">
-          We'll help you write the words for your video.
+          We'll help you write the words for your {templateType === 'image' ? 'image post' : 'video'}.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Template Type Selection - FIRST */}
+          <div className="space-y-4">
+            <Label className="text-lg font-semibold">
+              What type of content do you want to create?
+            </Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setTemplateType('image')}
+                className={cn(
+                  'p-6 border-2 rounded-lg text-left transition-all',
+                  templateType === 'image'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                <div className="font-semibold text-lg mb-2 flex items-center gap-2">
+                  <span>📸</span> Image Post
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Create an animated image post with movement effects and text overlay. Perfect for quotes, tips, or announcements.
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTemplateType('video')}
+                className={cn(
+                  'p-6 border-2 rounded-lg text-left transition-all',
+                  templateType === 'video'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                <div className="font-semibold text-lg mb-2 flex items-center gap-2">
+                  <span>🎬</span> Video Post
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Create a dynamic video post with multiple clips. Great for tutorials, stories, or engaging content.
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Mode Selection */}
           <div className="space-y-4">
             <Label className="text-lg font-semibold">
@@ -187,7 +231,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
           {mode === 'manual' && (
             <div className="space-y-3">
               <Label htmlFor="userTopic" className="text-lg font-semibold">
-                Describe what you want this video to be about
+                Describe what you want this {templateType === 'image' ? 'image post' : 'video'} to be about
               </Label>
               <Textarea
                 id="userTopic"

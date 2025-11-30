@@ -37,3 +37,9 @@ venv/
 content.db
 __pycache__/
 *.pyc
+
+# Media files - should use Git LFS instead
+static/uploads/**
+static/backups/**
+!static/uploads/.gitkeep
+!static/backups/.gitkeep
