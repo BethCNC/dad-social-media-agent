@@ -45,13 +45,37 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     # Creatomate uses dot notation: "ElementName.property" to modify template elements
     # Extract video/image URLs from assets
     # CRITICAL: asset.id must be a publicly accessible URL (full URL including domain)
-    # For generated images, this should be {API_BASE_URL}/static/uploads/{filename}.png
+    # For generated images, this should be {API_BASE_URL}/api/assets/images/{filename}.png
+    # (using API endpoint instead of static files to avoid ngrok browser warning issues)
     asset_urls = [asset.id for asset in request.assets]
     
     # Validate URLs are absolute (Creatomate needs full URLs)
     for i, url in enumerate(asset_urls):
         if url and not url.startswith(('http://', 'https://')):
-            logger.warning(f"Asset URL {i} is not absolute: {url}. Creatomate requires full URLs.")
+            error_msg = f"Asset URL {i} is not absolute: {url}. Creatomate requires full URLs."
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        # Check for ngrok URLs with AI-generated images (will fail with free tier)
+        if url and 'ngrok' in url.lower() and ('/api/assets/images/' in url or '/static/uploads/' in url):
+            logger.warning(
+                f"⚠️ Asset URL {i} uses ngrok with AI-generated image: {url}. "
+                f"Creatomate cannot bypass ngrok's free tier browser warning. "
+                f"This render will likely fail with 'Expected a file, but received a web page instead'. "
+                f"SOLUTION: Use stock videos (Pexels) instead, or upgrade to ngrok paid tier, or deploy to a production server."
+            )
+            # Don't fail immediately - let Creatomate try and return the error
+            # This way the user sees the actual error message from Creatomate
+        
+        # Warn if URL points to localhost (Creatomate cannot access localhost)
+        if url and ('localhost' in url.lower() or '127.0.0.1' in url.lower()):
+            logger.warning(
+                f"⚠️ Asset URL {i} points to localhost: {url}. "
+                f"Creatomate cannot access localhost URLs. "
+                f"This render will likely fail. "
+                f"For local development, use ngrok (ngrok http 8000) and set API_BASE_URL in .env to the ngrok URL, "
+                f"or use stock videos (Pexels) which are publicly hosted."
+            )
     
     # Build modifications object using dot notation
     # NOTE: Element names must match EXACTLY what's in your Creatomate template
@@ -95,8 +119,8 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
             def is_image_url(url: str) -> bool:
                 """Check if URL points to an image file."""
                 image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.webp')
-                # Also check if URL contains common image path patterns
-                return any(url.lower().endswith(ext) for ext in image_extensions) or '/static/uploads/' in url.lower()
+                # Check if URL ends with image extension or contains image path patterns
+                return any(url.lower().endswith(ext) for ext in image_extensions) or '/images/' in url.lower() or '/static/uploads/' in url.lower()
             
             # Use first two assets for Background-1 and Background-2
             if len(asset_urls) >= 1:
@@ -197,10 +221,43 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
             
             # Log the response for debugging
             logger.info(f"✅ Creatomate API response received: job_id={data.get('id', 'N/A')}, status={data.get('status', 'N/A')}")
-            logger.debug(f"Full Creatomate response: {data}")
+            logger.info(f"   Full Creatomate response: {data}")
             
             job_id = data.get("id", "")
             status = data.get("status", "pending")
+            
+            # Check if there's an error in the response
+            error_msg = None
+            if data.get("error") or status == "failed":
+                error_msg = data.get("error") or data.get("message") or data.get("error_message") or "Unknown error"
+                logger.error(f"❌ Creatomate returned error: {error_msg}")
+                logger.error(f"   Full error response: {data}")
+                
+                # Check for ngrok browser warning page error
+                if "Expected a file, but received a web page" in str(error_msg) or "web page instead" in str(error_msg):
+                    enhanced_error = (
+                        "Creatomate cannot access AI-generated images through ngrok's free tier. "
+                        "ngrok shows a browser warning page that blocks Creatomate from downloading the images. "
+                        "\n\nSOLUTIONS:\n"
+                        "1. Use stock videos (Pexels) instead of AI-generated images (recommended for local development)\n"
+                        "2. Upgrade to ngrok paid tier (bypasses browser warning)\n"
+                        "3. Deploy to a production server so images are publicly accessible\n"
+                        "\nTo use stock videos:\n"
+                        "- Go back to Step 3 (Choose Your Visuals)\n"
+                        "- Select 'Stock Videos (Pexels)' instead of 'Generate AI Images'\n"
+                        "- Search and select videos, then render"
+                    )
+                    logger.error(f"   ⚠️ NGROK LIMITATION DETECTED: {enhanced_error}")
+                    error_msg = enhanced_error
+            
+            # If there was an error, return failed RenderJob with error message
+            if error_msg:
+                return RenderJob(
+                    job_id=job_id or "",
+                    status="failed",
+                    video_url=None,
+                    error_message=error_msg
+                )
             # Video URL might be in 'url' or 'preview_url' field
             video_url = data.get("url") or data.get("preview_url")
             
@@ -230,17 +287,20 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     except httpx.HTTPStatusError as e:
         logger.error(f"Creatomate API HTTP error: {e.response.status_code}")
         if e.response.status_code == 401:
-            raise Exception("Invalid API key. Please check your Creatomate configuration.") from e
+            raise Exception("Invalid Creatomate API key. Please check your CREATOMATE_API_KEY in .env") from e
         if e.response.status_code == 404:
-            raise Exception("Template not found. Please check your CREATOMATE_TEMPLATE_ID.") from e
+            template_name = "IMAGE" if template_type == "image" else "VIDEO"
+            raise Exception(f"Creatomate template not found. Please check your CREATOMATE_{template_name}_TEMPLATE_ID in .env. Current ID: {template_id}") from e
         error_detail = ""
         try:
             error_data = e.response.json()
-            error_detail = error_data.get("message", "") or str(error_data)
-            logger.error(f"Creatomate API error detail: {error_detail}")
-            logger.error(f"Full error response: {error_data}")
+            error_detail = error_data.get("message") or error_data.get("error") or str(error_data)
+            logger.error(f"❌ Creatomate API error detail: {error_detail}")
+            logger.error(f"   Full error response: {error_data}")
         except:
-            logger.error(f"Could not parse error response: {e.response.text}")
+            error_text = e.response.text[:500]  # Limit error text length
+            logger.error(f"Could not parse error response: {error_text}")
+            error_detail = error_text
         raise Exception(f"Video rendering failed: {error_detail or 'Please check your template configuration and try again.'}") from e
     except httpx.RequestError as e:
         logger.error(f"Creatomate API request error: {type(e).__name__}")
@@ -287,10 +347,42 @@ async def get_render_status(job_id: str) -> RenderJob:
             if status == "succeeded":
                 video_url = data.get("url") or data.get("preview_url")
             
+            # Log detailed status information
+            logger.info(f"📊 Render status check: job_id={job_id}, status={status}")
+            
+            # Check for error information in the response
+            if status == "failed" or status == "error":
+                error_message = (
+                    data.get("error") or 
+                    data.get("error_message") or 
+                    data.get("message") or 
+                    data.get("failure_reason") or
+                    "Unknown error - check Creatomate dashboard for details"
+                )
+                logger.error(f"❌ Creatomate render FAILED for job {job_id}")
+                logger.error(f"   Error message: {error_message}")
+                logger.error(f"   Full response: {data}")
+                
+                # If error contains URL accessibility info, log it
+                error_str = str(error_message).lower()
+                if "url" in error_str or "access" in error_str or "download" in error_str or "fetch" in error_str:
+                    logger.error(f"   ⚠️ This error suggests the asset URLs may not be accessible to Creatomate.")
+                    logger.error(f"   Check that URLs are publicly accessible (not localhost) and can be downloaded.")
+            
+            error_message = None
+            if status == "failed" or status == "error":
+                error_message = (
+                    data.get("error_message") or 
+                    data.get("error") or 
+                    data.get("message") or 
+                    None
+                )
+            
             return RenderJob(
                 job_id=data.get("id", job_id),
                 status=status,
                 video_url=video_url,
+                error_message=error_message,
             )
             
     except httpx.HTTPStatusError as e:

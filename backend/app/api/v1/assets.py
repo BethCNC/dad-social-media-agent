@@ -315,3 +315,78 @@ async def regenerate_image(
             status_code=500,
             detail=error_message
         ) from e
+
+
+@router.get("/proxy-image")
+async def proxy_image(url: str = Query(..., description="Image URL to proxy")):
+    """
+    Proxy image requests to bypass ngrok browser warning.
+    This allows the frontend to load images from ngrok URLs that require bypass headers.
+    """
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Add ngrok bypass header
+            headers = {"Ngrok-Skip-Browser-Warning": "true"}
+            response = await client.get(url, headers=headers, follow_redirects=True)
+            response.raise_for_status()
+            
+            # Return the image with appropriate content type
+            from fastapi.responses import Response
+            content_type = response.headers.get("content-type", "image/png")
+            return Response(
+                content=response.content,
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=3600",
+                    "Access-Control-Allow-Origin": "*",
+                }
+            )
+    except Exception as e:
+        logger.error(f"Failed to proxy image {url}: {e}")
+        raise HTTPException(status_code=502, detail="Failed to fetch image")
+
+
+@router.get("/images/{filename}")
+async def serve_image_for_creatomate(filename: str):
+    """
+    Serve images directly from disk for Creatomate.
+    This endpoint serves images without going through static file mounting,
+    which allows Creatomate to access them even through ngrok.
+    The endpoint itself can be accessed via ngrok, and Creatomate will receive
+    the actual image file (not the ngrok warning page) because it's an API endpoint.
+    """
+    try:
+        from fastapi.responses import FileResponse
+        from pathlib import Path
+        
+        # Get the image file path
+        image_path = UPLOAD_DIR / filename
+        
+        if not image_path.exists():
+            logger.error(f"Image not found: {image_path}")
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # Determine content type from extension
+        content_type = "image/png"
+        if filename.lower().endswith(('.jpg', '.jpeg')):
+            content_type = "image/jpeg"
+        elif filename.lower().endswith('.gif'):
+            content_type = "image/gif"
+        elif filename.lower().endswith('.webp'):
+            content_type = "image/webp"
+        
+        # Serve the file directly
+        return FileResponse(
+            path=str(image_path),
+            media_type=content_type,
+            headers={
+                "Cache-Control": "public, max-age=3600",
+                "Access-Control-Allow-Origin": "*",
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to serve image {filename}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to serve image")

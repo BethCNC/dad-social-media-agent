@@ -16,9 +16,11 @@ Use it as a step‑by‑step guide when you come back to this project in Cursor 
    - Python 3.10+.
    - Docker (for Coolify deployment).
 2. **Environment variables** (already partly wired in `config.py` and `.env.example`):
-   - `OPENAI_API_KEY`
+   - `GOOGLE_API_KEY` (for Gemini 3.0 Pro and Nano Banana Pro)
    - `PEXELS_API_KEY`
    - `CREATOMATE_API_KEY`
+   - `CREATOMATE_IMAGE_TEMPLATE_ID`
+   - `CREATOMATE_VIDEO_TEMPLATE_ID`
    - `AYRSHARE_API_KEY`
    - Any future holiday sync secrets (if you choose a paid holiday API instead of public ICS).
 3. **Repo**
@@ -71,9 +73,9 @@ Use it as a step‑by‑step guide when you come back to this project in Cursor 
 **Goal:** When generating plans or single posts, the AI can incorporate holiday context.
 
 1. **Monthly schedule generation**
-   - In `backend/app/services/schedule_service.py`, update the logic that builds the OpenAI prompt to include:
+   - In `backend/app/services/schedule_service.py`, update the logic that builds the Google Gemini prompt to include:
      - A `holiday_context` for each planned date using `holiday_service.get_holiday_context_for_date()`.
-   - Pass this as part of the JSON payload to `openai_client.generate_monthly_schedule`.
+   - Pass this as part of the JSON payload to `gemini_client.generate_monthly_schedule`.
 
 2. **Single post generation**
    - In the endpoint that powers the New Post wizard (content generation route in `content.py` / `content_service`):
@@ -83,12 +85,12 @@ Use it as a step‑by‑step guide when you come back to this project in Cursor 
        - `selectedHolidayId: Optional[str]`
        - `userTopic: Optional[str]`
      - When `mode == "auto"`:
-       - If `useHolidays` is true, call the holiday service to find upcoming marketing‑relevant holidays and pass the result as `holiday_context` to OpenAI.
+       - If `useHolidays` is true, call the holiday service to find upcoming marketing‑relevant holidays and pass the result as `holiday_context` to Google Gemini.
      - When `mode == "manual"`:
        - Use the user’s topic, but **optionally** still pass holiday context if the chosen date is a holiday.
 
 3. **Prompt updates**
-   - In `openai_client.py`, update the system/user messages so the model understands:
+   - In `gemini_client.py`, update the system/user messages so the model understands:
      - When `holiday_context` is present, it should **tastefully** mention the holiday (greetings, themes, gratitude) while staying compliant (no medical/income promises).
 
 ---

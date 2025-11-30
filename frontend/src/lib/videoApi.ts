@@ -17,6 +17,7 @@ export interface RenderJob {
   job_id: string;
   status: string;
   video_url?: string | null;
+  error_message?: string | null;
 }
 
 export const renderVideo = async (request: VideoRenderRequest): Promise<RenderJob> => {

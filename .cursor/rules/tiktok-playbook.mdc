@@ -246,7 +246,7 @@ Match this with the platform’s MLM ban and restricted medical claims.:contentR
 
 ## 7. How this should shape your AI Social Media Co-Pilot
 
-To align your **React + FastAPI + OpenAI** app with 2025/26 TikTok best practices and this compliance context:
+To align your **React + FastAPI + Google Gemini** app with 2025/26 TikTok best practices and this compliance context:
 
 ### 7.1 Encode these rules into the AI system prompt
 

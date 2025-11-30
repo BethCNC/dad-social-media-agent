@@ -47,7 +47,7 @@ export const NewPostWizard = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [visualStyle, setVisualStyle] = useState<'pexels' | 'ai_generation'>('ai_generation'); // Visual style preference
+  const [visualStyle, setVisualStyle] = useState<'pexels' | 'ai_generation'>('pexels'); // Default to stock videos (works better with Creatomate)
   const [hasSearched, setHasSearched] = useState(false); // Track if user has triggered a search
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -258,6 +258,17 @@ export const NewPostWizard = () => {
     }
   }, [currentStep]);
 
+  // Auto-search for stock videos when entering step 3 with stock videos mode
+  useEffect(() => {
+    if (currentStep === 3 && visualStyle === 'pexels' && generatedPlan && !hasSearched && assets.length === 0) {
+      // Auto-trigger contextual search for stock videos based on shot plan
+      if (generatedPlan.shot_plan && generatedPlan.shot_plan.length > 0 && script && caption) {
+        setHasSearched(true); // Mark as searched to prevent re-triggering
+        handleContextualSearch();
+      }
+    }
+  }, [currentStep]); // Only depend on currentStep to avoid infinite loops
+
   const handleContextualSearch = async () => {
     if (!generatedPlan || !script || !caption) return;
 
@@ -277,6 +288,7 @@ export const NewPostWizard = () => {
         visual_style: visualStyle, // Pass visual style preference
       });
       setAssets(results);
+      setHasSearched(true); // Mark as searched after successful search
 
       // Store prompts for regeneration (map asset ID to shot description)
       const promptsMap = new Map<string, string>();
@@ -296,6 +308,7 @@ export const NewPostWizard = () => {
         .join(' ');
       if (keywords) {
         await handleSearch(keywords);
+        setHasSearched(true); // Mark as searched after fallback search
       } else {
         setSearchError(
           err.response?.data?.detail ||
@@ -653,9 +666,17 @@ export const NewPostWizard = () => {
                     onClick={() => {
                       // Don't clear assets - persist selections when switching tabs
                       setVisualStyle('pexels');
+                      // Auto-search when switching to stock videos
+                      if (generatedPlan && generatedPlan.shot_plan.length > 0 && !hasSearched) {
+                        const firstShot = generatedPlan.shot_plan[0];
+                        if (firstShot?.description) {
+                          setSearchQuery(firstShot.description);
+                          setTimeout(() => handleContextualSearch(), 100);
+                        }
+                      }
                     }}
                     className={cn(
-                      "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all",
+                      "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all relative",
                       visualStyle === 'pexels'
                         ? 'bg-primary text-primary-foreground shadow-sm'
                         : 'text-gray-700 hover:bg-gray-100'
@@ -663,12 +684,15 @@ export const NewPostWizard = () => {
                     disabled={isSearching}
                   >
                     Stock Video
+                    {visualStyle === 'pexels' && (
+                      <span className="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Recommended</span>
+                    )}
                   </button>
                 </div>
                 <p className="text-sm text-muted-foreground mt-3">
                   {visualStyle === 'pexels'
-                    ? 'Search for real stock videos that match your content.'
-                    : 'Create unique AI-generated images for each scene.'}
+                    ? '✅ Recommended: Stock videos work reliably with Creatomate. Search for real videos that match your content.'
+                    : '⚠️ Note: AI-generated images may not work in local development. Consider using stock videos instead.'}
                 </p>
               </CardContent>
             </Card>
@@ -719,35 +743,73 @@ export const NewPostWizard = () => {
                 </Button>
               </div>
             ) : (
-              // Stock Video Mode: Show search bar
-              <div className="flex gap-4">
-                <Input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isSearching && searchQuery.trim()) {
+              // Stock Video Mode: Show search bar with auto-search
+              <div className="space-y-4">
+                {assets.length === 0 && !hasSearched && generatedPlan && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-green-800 text-sm mb-2">
+                      💡 We'll automatically search for stock videos based on your content. You can also search manually below.
+                    </p>
+                  </div>
+                )}
+                <div className="flex gap-4">
+                  <Input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isSearching && searchQuery.trim()) {
+                        setHasSearched(true);
+                        handleSearch();
+                      }
+                    }}
+                    placeholder="Enter keywords to search for stock videos (e.g., 'nature sunset', 'healthy food')..."
+                    className="text-lg h-12"
+                    aria-label="Search for stock videos"
+                  />
+                  <Button
+                    onClick={() => {
+                      setHasSearched(true);
                       handleSearch();
-                    }
-                  }}
-                  placeholder="Enter keywords to search for stock videos..."
-                  className="text-lg h-12"
-                  aria-label="Search for stock videos"
-                />
-                <Button
-                  onClick={() => handleSearch()}
-                  disabled={isSearching || !searchQuery.trim()}
-                  size="lg"
-                  className="py-6 px-8 text-lg"
-                  aria-label="Search videos"
-                >
-                  {isSearching ? (
-                    <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Search className="w-5 h-5" aria-hidden="true" />
-                  )}
-                  <span className="ml-2">Search</span>
-                </Button>
+                    }}
+                    disabled={isSearching || !searchQuery.trim()}
+                    size="lg"
+                    className="py-6 px-8 text-lg"
+                    aria-label="Search videos"
+                  >
+                    {isSearching ? (
+                      <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Search className="w-5 h-5" aria-hidden="true" />
+                    )}
+                    <span className="ml-2">Search</span>
+                  </Button>
+                </div>
+                {generatedPlan && script && caption && (
+                  <Button
+                    onClick={async () => {
+                      setHasSearched(true);
+                      await handleContextualSearch();
+                    }}
+                    disabled={isSearching || !generatedPlan || !script || !caption}
+                    variant="outline"
+                    size="lg"
+                    className="w-full py-6 text-lg"
+                    aria-label="Search videos based on content"
+                  >
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+                        <span className="ml-2">Searching...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-5 h-5" aria-hidden="true" />
+                        <span className="ml-2">Auto-Search Videos Based on Your Content</span>
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             )}
 

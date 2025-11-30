@@ -1,4 +1,5 @@
 """Google Gemini 3.0 Pro API client for content generation."""
+import base64
 import json
 import logging
 from pathlib import Path
@@ -378,8 +379,11 @@ async def generate_image_asset(prompt: str) -> str:
         
         logger.info(f"Saved generated image to {file_path}")
         
-        # Return public URL
-        public_url = f"{settings.API_BASE_URL}/static/uploads/{filename}"
+        # Return public URL using API endpoint instead of static file serving
+        # This ensures Creatomate can access images even through ngrok
+        # The /api/assets/images/ endpoint serves files directly, avoiding ngrok's browser warning
+        public_url = f"{settings.API_BASE_URL}/api/assets/images/{filename}"
+        logger.info(f"Generated image URL for Creatomate: {public_url}")
         return public_url
         
     except Exception as e:
@@ -527,15 +531,62 @@ Generate a JSON object with the following fields:
             # The v1 SDK accepts contents as a list with dict parts
             # Image data needs to be base64 encoded
             import base64
-            image_b64 = base64.b64encode(image_bytes).decode('utf-8')
-            contents = [
-                {
-                    "parts": [
-                        {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
-                        {"text": full_prompt}
-                    ]
+            from PIL import Image
+            import io
+            
+            try:
+                # Validate and process image
+                img = Image.open(io.BytesIO(image_bytes))
+                
+                # Detect MIME type from image format
+                format_to_mime = {
+                    'JPEG': 'image/jpeg',
+                    'PNG': 'image/png',
+                    'GIF': 'image/gif',
+                    'WEBP': 'image/webp',
                 }
-            ]
+                mime_type = format_to_mime.get(img.format, 'image/jpeg')
+                
+                # Convert to RGB if necessary (some formats like RGBA need conversion)
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    # Create a white background
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                    img = background
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Resize if image is too large (Gemini has size limits)
+                max_size = (2048, 2048)
+                if img.size[0] > max_size[0] or img.size[1] > max_size[1]:
+                    img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                    logger.info(f"Resized image from {img.size} to fit within {max_size}")
+                
+                # Convert back to bytes
+                output = io.BytesIO()
+                img.save(output, format='JPEG', quality=85)
+                processed_image_bytes = output.getvalue()
+                
+                # Encode to base64
+                image_b64 = base64.b64encode(processed_image_bytes).decode('utf-8')
+                mime_type = 'image/jpeg'  # Always JPEG after processing
+                
+                logger.info(f"Processed image for Gemini: {img.size}, format: {mime_type}")
+                
+                contents = [
+                    {
+                        "parts": [
+                            {"inline_data": {"mime_type": mime_type, "data": image_b64}},
+                            {"text": full_prompt}
+                        ]
+                    }
+                ]
+            except Exception as img_error:
+                logger.warning(f"Failed to process image for multimodal input: {img_error}. Falling back to text-only generation.")
+                # Fall back to text-only generation if image processing fails
+                contents = full_prompt
         else:
             # Text-only content (can be string or list)
             contents = full_prompt
