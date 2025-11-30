@@ -58,8 +58,9 @@ async def search_assets(
         image_url = await generate_image_asset(query)
         
         # Create AssetResult object
+        # image_url is already absolute (from generate_image_asset)
         asset = AssetResult(
-            id=image_url,
+            id=image_url,  # Use image URL as ID (Creatomate expects URL in asset.id)
             thumbnail_url=image_url,
             video_url=image_url,
             duration_seconds=10  # Default duration for static images
@@ -260,24 +261,44 @@ async def delete_user_video(
 
 
 @router.get("/videos/{filename}")
+@router.head("/videos/{filename}")
 async def serve_video(filename: str):
     """
-    Serve uploaded video files.
+    Serve uploaded video files with CORS support for Creatomate.
     
     Args:
         filename: Name of the video file
         
     Returns:
-        Video file response
+        Video file response with CORS headers
     """
     file_path = UPLOAD_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Video not found")
     
     from fastapi.responses import FileResponse
+    
+    # Determine content type from extension
+    content_type = "video/mp4"  # Default
+    if filename.lower().endswith('.mov'):
+        content_type = "video/quicktime"
+    elif filename.lower().endswith('.webm'):
+        content_type = "video/webm"
+    elif filename.lower().endswith('.avi'):
+        content_type = "video/x-msvideo"
+    
+    # CORS headers - critical for Creatomate access
+    cors_headers = {
+        "Cache-Control": "public, max-age=3600",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+    }
+    
     return FileResponse(
         path=str(file_path),
-        media_type="video/mp4"
+        media_type=content_type,
+        headers=cors_headers
     )
 
 
@@ -348,13 +369,16 @@ async def proxy_image(url: str = Query(..., description="Image URL to proxy")):
 
 
 @router.get("/images/{filename}")
+@router.head("/images/{filename}")
 async def serve_image_for_creatomate(filename: str):
     """
-    Serve images directly from disk for Creatomate.
+    Serve images directly from disk for Creatomate and frontend previews.
     This endpoint serves images without going through static file mounting,
     which allows Creatomate to access them even through ngrok.
     The endpoint itself can be accessed via ngrok, and Creatomate will receive
     the actual image file (not the ngrok warning page) because it's an API endpoint.
+    
+    FastAPI automatically handles HEAD requests for GET endpoints.
     """
     try:
         from fastapi.responses import FileResponse
@@ -376,14 +400,19 @@ async def serve_image_for_creatomate(filename: str):
         elif filename.lower().endswith('.webp'):
             content_type = "image/webp"
         
-        # Serve the file directly
+        # CORS headers - critical for frontend image loading
+        cors_headers = {
+            "Cache-Control": "public, max-age=3600",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+        
+        # Serve the file with CORS headers
         return FileResponse(
             path=str(image_path),
             media_type=content_type,
-            headers={
-                "Cache-Control": "public, max-age=3600",
-                "Access-Control-Allow-Origin": "*",
-            }
+            headers=cors_headers
         )
     except HTTPException:
         raise

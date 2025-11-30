@@ -86,11 +86,13 @@ async def search_videos(query: str, max_results: int = 10) -> list[AssetResult]:
                 image = video.get("image", "")
                 thumbnail = image if image else video_files[0].get("link", "")
                 
+                # Use video_url as id since Creatomate needs the URL, not just an ID
+                video_url = best_video.get("link", "")
                 assets.append(
                     AssetResult(
-                        id=str(video.get("id", "")),
+                        id=video_url,  # Use video URL as ID (Creatomate expects URL in asset.id)
                         thumbnail_url=thumbnail,
-                        video_url=best_video.get("link", ""),
+                        video_url=video_url,
                         duration_seconds=video.get("duration", 0),
                     )
                 )

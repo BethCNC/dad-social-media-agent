@@ -44,10 +44,13 @@ def get_user_videos(db: Session, max_count: int = 5) -> List[AssetResult]:
             # Estimate duration if not set (default to 10 seconds)
             duration = video.duration_seconds or 10
             
+            # Use video_url as id since Creatomate needs the URL, not just an ID
+            # Convert relative URLs to absolute if needed (backend will handle this, but set it here for consistency)
+            video_url = video.video_url
             results.append(AssetResult(
-                id=f"user_{video.id}",  # Prefix to distinguish from Pexels IDs
+                id=video_url,  # Use video URL as ID (Creatomate expects URL in asset.id)
                 thumbnail_url=thumbnail_url,
-                video_url=video.video_url,
+                video_url=video_url,
                 duration_seconds=duration
             ))
         
