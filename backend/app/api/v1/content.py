@@ -59,7 +59,17 @@ async def create_plan(
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
+        
+        # Provide user-friendly error messages
+        error_message = str(e)
+        if "INVALID_ARGUMENT" in error_message or "Unable to process input image" in error_message:
+            detail = "The uploaded image could not be processed. Please try a different image or generate content without an image."
+        elif "ClientError" in str(type(e).__name__):
+            detail = "We couldn't connect to the AI service. Please check your API key and try again."
+        else:
+            detail = "We couldn't generate your content plan right now. Please try again in a few minutes."
+        
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to generate content plan: {str(e)}"
+            detail=detail
         )

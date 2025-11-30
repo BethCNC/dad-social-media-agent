@@ -5,7 +5,7 @@ alwaysApply: true
 **Project:** AI Social Media Co-Pilot  
 **Owner:** Beth  
 **Tech Stack:** React (Vite) + FastAPI + Docker + Coolify  
-**External APIs:** OpenAI, Pexels, Creatomate, Ayrshare  
+**External APIs:** Google Gemini 3.0 Pro, Pexels, Creatomate, Ayrshare  
 
 ---
 
@@ -43,7 +43,7 @@ The app runs as a single Dockerized service (React + FastAPI) deployed to a Cool
 2. Provide a **guided wizard** that hides complexity:
    - No exposed timelines, layers, export settings.
 3. Centralize logic in a **single web app**:
-   - AI scripting (OpenAI),
+   - AI scripting (Google Gemini 3.0 Pro),
    - Stock footage (Pexels),
    - Video render (Creatomate),
    - Scheduling (Ayrshare).
@@ -195,7 +195,7 @@ All endpoints prefixed with `/api`.
 | Endpoint                 | Method | Description                                          |
 |--------------------------|--------|------------------------------------------------------|
 | `/health`                | GET    | Health check                                         |
-| `/api/content/plan`      | POST   | Generate script + caption + shot plan (OpenAI)      |
+| `/api/content/plan`      | POST   | Generate script + caption + shot plan (Google Gemini 3.0 Pro)      |
 | `/api/assets/search`     | POST   | Search stock videos (Pexels)                        |
 | `/api/video/render`      | POST   | Start Creatomate render                             |
 | `/api/video/status/{id}` | GET    | Check render job status                             |
@@ -261,14 +261,17 @@ All endpoints prefixed with `/api`.
 
 ## 7. External Integrations – Requirements
 
-### 7.1 OpenAI
+### 7.1 Google Gemini 3.0 Pro
 
-- Model: `gpt-4o`.
+- Model: `gemini-3-pro-preview` for text generation.
+- Model: `gemini-3-pro-image-preview` (Nano Banana Pro) for image generation.
 - Server-side only.
 - Must output JSON that conforms to `GeneratedPlan`:
   - `script: string`
   - `caption: string`
   - `shot_plan: ShotInstruction[]`
+- Use `response_mime_type="application/json"` in GenerateContentConfig to ensure JSON output.
+- Supports multimodal input (text + image) for content generation.
 - Prompt must:
   - Explain audience + platform.
   - Enforce friendly, simple language.
@@ -278,6 +281,7 @@ Error handling:
 
 - If JSON parse fails → return 500 with a clear, generic message.
 - Log the raw response (sanitized) for debugging.
+- Handle image processing errors gracefully (fallback to text-only generation).
 
 ---
 
@@ -341,7 +345,7 @@ Error handling:
 - `ENV`
 - `PORT`
 - `FRONTEND_URL`
-- `OPENAI_API_KEY`
+- `GOOGLE_API_KEY` (for Gemini 3.0 Pro and Nano Banana Pro)
 - `PEXELS_API_KEY`
 - `CREATOMATE_API_KEY`
 - `CREATOMATE_PROJECT_ID`
@@ -410,7 +414,7 @@ Error handling:
 ### Phase 1 – Technical MVP
 
 - All 5 steps of the wizard working end-to-end:
-  - Content plan (OpenAI).
+  - Content plan (Google Gemini 3.0 Pro).
   - Asset search (Pexels).
   - Render (Creatomate).
   - Schedule (Ayrshare).

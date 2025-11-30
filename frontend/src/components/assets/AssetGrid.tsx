@@ -141,10 +141,28 @@ export const AssetGrid = ({
                 <CardContent className="p-0">
                   <div className="aspect-video bg-muted relative">
                     <img
-                      src={asset.thumbnail_url}
+                      src={
+                        // Use proxy endpoint for ngrok URLs to bypass browser warning
+                        asset.thumbnail_url.includes('ngrok')
+                          ? `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/assets/proxy-image?url=${encodeURIComponent(asset.thumbnail_url)}`
+                          : asset.thumbnail_url
+                      }
                       alt="Video thumbnail"
                       className="w-full h-full object-cover"
                       loading="lazy"
+                      crossOrigin="anonymous"
+                      onError={(e) => {
+                        // Fallback: show placeholder on error
+                        const img = e.currentTarget;
+                        console.error('Failed to load image:', asset.thumbnail_url);
+                        img.style.display = 'none';
+                        if (!img.parentElement?.querySelector('.error-placeholder')) {
+                          const placeholder = document.createElement('div');
+                          placeholder.className = 'error-placeholder w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 text-sm';
+                          placeholder.textContent = 'Image failed to load';
+                          img.parentElement?.appendChild(placeholder);
+                        }
+                      }}
                     />
                     {/* Selection number badge in top-left corner - always show when selected */}
                     {isSelected && selectedOrder.includes(asset.id) && (

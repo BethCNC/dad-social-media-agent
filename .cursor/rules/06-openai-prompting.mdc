@@ -1,10 +1,11 @@
-# OpenAI Prompting & JSON Schemas
+# Google Gemini Prompting & JSON Schemas
 
-The OpenAI integration is the “brain” of the app. It should output **structured JSON** that maps directly into Pydantic models.
+The Google Gemini integration is the "brain" of the app. It should output **structured JSON** that maps directly into Pydantic models.
 
 ## Target Model
 
-Use the `gpt-4o` model.
+Use the `gemini-3-pro-preview` model for text generation.
+Use the `gemini-3-pro-image-preview` model (Nano Banana Pro) for image generation.
 
 ## Desired Output Shape
 
@@ -43,7 +44,8 @@ Example high-level instructions to the model (not exact prompt text):
 
 ## Error Handling
 
-- Use `response_format` or explicit instructions to force JSON.
+- Use `response_mime_type="application/json"` in GenerateContentConfig to force JSON output.
 - If parsing fails:
   - Log the raw response (without secrets).
   - Return a 500 error with a clear message to the frontend.
+- Handle multimodal input (image + text) when provided.

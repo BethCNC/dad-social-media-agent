@@ -32,4 +32,5 @@ class RenderJob(BaseModel):
     job_id: str
     status: str
     video_url: str | None = None
+    error_message: str | None = None  # Optional error message from Creatomate
 

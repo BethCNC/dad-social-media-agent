@@ -31,7 +31,15 @@ export const RenderStatusCard = ({
           onComplete(currentStatus.video_url);
         } else if (currentStatus.status === 'failed' || currentStatus.status === 'error') {
           setIsPolling(false);
-          onError('Video rendering failed. Please try again.');
+          // Use error message from Creatomate if available, otherwise show helpful default
+          let errorMsg = currentStatus.error_message || 'Video rendering failed. Please try again.';
+          
+          // Enhance error message for common issues
+          if (errorMsg.toLowerCase().includes('localhost') || errorMsg.toLowerCase().includes('could not be downloaded')) {
+            errorMsg = 'Video rendering failed: Creatomate cannot access localhost URLs. For local development, try using stock videos (Pexels) instead of AI-generated images, or set up ngrok (ngrok http 8000) and update API_BASE_URL in .env.';
+          }
+          
+          onError(errorMsg);
         }
       } catch (err: any) {
         setIsPolling(false);

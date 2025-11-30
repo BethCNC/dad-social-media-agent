@@ -16,7 +16,7 @@ You are the AI pair-programmer for this project.
 1. Scaffold monorepo structure (`frontend`, `backend`, `deploy`).
 2. Implement FastAPI app with `/health` endpoint and CORS.
 3. Implement React shell with a `NewPostWizard` flow.
-4. Wire up OpenAI (`/api/content/plan`) to produce `GeneratedPlan` (script + caption + shot_plan).
+4. Wire up Google Gemini 3.0 Pro (`/api/content/plan`) to produce `GeneratedPlan` (script + caption + shot_plan).
 5. Add Pexels integration for `/api/assets/search`.
 6. Add Creatomate integration for `/api/video/render` and render status.
 7. Add Ayrshare integration for `/api/social/schedule`.

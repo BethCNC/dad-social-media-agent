@@ -188,7 +188,7 @@ Series create:
 
 ### Where Guidelines Are Enforced
 
-1. **Backend AI Prompts** (`backend/app/services/openai_client.py`)
+1. **Backend AI Prompts** (`backend/app/services/gemini_client.py`)
    - System message includes all compliance rules
    - Hashtags automatically injected
    - Disclaimers automatically added

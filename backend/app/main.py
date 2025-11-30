@@ -84,8 +84,29 @@ static_dir = settings.UPLOAD_DIR.parent  # static/ directory
 static_dir.mkdir(parents=True, exist_ok=True)
 
 # Mount static files directory (for generated images and frontend)
+# Add CORS headers middleware for static files
+from fastapi.responses import FileResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class StaticFilesWithCORS(StaticFiles):
+    """StaticFiles with CORS headers to allow ngrok image access."""
+    async def __call__(self, scope, receive, send):
+        # Add CORS headers for image requests
+        if scope["type"] == "http":
+            async def send_wrapper(message):
+                if message["type"] == "http.response.start":
+                    headers = dict(message.get("headers", []))
+                    headers[b"access-control-allow-origin"] = b"*"
+                    headers[b"access-control-allow-methods"] = b"GET, OPTIONS"
+                    headers[b"access-control-allow-headers"] = b"*"
+                    message["headers"] = list(headers.items())
+                await send(message)
+            await super().__call__(scope, receive, send_wrapper)
+        else:
+            await super().__call__(scope, receive, send)
+
 if static_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    app.mount("/static", StaticFilesWithCORS(directory=str(static_dir)), name="static")
 
 # Mount uploads subdirectory for serving user-uploaded videos
 from pathlib import Path

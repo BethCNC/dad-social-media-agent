@@ -19,7 +19,7 @@ backend/app/
     video.py
     social.py
   services/
-    openai_client.py
+    gemini_client.py
     pexels_client.py
     creatomate_client.py
     ayrshare_client.py
@@ -40,11 +40,14 @@ backend/app/
 
 Create a `Settings` class in `core/config.py` using Pydantic:
 
-- `OPENAI_API_KEY`
+- `GOOGLE_API_KEY` (for Gemini 3.0 Pro and Nano Banana Pro)
 - `PEXELS_API_KEY`
 - `CREATOMATE_API_KEY`
+- `CREATOMATE_IMAGE_TEMPLATE_ID`
+- `CREATOMATE_VIDEO_TEMPLATE_ID`
 - `AYRSHARE_API_KEY`
 - `FRONTEND_URL`
+- `API_BASE_URL` (for constructing public image URLs)
 - `ENV` (`development` | `production`)
 
 Load settings lazily (e.g. `@lru_cache` factory). Never hard-code secrets.

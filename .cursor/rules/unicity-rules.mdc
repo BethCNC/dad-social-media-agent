@@ -1,0 +1,117 @@
+# UniFlow: The Unicity Content Engine & Marketing Playbook
+
+**Version:** 1.0  
+**Focus:** Unimate & Balance (The Feel Great System)  
+**Status:** Blueprint & Best Practices  
+
+---
+
+## 📖 Table of Contents
+1. [Project Overview](#1-project-overview)
+2. [Technical Architecture & Codebase](#2-technical-architecture--codebase)
+3. [Compliance & Legal Guidelines](#3-compliance--legal-guidelines)
+4. [Content Strategy & Best Practices](#4-content-strategy--best-practices)
+5. [30-Day Content Calendar](#5-30-day-content-calendar)
+6. [Script Database (Top Selections)](#6-script-database-top-selections)
+
+---
+
+## 1. Project Overview
+
+**UniFlow** is an AI-powered application designed to automate social media content creation for Unicity distributors. It solves the problem of "what to post" while strictly adhering to FDA and FTC regulations regarding nutritional supplements.
+
+### Core Features
+*   **The Content Wizard:** Generates captions based on Product, Vibe, and Audience.
+*   **The Compliance Guard:** A logic filter that blocks banned words (e.g., "cure," "diabetes").
+*   **Visual Generator:** Logic to overlay product sachets onto lifestyle backgrounds.
+
+---
+
+## 2. Technical Architecture & Codebase
+
+### The Stack
+*   **Backend:** Python (FastAPI)
+*   **AI Engine:** OpenAI API (GPT-4)
+*   **Logic:** Custom Compliance Filtering
+
+### Core Application Code (`main.py`)
+This Python code sets up the API and the Compliance Guard.
+
+```python
+import os
+import re
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+
+app = FastAPI(title="UniFlow Content Generator")
+
+# --- COMPLIANCE GUARD ---
+class ComplianceGuard:
+    def __init__(self):
+        self.BANNED_TERMS = [
+            "cure", "heal", "treat", "prevent disease", 
+            "diabetes", "cancer", "reverses", "fix", "diagnosis"
+        ]
+        self.SAFE_ALTERNATIVES = {
+            "diabetes": "healthy glucose support",
+            "cure": "support",
+            "heal": "maintain",
+            "weight loss": "body composition / satiety"
+        }
+
+    def check_safety(self, text: str) -> dict:
+        flagged = []
+        lower_text = text.lower()
+        for term in self.BANNED_TERMS:
+            if re.search(r'\b' + re.escape(term) + r'\b', lower_text):
+                flagged.append(term)
+        return {
+            "is_safe": len(flagged) == 0,
+            "flagged_terms": flagged,
+            "message": "RISK DETECTED" if flagged else "COMPLIANT"
+        }
+
+# --- CONTENT ENGINE ---
+class ContentEngine:
+    def construct_prompt(self, product: str, tone: str, audience: str) -> str:
+        product_facts = {
+            "Unimate": "Yerba Mate extract. Benefits: Mental clarity, no crash, suppresses appetite, supports fasting.",
+            "Balance": "Fiber matrix. Benefits: Slows carb absorption, healthy cholesterol/glucose support, satiety."
+        }
+        facts = product_facts.get(product, "General Unicity Supplement")
+        
+        return f"""
+        Act as a social media expert. Write a post for {product}.
+        Context: {facts}
+        Audience: {audience} | Tone: {tone}
+        Constraint: NO medical claims. Use Emojis. Include CTA.
+        """
+
+# --- API ENDPOINTS ---
+class PostRequest(BaseModel):
+    product: str
+    tone: str
+    audience: str
+
+@app.post("/generate")
+async def generate_post(request: PostRequest):
+    guard = ComplianceGuard()
+    engine = ContentEngine()
+    
+    # 1. Validate Input
+    if request.product not in ["Unimate", "Balance"]:
+        raise HTTPException(400, "Only Unimate and Balance are supported.")
+        
+    # 2. Generate Prompt (Simulated AI Response for Documentation)
+    prompt = engine.construct_prompt(request.product, request.tone, request.audience)
+    simulated_content = "Transform your morning! ☀️ Unimate helps me focus without the coffee jitters. #FeelGreat"
+    
+    # 3. Check Compliance
+    safety_report = guard.check_safety(simulated_content)
+    
+    return {
+        "prompt_used": prompt,
+        "content": simulated_content,
+        "compliance": safety_report
+    }

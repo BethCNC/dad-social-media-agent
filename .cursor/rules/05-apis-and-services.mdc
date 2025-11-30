@@ -2,20 +2,24 @@
 
 The backend must be the single integration point for all external APIs.
 
-## OpenAI (gpt-4o)
+## Google Gemini 3.0 Pro
 
 **Use for**:
 - Generating script.
 - Generating caption (with hashtags).
 - Producing a structured shot plan.
 
+**Model**: `gemini-3-pro-preview`
+
 **Guidelines**:
 - Always request **JSON output** that matches `GeneratedPlan`.
+- Use `response_mime_type="application/json"` in the GenerateContentConfig.
 - Clearly instruct the model:
   - The client is older and needs clear, friendly language.
   - Content is for TikTok/Instagram short video.
   - Aim for ~15–60 seconds of spoken text, unless specified.
 - Handle JSON parsing errors gracefully (fallback messages, not crashes).
+- Supports multimodal input (text + image) for content generation.
 
 ## Pexels (Stock Video)
 
