@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { format, startOfWeek } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -41,6 +42,7 @@ export const NewPostWizard = () => {
   const [assets, setAssets] = useState<AssetResult[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set());
   const [selectedAssetOrder, setSelectedAssetOrder] = useState<string[]>([]); // Track selection order
+  const [selectedAssets, setSelectedAssets] = useState<AssetResult[]>([]); // Track full asset objects
   const [assetPrompts, setAssetPrompts] = useState<Map<string, string>>(new Map()); // Track prompts for regeneration
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
@@ -52,6 +54,7 @@ export const NewPostWizard = () => {
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
+  const { toast } = useToast();
 
   const handleContentTypeSelect = (type: ContentType, customCount?: number) => {
     setContentType(type);
@@ -185,6 +188,7 @@ export const NewPostWizard = () => {
       if (currentStep < 3) {
         setSelectedAssetIds(new Set());
         setSelectedAssetOrder([]);
+        setSelectedAssets([]);
       }
     }
   }, [currentStep]);
@@ -211,6 +215,7 @@ export const NewPostWizard = () => {
       setAssets([asset]);
       setSelectedAssetIds(new Set([asset.id]));
       setSelectedAssetOrder([asset.id]);
+      setSelectedAssets([asset]);
 
       // Set content type to single and go to topic selection
       // We could skip to visuals, but they need a script first
@@ -326,6 +331,9 @@ export const NewPostWizard = () => {
   const handleAssetSelectionChange = (id: string, selected: boolean) => {
     const maxSelection = 2; // Always allow 2 selections for video template
 
+    // Find the asset object if we're selecting
+    const assetObj = assets.find(a => a.id === id);
+
     setSelectedAssetIds((prev) => {
       const next = new Set(prev);
       if (selected) {
@@ -352,6 +360,18 @@ export const NewPostWizard = () => {
       }
       return prev;
     });
+
+    // Update selected assets list
+    setSelectedAssets((prev) => {
+      if (selected) {
+        if (assetObj && !prev.find(a => a.id === id) && prev.length < maxSelection) {
+          return [...prev, assetObj];
+        }
+        return prev;
+      } else {
+        return prev.filter(a => a.id !== id);
+      }
+    });
   };
 
   const startRender = async () => {
@@ -366,22 +386,23 @@ export const NewPostWizard = () => {
 
     try {
       // Get selected assets with their URLs in selection order
-      const selectedAssets = selectedAssetOrder
-        .map(id => assets.find(asset => asset.id === id))
+      // Use the stored selectedAssets state which persists across searches
+      const assetsToRender = selectedAssetOrder
+        .map(id => selectedAssets.find(asset => asset.id === id))
         .filter((asset): asset is NonNullable<typeof asset> => asset !== undefined);
 
       // Validate we have the correct number of assets
-      if (selectedAssets.length !== requiredCount) {
-        setRenderError(`Please select exactly ${requiredCount} visuals. Currently selected: ${selectedAssets.length}`);
+      if (assetsToRender.length !== requiredCount) {
+        setRenderError(`Please select exactly ${requiredCount} visuals. Currently selected: ${assetsToRender.length}`);
         setIsRendering(false);
         return;
       }
 
-      console.log('Selected assets for rendering:', selectedAssets.map(a => ({ id: a.id, url: a.video_url })));
+      console.log('Selected assets for rendering:', assetsToRender.map(a => ({ id: a.id, url: a.video_url })));
       console.log('Script to render:', script);
 
       const renderRequest: VideoRenderRequest = {
-        assets: selectedAssets.map((asset) => ({
+        assets: assetsToRender.map((asset) => ({
           id: asset.video_url, // Use video URL for Creatomate
           start_at: null,
           end_at: null,
@@ -739,7 +760,12 @@ export const NewPostWizard = () => {
             )}
 
             <AssetGrid
-              assets={assets}
+              assets={[
+                // Show selected assets first
+                ...selectedAssets,
+                // Then show search results (filtering out any that are already in selectedAssets)
+                ...assets.filter(a => !selectedAssetIds.has(a.id))
+              ]}
               selectedIds={selectedAssetIds}
               selectedOrder={selectedAssetOrder}
               onSelectionChange={handleAssetSelectionChange}
@@ -753,6 +779,11 @@ export const NewPostWizard = () => {
 
                   // Update the asset in the list
                   setAssets(prev => prev.map(asset =>
+                    asset.id === assetId ? newAsset : asset
+                  ));
+
+                  // Also update selectedAssets if it's there
+                  setSelectedAssets(prev => prev.map(asset =>
                     asset.id === assetId ? newAsset : asset
                   ));
 
@@ -955,6 +986,12 @@ export const NewPostWizard = () => {
             onScheduled={(response: ScheduleResponse) => {
               // Handle successful scheduling
               console.log('Post scheduled:', response);
+              toast({
+                title: "Post Scheduled Successfully",
+                description: "Your post has been added to your weekly schedule.",
+                variant: "default",
+              });
+              navigate('/weekly');
             }}
           />
         );

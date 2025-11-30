@@ -350,10 +350,10 @@ async def generate_image_asset(prompt: str) -> str:
     import io
     
     try:
-        response = client.models.generate_image(
-            model="gemini-3-pro-image-preview",
+        response = client.models.generate_images(
+            model="imagen-4.0-fast-generate-001",
             prompt=prompt,
-            config=types.GenerateImageConfig(
+            config=types.GenerateImagesConfig(
                 number_of_images=1,
                 aspect_ratio="9:16"  # Perfect for TikTok/Reels
             )
@@ -362,16 +362,19 @@ async def generate_image_asset(prompt: str) -> str:
         if not response.generated_images or len(response.generated_images) == 0:
             raise ValueError("No images generated in response")
         
-        # Get image bytes
-        image_bytes = response.generated_images[0].image.image_bytes
+        # Get image bytes (they are base64 encoded)
+        image_bytes_b64 = response.generated_images[0].image.image_bytes
+        
+        # Decode from base64
+        image_bytes = base64.b64decode(image_bytes_b64)
         
         # Generate unique filename
         filename = f"{uuid.uuid4().hex}.png"
         file_path = settings.UPLOAD_DIR / filename
         
-        # Save image to disk
-        image = Image.open(io.BytesIO(image_bytes))
-        image.save(file_path, "PNG")
+        # Save image bytes directly to disk
+        with open(file_path, 'wb') as f:
+            f.write(image_bytes)
         
         logger.info(f"Saved generated image to {file_path}")
         
