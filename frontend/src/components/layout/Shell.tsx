@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Video, Plus, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Toaster } from '@/components/ui/toaster';
 
 interface ShellProps {
   children: ReactNode;
@@ -52,6 +53,7 @@ export const Shell = ({ children }: ShellProps) => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+      <Toaster />
     </div>
   );
 };

@@ -8,6 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { listUserVideos, uploadVideo, deleteUserVideo, type UserVideo } from '@/lib/assetsApi';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const VideoLibrary = () => {
   const navigate = useNavigate();
@@ -19,6 +29,7 @@ export const VideoLibrary = () => {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadTags, setUploadTags] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
+  const [videoToDelete, setVideoToDelete] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -83,16 +94,20 @@ export const VideoLibrary = () => {
     }
   };
 
-  const handleDelete = async (videoId: number) => {
-    if (!confirm('Are you sure you want to delete this video?')) {
-      return;
-    }
+  const handleDelete = (videoId: number) => {
+    setVideoToDelete(videoId);
+  };
+
+  const confirmDelete = async () => {
+    if (!videoToDelete) return;
 
     try {
-      await deleteUserVideo(videoId);
+      await deleteUserVideo(videoToDelete);
       await loadVideos();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete video');
+    } finally {
+      setVideoToDelete(null);
     }
   };
 
@@ -329,6 +344,23 @@ export const VideoLibrary = () => {
           </Card>
         </div>
       )}
+
+      <AlertDialog open={!!videoToDelete} onOpenChange={(open) => !open && setVideoToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the video from your library.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -1,5 +1,5 @@
-import { useState, FormEvent } from 'react';
-import { Calendar, Clock, CheckCircle } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { Calendar, Clock } from 'lucide-react';
 import { schedulePost, type ScheduleRequest, type ScheduleResponse } from '../../lib/socialApi';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,6 @@ export const ScheduleForm = ({
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [scheduled, setScheduled] = useState<ScheduleResponse | null>(null);
 
   const platformOptions = ['TikTok', 'Instagram'];
 
@@ -58,7 +57,6 @@ export const ScheduleForm = ({
       };
 
       const response = await schedulePost(request);
-      setScheduled(response);
       onScheduled(response);
     } catch (err: any) {
       setError(
@@ -69,52 +67,6 @@ export const ScheduleForm = ({
       setIsLoading(false);
     }
   };
-
-  if (scheduled) {
-    return (
-      <Card className="border-green-200 bg-green-50/50">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <CheckCircle className="w-8 h-8 text-green-600" aria-hidden="true" />
-            <CardTitle className="text-green-900">
-              Post Scheduled Successfully!
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-green-800 text-base">
-            Your post has been scheduled and will be published to:
-          </p>
-          <ul className="list-disc list-inside text-green-800 space-y-2">
-            {platforms.map((platform) => (
-              <li key={platform} className="text-base">
-                {platform}
-              </li>
-            ))}
-          </ul>
-          {scheduled.external_links && scheduled.external_links.length > 0 && (
-            <div className="mt-4">
-              <p className="text-green-800 font-semibold mb-2">View your posts:</p>
-              <ul className="space-y-2">
-                {scheduled.external_links.map((link, index) => (
-                  <li key={index}>
-                    <a
-                      href={link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:text-primary/80 underline text-base"
-                    >
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className="space-y-6">
