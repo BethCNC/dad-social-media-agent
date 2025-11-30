@@ -372,24 +372,52 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
 
           {/* Video Length (Optional) */}
           <div className="space-y-3">
-            <Label htmlFor="length" className="text-lg font-semibold">
-              Video Length (seconds) - Optional
+            <Label className="text-lg font-semibold">
+              Video Length - Optional
             </Label>
-            <Input
-              id="length"
-              type="number"
-              min="15"
-              max="60"
-              value={lengthSeconds || ''}
-              onChange={(e) =>
-                setLengthSeconds(e.target.value ? parseInt(e.target.value) : null)
-              }
-              className="text-lg h-12"
-              placeholder="e.g., 30"
-              aria-describedby="length-description"
-            />
-            <p id="length-description" className="text-base text-muted-foreground">
-              Recommended: 15-60 seconds for short-form content
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => setLengthSeconds(lengthSeconds === 30 ? null : 30)}
+                className={cn(
+                  'p-4 border-2 rounded-lg text-center transition-all',
+                  lengthSeconds === 30
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                <div className="font-semibold text-base">Short</div>
+                <div className="text-sm opacity-90">30 seconds</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLengthSeconds(lengthSeconds === 45 ? null : 45)}
+                className={cn(
+                  'p-4 border-2 rounded-lg text-center transition-all',
+                  lengthSeconds === 45
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                <div className="font-semibold text-base">Medium</div>
+                <div className="text-sm opacity-90">45 seconds</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLengthSeconds(lengthSeconds === 60 ? null : 60)}
+                className={cn(
+                  'p-4 border-2 rounded-lg text-center transition-all',
+                  lengthSeconds === 60
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                <div className="font-semibold text-base">Long</div>
+                <div className="text-sm opacity-90">60 seconds</div>
+              </button>
+            </div>
+            <p className="text-base text-muted-foreground">
+              Choose a length, or leave blank to let the AI decide
             </p>
           </div>
 
