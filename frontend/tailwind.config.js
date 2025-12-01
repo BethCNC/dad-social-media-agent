@@ -26,6 +26,10 @@ export default {
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
+			spacing: {
+				'card-gap': '24px',    // 24px padding between cards
+				'block-gap': '48px',   // 48px vertical spacing between blocks
+			},
 			colors: {
 				// Primitives
 				'red-500': 'hsl(var(--color-red-500))',

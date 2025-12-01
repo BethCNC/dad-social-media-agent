@@ -25,8 +25,9 @@
   --fg-subtle: 216 31% 17%;
   --fg-inverse: 0 0% 100%;
   --fg-on-disabled: 215 23% 65%;
-  --fg-error: 2 85% 67%;
-  --fg-warning: 28 100% 60%;
+  /* Status foregrounds explicitly alias brand primitives */
+  --fg-error: var(--color-red-500);
+  --fg-warning: var(--color-orange-500);
   --fg-success-hover: 140 49% 44%;
   --fg-warning-hover: 28 66% 50%;
   --fg-error-hover: 2 56% 53%;
@@ -47,9 +48,24 @@
   --border-strong: 217 21% 27%;
   --border-default: 218 12% 64%;
   --border-disabled: 215 23% 65%;
-  --border-error: 2 85% 67%;
-  --border-warning: 28 100% 60%;
+  /* Status borders explicitly alias brand primitives */
+  --border-error: var(--color-red-500);
+  --border-warning: var(--color-orange-500);
   --border-success-hover: 140 49% 44%;
   --border-warning-hover: 28 66% 50%;
   --border-error-hover: 2 56% 53%;
+
+  /* Spacing tokens (from design system) */
+  --spacing-xs: 4px;    /* gap/sm */
+  --spacing-sm: 8px;    /* gap/md */
+  --spacing-md: 16px;   /* gap/xl */
+  --spacing-lg: 24px;   /* gap between cards */
+  --spacing-xl: 48px;   /* vertical spacing between blocks */
+  
+  /* Padding tokens */
+  --padding-xs: 4px;
+  --padding-sm: 8px;
+  --padding-md: 12px;
+  --padding-lg: 24px;
+  --padding-xl: 48px;
 }
