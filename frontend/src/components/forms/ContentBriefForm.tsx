@@ -14,9 +14,11 @@ import { cn } from '@/lib/utils';
 interface ContentBriefFormProps {
   onPlanGenerated: (plan: GeneratedPlan, templateType?: 'image' | 'video') => void;
   initialTopic?: string;
+  onGeneratingChange?: (isGenerating: boolean) => void;
+  formId?: string;
 }
 
-export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBriefFormProps) => {
+export const ContentBriefForm = ({ onPlanGenerated, initialTopic, onGeneratingChange, formId }: ContentBriefFormProps) => {
   const [mode, setMode] = useState<'manual' | 'auto'>('manual');
   const [userTopic, setUserTopic] = useState(initialTopic || '');
   const [useHolidays, setUseHolidays] = useState(false);
@@ -108,6 +110,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
     }
 
     setIsLoading(true);
+    onGeneratingChange?.(true);
 
     try {
       const brief: ContentBrief = {
@@ -132,6 +135,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
       );
     } finally {
       setIsLoading(false);
+      onGeneratingChange?.(false);
     }
   };
 
@@ -144,7 +148,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form id={formId} onSubmit={handleSubmit} className="space-y-8">
           {/* Template Type Selection - FIRST */}
           <div className="space-y-4">
             <Label className="text-lg font-semibold">
