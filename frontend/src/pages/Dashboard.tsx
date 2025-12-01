@@ -52,7 +52,7 @@ export const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-bg-page relative">
-      <div className="absolute left-1/2 top-[120px] -translate-x-1/2 flex flex-col gap-block-gap items-start w-[1200px]">
+      <div className="absolute left-1/2 top-[120px] -translate-x-1/2 flex flex-col gap-[48px] items-start w-[1200px]">
         {/* Greeting Container */}
         <div className="flex flex-col gap-0 w-full">
           <h1 className="text-6xl text-fg-headings w-full">{briefing.greeting}</h1>
