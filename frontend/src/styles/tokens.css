@@ -1,0 +1,55 @@
+:root {
+  /* Primitives */
+  --color-red-500: 2 85% 67%;
+  --color-orange-500: 28 100% 60%;
+  --color-yellow-500: 48 100% 72%;
+  --color-green-500: 139 70% 59%;
+  --color-blue-500: 211 66% 63%;
+  --color-purple-500: 272 68% 68%;
+  --color-pink-500: 342 93% 76%;
+  --color-white: 0 0% 100%;
+  --color-black: 0 0% 0%;
+  --color-gray-900: 220 43% 11%;
+  --color-gray-950: 224 71% 4%;
+  --color-gray-800: 216 31% 17%;
+  --color-gray-700: 217 21% 27%;
+  --color-gray-500: 215 23% 65%;
+  --color-gray-400: 218 12% 64%;
+  --color-gray-200: 214 32% 91%;
+  --color-gray-100: 218 14% 84%;
+  --color-gray-50: 210 20% 98%;
+
+  /* Semantics */
+  --fg-headings: 0 0% 0%;
+  --fg-body: 224 71% 4%;
+  --fg-subtle: 216 31% 17%;
+  --fg-inverse: 0 0% 100%;
+  --fg-on-disabled: 215 23% 65%;
+  --fg-error: 2 85% 67%;
+  --fg-warning: 28 100% 60%;
+  --fg-success-hover: 140 49% 44%;
+  --fg-warning-hover: 28 66% 50%;
+  --fg-error-hover: 2 56% 53%;
+  --bg-page: 0 0% 100%;
+  --bg-default: 0 0% 100%;
+  --bg-elevated: 210 20% 98%;
+  --bg-subtle: 218 14% 84%;
+  --bg-action: 220 43% 11%;
+  --bg-secondary: 210 52% 74%;
+  --bg-disabled: 214 32% 91%;
+  --bg-success: 140 60% 73%;
+  --bg-warning: 28 100% 73%;
+  --bg-error: 0 100% 82%;
+  --bg-success-subtle: 140 60% 96%;
+  --bg-warning-subtle: 27 100% 96%;
+  --bg-error-subtle: 0 87% 97%;
+  --border-primary: 224 71% 4%;
+  --border-strong: 217 21% 27%;
+  --border-default: 218 12% 64%;
+  --border-disabled: 215 23% 65%;
+  --border-error: 2 85% 67%;
+  --border-warning: 28 100% 60%;
+  --border-success-hover: 140 49% 44%;
+  --border-warning-hover: 28 66% 50%;
+  --border-error-hover: 2 56% 53%;
+}

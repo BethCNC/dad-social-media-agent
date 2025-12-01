@@ -33,12 +33,12 @@ export const RenderStatusCard = ({
           setIsPolling(false);
           // Use error message from Creatomate if available, otherwise show helpful default
           let errorMsg = currentStatus.error_message || 'Video rendering failed. Please try again.';
-          
+
           // Enhance error message for common issues
           if (errorMsg.toLowerCase().includes('localhost') || errorMsg.toLowerCase().includes('could not be downloaded')) {
             errorMsg = 'Video rendering failed: Creatomate cannot access localhost URLs. For local development, try using stock videos (Pexels) instead of AI-generated images, or set up ngrok (ngrok http 8000) and update API_BASE_URL in .env.';
           }
-          
+
           onError(errorMsg);
         }
       } catch (err: any) {
@@ -91,9 +91,9 @@ export const RenderStatusCard = ({
         };
       default:
         return {
-          icon: <Video className="w-8 h-8 text-muted-foreground" />,
+          icon: <Video className="w-8 h-8 text-fg-subtle" />,
           text: `Status: ${status.status}`,
-          color: 'text-muted-foreground',
+          color: 'text-fg-subtle',
         };
     }
   };
@@ -110,7 +110,7 @@ export const RenderStatusCard = ({
           <p className={cn("text-xl font-semibold", statusDisplay.color)}>
             {statusDisplay.text}
           </p>
-          
+
           {/* Compliance Check Badge - Show when rendering or completed */}
           {(isPolling || status?.status === 'succeeded') && (
             <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
@@ -120,7 +120,7 @@ export const RenderStatusCard = ({
               </span>
             </div>
           )}
-          
+
           {status?.video_url && (
             <div className="mt-6 w-full">
               <video
@@ -134,7 +134,7 @@ export const RenderStatusCard = ({
             </div>
           )}
           {isPolling && (
-            <p className="text-muted-foreground text-sm mt-2">
+            <p className="text-fg-subtle text-sm mt-2">
               This may take a minute or two...
             </p>
           )}

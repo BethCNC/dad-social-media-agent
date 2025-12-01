@@ -27,21 +27,21 @@ export const AssetGrid = ({
   assetPrompts,
 }: AssetGridProps) => {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
-  
+
   const formatDuration = (seconds: number) => {
     return `${seconds}s`;
   };
-  
+
   const handleRegenerate = async (assetId: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card selection
     if (!onRegenerate || !assetPrompts) return;
-    
+
     const prompt = assetPrompts.get(assetId);
     if (!prompt) {
       console.warn(`No prompt found for asset ${assetId}`);
       return;
     }
-    
+
     setRegeneratingId(assetId);
     try {
       await onRegenerate(assetId, prompt);
@@ -60,16 +60,16 @@ export const AssetGrid = ({
   };
 
   const assetTypeLabel = templateType === 'image' ? 'images' : 'video clips';
-  const selectionText = maxSelection 
+  const selectionText = maxSelection
     ? `${selectedIds.size} of ${maxSelection} selected`
     : `${selectedIds.size} selected`;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-      <h3 className="text-xl font-semibold">
+        <h3 className="text-xl font-semibold">
           Select {assetTypeLabel} ({selectionText})
-      </h3>
+        </h3>
         {maxSelection && (
           <div className={cn(
             "text-sm px-3 py-1 rounded-full",
@@ -81,21 +81,21 @@ export const AssetGrid = ({
           </div>
         )}
       </div>
-      
+
       {maxSelection && selectedIds.size < maxSelection && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-800">
-            {templateType === 'image' 
+            {templateType === 'image'
               ? 'Please select exactly 1 image for the image template.'
               : 'Please select exactly 2 video clips for the video template.'}
           </p>
         </div>
       )}
-      
+
       {assets.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground text-lg">
+            <p className="text-fg-subtle text-lg">
               No visuals generated yet. Generating based on your shot plan...
             </p>
           </CardContent>
@@ -106,20 +106,20 @@ export const AssetGrid = ({
             const isSelected = selectedIds.has(asset.id);
             const canSelectThis = canSelect(asset.id);
             const isDisabled = !canSelectThis && !isSelected;
-            
+
             return (
               <Card
                 key={asset.id}
                 className={cn(
                   "relative overflow-hidden transition-all",
-                  isDisabled 
+                  isDisabled
                     ? "opacity-50 cursor-not-allowed"
                     : "cursor-pointer hover:shadow-md",
                   isSelected
                     ? "ring-2 ring-primary border-primary"
                     : isDisabled
-                    ? "border-gray-200"
-                    : "hover:border-primary/50"
+                      ? "border-gray-200"
+                      : "hover:border-primary/50"
                 )}
                 onClick={() => {
                   if (!isDisabled) {
@@ -144,22 +144,22 @@ export const AssetGrid = ({
                       src={(() => {
                         const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
                         const thumbnailUrl = asset.thumbnail_url;
-                        
+
                         // If URL is relative (starts with /), make it absolute
                         if (thumbnailUrl.startsWith('/')) {
                           return `${apiBase}${thumbnailUrl}`;
                         }
-                        
+
                         // If URL includes ngrok, use proxy to bypass browser warning
                         if (thumbnailUrl.includes('ngrok')) {
                           return `${apiBase}/api/assets/proxy-image?url=${encodeURIComponent(thumbnailUrl)}`;
                         }
-                        
+
                         // For AI-generated images using /api/assets/images/ endpoint, ensure it's absolute
                         if (thumbnailUrl.includes('/api/assets/images/') && !thumbnailUrl.startsWith('http')) {
                           return `${apiBase}${thumbnailUrl.startsWith('/') ? '' : '/'}${thumbnailUrl}`;
                         }
-                        
+
                         // Otherwise use as-is
                         return thumbnailUrl;
                       })()}
@@ -182,15 +182,15 @@ export const AssetGrid = ({
                     />
                     {/* Selection number badge in top-left corner - always show when selected */}
                     {isSelected && selectedOrder.includes(asset.id) && (
-                      <div className="absolute top-2 left-2 bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-white z-10">
+                      <div className="absolute top-2 left-2 bg-bg-action text-fg-inverse rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-bg-page z-10">
                         <span className="text-sm font-bold">
                           {selectedOrder.indexOf(asset.id) + 1}
                         </span>
                       </div>
                     )}
                     {isSelected && (
-                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                        <div className="bg-primary text-primary-foreground rounded-full p-2">
+                      <div className="absolute inset-0 bg-bg-action/20 flex items-center justify-center">
+                        <div className="bg-bg-action text-fg-inverse rounded-full p-2">
                           <Check className="w-6 h-6" aria-hidden="true" />
                         </div>
                       </div>

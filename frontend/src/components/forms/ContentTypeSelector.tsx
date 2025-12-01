@@ -36,7 +36,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
     <div className="space-y-8">
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold">What would you like to create?</h2>
-        <p className="text-muted-foreground text-base">
+        <p className="text-fg-subtle text-base">
           Choose how many posts you want to generate
         </p>
       </div>
@@ -49,7 +49,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
           className={cn(
             'p-6 border-2 rounded-lg text-left transition-all h-full',
             selectedType === 'single'
-              ? 'border-primary bg-primary/5'
+              ? 'border-border-primary bg-bg-action/5'
               : 'border-border hover:border-primary/50'
           )}
         >
@@ -57,7 +57,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
             <FileText className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
             <div className="flex-1">
               <div className="font-semibold text-lg mb-2">Single Post</div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-fg-subtle">
                 Create one custom post with your own topic and idea
               </div>
             </div>
@@ -71,7 +71,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
           className={cn(
             'p-6 border-2 rounded-lg text-left transition-all h-full',
             selectedType === 'weekly'
-              ? 'border-primary bg-primary/5'
+              ? 'border-border-primary bg-bg-action/5'
               : 'border-border hover:border-primary/50'
           )}
         >
@@ -79,7 +79,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
             <CalendarDays className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
             <div className="flex-1">
               <div className="font-semibold text-lg mb-2">Weekly Schedule</div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-fg-subtle">
                 Generate 7 posts for the week with AI-suggested topics
               </div>
             </div>
@@ -93,7 +93,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
           className={cn(
             'p-6 border-2 rounded-lg text-left transition-all h-full',
             selectedType === 'monthly'
-              ? 'border-primary bg-primary/5'
+              ? 'border-border-primary bg-bg-action/5'
               : 'border-border hover:border-primary/50'
           )}
         >
@@ -101,7 +101,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
             <Calendar className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
             <div className="flex-1">
               <div className="font-semibold text-lg mb-2">Monthly Schedule</div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-fg-subtle">
                 Generate a full month of content (30 days, ~12 posts)
               </div>
             </div>
@@ -115,7 +115,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
           className={cn(
             'p-6 border-2 rounded-lg text-left transition-all h-full',
             selectedType === 'custom'
-              ? 'border-primary bg-primary/5'
+              ? 'border-border-primary bg-bg-action/5'
               : 'border-border hover:border-primary/50'
           )}
         >
@@ -123,7 +123,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
             <Hash className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
             <div className="flex-1">
               <div className="font-semibold text-lg mb-2">Custom</div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-fg-subtle">
                 Specify exactly how many posts you want (1-90)
               </div>
             </div>
@@ -133,7 +133,7 @@ export const ContentTypeSelector = ({ onSelect, selectedType }: ContentTypeSelec
 
       {/* Custom Input */}
       {showCustomInput && (
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className="border-border-primary/20 bg-bg-action/5">
           <CardHeader>
             <CardTitle className="text-lg">How many posts?</CardTitle>
             <CardDescription>

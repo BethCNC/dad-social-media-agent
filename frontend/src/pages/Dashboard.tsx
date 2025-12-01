@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Plus, Calendar, Video, TrendingUp, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, Plus, Video, TrendingUp, Shield, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getDailyBriefing, type DailyBriefing } from '@/lib/dashboardApi';
 import { SocialTrendsPulse } from '@/components/trends/SocialTrendsPulse';
 
@@ -36,16 +36,12 @@ export const Dashboard = () => {
     navigate('/weekly');
   };
 
-  const handleVideoLibrary = () => {
-    navigate('/videos');
-  };
-
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-bg-page">
         <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading your dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-primary mx-auto"></div>
+          <p className="text-fg-subtle">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -53,220 +49,188 @@ export const Dashboard = () => {
 
   if (!briefing) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Unable to load dashboard</p>
+      <div className="flex items-center justify-center min-h-screen bg-bg-page">
+        <p className="text-fg-subtle">Unable to load dashboard</p>
       </div>
     );
   }
 
+  // Helper to generate next 7 days for the calendar view
+  const getNext7Days = () => {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      days.push({
+        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        date: date.getDate(),
+        isToday: i === 0
+      });
+    }
+    return days;
+  };
+
+  const next7Days = getNext7Days();
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold">{briefing.greeting}</h1>
-        <p className="text-lg text-muted-foreground">{briefing.current_date}</p>
-      </div>
+    <div className="min-h-screen bg-bg-page px-8 py-12">
+      <div className="max-w-[1200px] mx-auto space-y-16">
 
-      {/* Hero CTA - Primary Action */}
-      <Card className="border-2 border-primary shadow-lg bg-gradient-to-br from-primary/10 via-primary/5 to-background">
-        <CardContent className="p-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex-1 space-y-4">
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-8 h-8 text-primary" />
-                <h2 className="text-3xl font-bold">Create Your Next Post</h2>
-              </div>
-              <p className="text-lg text-muted-foreground max-w-2xl">
-                Generate AI-powered social content that follows Unicity guidelines and maximizes engagement in under 5 minutes.
-              </p>
-              {briefing.suggested_action && (
-                <div className="bg-background/80 rounded-lg p-4 border">
-                  <p className="text-sm text-muted-foreground mb-1">Suggested Today:</p>
-                  <p className="font-medium">{briefing.suggested_action}</p>
-                </div>
-              )}
-            </div>
-            <div className="flex-shrink-0">
-              <Button
-                onClick={handleCreatePost}
-                size="lg"
-                className="h-16 px-12 text-xl font-bold shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <Plus className="w-6 h-6 mr-3" />
-                Create Post Now
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions - Secondary Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Weekly Schedule */}
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={handleWeeklySchedule}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <Calendar className="w-10 h-10 text-primary" />
-              <ChevronDown className="w-5 h-5 text-muted-foreground group-hover:translate-y-1 transition-transform" />
-            </div>
-            <CardTitle className="text-xl">Weekly Schedule</CardTitle>
-            <CardDescription>
-              Generate or view your 7-day content plan
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {briefing.stats.scheduled_posts > 0
-                ? `${briefing.stats.scheduled_posts} posts scheduled`
-                : 'No posts scheduled yet'}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Video Library */}
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={handleVideoLibrary}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <Video className="w-10 h-10 text-primary" />
-              <ChevronDown className="w-5 h-5 text-muted-foreground group-hover:translate-y-1 transition-transform" />
-            </div>
-            <CardTitle className="text-xl">Video Library</CardTitle>
-            <CardDescription>
-              Upload videos to use in your posts
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Manage your uploaded assets
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* View Trends */}
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => setShowTrends(!showTrends)}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <TrendingUp className="w-10 h-10 text-primary" />
-              {showTrends ? (
-                <ChevronUp className="w-5 h-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-muted-foreground group-hover:translate-y-1 transition-transform" />
-              )}
-            </div>
-            <CardTitle className="text-xl">Content Inspiration</CardTitle>
-            <CardDescription>
-              See what's trending in your niche
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {briefing.trend_pulse
-                ? `${briefing.trend_pulse.new_viral_trends} new trends today`
-                : 'Click to view trends'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Expandable Sections */}
-
-      {/* Social Trends Pulse - Expandable */}
-      {showTrends && briefing.trend_pulse && (
-        <div className="animate-in slide-in-from-top-4 duration-300">
-          <SocialTrendsPulse
-            data={briefing.trend_pulse}
-            onTrendClick={(trend) => {
-              navigate('/wizard', {
-                state: {
-                  prefillTopic: trend.name,
-                },
-              });
-            }}
-          />
+        {/* Greeting Container */}
+        <div className="space-y-2">
+          <h1 className="text-6xl font-bold text-fg-headings tracking-tight">{briefing.greeting}</h1>
+          <p className="text-3xl font-medium text-fg-subtle">{briefing.current_date}</p>
         </div>
-      )}
 
-      {/* Compliance Quick Reference - Collapsible */}
-      <Card
-        className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 cursor-pointer"
-        onClick={() => setShowCompliance(!showCompliance)}
-      >
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Shield className="w-6 h-6 text-orange-600" />
-              <CardTitle className="text-xl">Compliance & Brand Guidelines</CardTitle>
-            </div>
-            {showCompliance ? (
-              <ChevronUp className="w-5 h-5 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-muted-foreground" />
-            )}
-          </div>
-          {!showCompliance && (
-            <CardDescription>
-              Click to view important rules to keep your account safe
-            </CardDescription>
-          )}
-        </CardHeader>
-        {showCompliance && (
-          <CardContent className="space-y-4 animate-in slide-in-from-top-4 duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Critical DO's */}
-              <div className="space-y-2">
-                <p className="font-semibold text-green-900 text-sm uppercase tracking-wide">✅ Always Include:</p>
-                <ul className="space-y-1 text-sm text-green-800">
-                  <li>• Hashtags: #metabolichealth #healthyliving #unicity</li>
-                  <li>• "Link in bio" (never direct URLs)</li>
-                  <li>• Health disclaimer at end</li>
-                  <li>• "Supports", "helps with" language</li>
-                </ul>
-              </div>
-              {/* Critical DON'Ts */}
-              <div className="space-y-2">
-                <p className="font-semibold text-red-900 text-sm uppercase tracking-wide">❌ Never Say:</p>
-                <ul className="space-y-1 text-sm text-red-800">
-                  <li>• "Cures", "treats", "fixes" diseases</li>
-                  <li>• "Make $X" or income promises</li>
-                  <li>• "Join my team" (MLM banned on TikTok)</li>
-                  <li>• Direct URLs in captions</li>
-                </ul>
-              </div>
-            </div>
-            <div className="pt-3 border-t border-orange-200">
-              <p className="text-xs text-orange-700 flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                All generated content automatically follows these rules
-              </p>
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Upcoming Holidays - Compact */}
-      {briefing.upcoming_holidays && briefing.upcoming_holidays.length > 0 && (
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              Upcoming Holiday Opportunities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
-              {briefing.upcoming_holidays.slice(0, 3).map((holiday, index) => (
-                <div
-                  key={index}
-                  className="bg-white/80 rounded-lg px-4 py-2 border border-blue-200"
-                >
-                  <p className="font-medium text-sm text-blue-900">{holiday.name}</p>
-                  <p className="text-xs text-blue-600">{holiday.date}</p>
+        {/* Create Post Card */}
+        <div className="bg-bg-elevated rounded-xl p-8 border border-border-default shadow-sm relative overflow-hidden group">
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+            <div className="space-y-6 max-w-2xl">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-bg-action rounded-lg">
+                  <Sparkles className="w-8 h-8 text-fg-inverse" />
                 </div>
-              ))}
+                <h2 className="text-4xl font-bold text-fg-headings">Create Your Next Post</h2>
+              </div>
+
+              {/* Suggested Content Container */}
+              <div className="bg-bg-page rounded-lg p-6 border border-border-default">
+                <p className="text-2xl font-semibold text-fg-headings mb-2">Suggested Content for Today:</p>
+                <p className="text-lg text-fg-body">{briefing.suggested_action}</p>
+              </div>
             </div>
-          </CardContent>
+
+            <Button
+              onClick={handleCreatePost}
+              className="h-16 px-8 bg-bg-action hover:bg-gray-800 text-fg-inverse text-xl font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-3 shrink-0"
+            >
+              <Plus className="w-6 h-6" />
+              Create Post Now
+            </Button>
+          </div>
+        </div>
+
+        {/* Calendar Content */}
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h2 className="text-4xl font-bold text-fg-headings">Weekly Schedule</h2>
+              <p className="text-xl text-fg-subtle">Your content plan for the week</p>
+            </div>
+            <Button variant="outline" onClick={handleWeeklySchedule} className="text-fg-body border-border-strong hover:bg-bg-subtle">
+              View Full Calendar <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            {next7Days.map((day, index) => (
+              <div
+                key={index}
+                className={`
+                  aspect-[4/5] rounded-xl p-4 border flex flex-col justify-between transition-all cursor-pointer hover:shadow-md
+                  ${day.isToday
+                    ? 'bg-bg-action text-fg-inverse border-bg-action'
+                    : 'bg-bg-elevated text-fg-body border-border-default hover:border-border-strong'}
+                `}
+                onClick={handleWeeklySchedule}
+              >
+                <div className="text-center">
+                  <p className={`text-sm font-medium uppercase tracking-wider ${day.isToday ? 'text-gray-400' : 'text-fg-subtle'}`}>
+                    {day.day}
+                  </p>
+                  <p className="text-3xl font-bold mt-1">{day.date}</p>
+                </div>
+
+                <div className="flex justify-center">
+                  {/* Placeholder for content indicator */}
+                  <div className={`w-2 h-2 rounded-full ${day.isToday ? 'bg-green-500' : 'bg-border-default'}`} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Secondary Actions Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Video Library */}
+          <Card className="bg-bg-elevated border-border-default hover:border-border-strong transition-all cursor-pointer group" onClick={() => navigate('/videos')}>
+            <CardHeader>
+              <div className="flex items-center justify-between mb-2">
+                <Video className="w-10 h-10 text-fg-headings" />
+                <ArrowRight className="w-6 h-6 text-fg-subtle group-hover:translate-x-1 transition-transform" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-fg-headings">Video Library</CardTitle>
+              <CardDescription className="text-lg text-fg-subtle">Manage your uploaded assets</CardDescription>
+            </CardHeader>
+          </Card>
+
+          {/* Trends */}
+          <Card className="bg-bg-elevated border-border-default hover:border-border-strong transition-all cursor-pointer group" onClick={() => setShowTrends(!showTrends)}>
+            <CardHeader>
+              <div className="flex items-center justify-between mb-2">
+                <TrendingUp className="w-10 h-10 text-fg-headings" />
+                {showTrends ? <ChevronUp className="w-6 h-6 text-fg-subtle" /> : <ChevronDown className="w-6 h-6 text-fg-subtle group-hover:translate-y-1 transition-transform" />}
+              </div>
+              <CardTitle className="text-2xl font-bold text-fg-headings">Content Inspiration</CardTitle>
+              <CardDescription className="text-lg text-fg-subtle">
+                {briefing.trend_pulse ? `${briefing.trend_pulse.new_viral_trends} new trends today` : 'See what\'s trending'}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+
+        {/* Expandable Trends Section */}
+        {showTrends && briefing.trend_pulse && (
+          <div className="animate-in slide-in-from-top-4 duration-300">
+            <SocialTrendsPulse
+              data={briefing.trend_pulse}
+              onTrendClick={(trend) => {
+                navigate('/wizard', { state: { prefillTopic: trend.name } });
+              }}
+            />
+          </div>
+        )}
+
+        {/* Compliance Section */}
+        <Card
+          className="bg-bg-warning-subtle border-border-warning cursor-pointer"
+          onClick={() => setShowCompliance(!showCompliance)}
+        >
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Shield className="w-8 h-8 text-fg-warning" />
+                <CardTitle className="text-2xl font-bold text-fg-headings">Compliance & Brand Guidelines</CardTitle>
+              </div>
+              {showCompliance ? <ChevronUp className="w-6 h-6 text-fg-subtle" /> : <ChevronDown className="w-6 h-6 text-fg-subtle" />}
+            </div>
+          </CardHeader>
+          {showCompliance && (
+            <CardContent className="space-y-6 animate-in slide-in-from-top-4 duration-300 pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-border-warning/30">
+                <div className="space-y-3">
+                  <p className="font-bold text-fg-success-hover uppercase tracking-wide">✅ Always Include:</p>
+                  <ul className="space-y-2 text-fg-body">
+                    <li>• Hashtags: #metabolichealth #healthyliving</li>
+                    <li>• "Link in bio" (never direct URLs)</li>
+                    <li>• Health disclaimer at end</li>
+                  </ul>
+                </div>
+                <div className="space-y-3">
+                  <p className="font-bold text-fg-error uppercase tracking-wide">❌ Never Say:</p>
+                  <ul className="space-y-2 text-fg-body">
+                    <li>• "Cures", "treats", "fixes" diseases</li>
+                    <li>• "Make $X" or income promises</li>
+                    <li>• "Join my team" (MLM banned on TikTok)</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          )}
         </Card>
-      )}
+
+      </div>
     </div>
   );
 };
