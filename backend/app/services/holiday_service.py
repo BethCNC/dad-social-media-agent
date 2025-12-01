@@ -91,7 +91,7 @@ async def fetch_us_holidays() -> List[dict]:
         raise ValueError(f"Failed to fetch holidays: {e}")
 
 
-def sync_us_holidays(db: Optional[Session] = None) -> int:
+async def sync_us_holidays(db: Optional[Session] = None) -> int:
     """
     Sync US holidays from Google Calendar into the database.
     
@@ -104,11 +104,10 @@ def sync_us_holidays(db: Optional[Session] = None) -> int:
     Returns:
         Number of holidays synced
     """
-    import asyncio
     
     # Fetch holidays (async)
     try:
-        holidays_data = asyncio.run(fetch_us_holidays())
+        holidays_data = await fetch_us_holidays()
     except Exception as e:
         logger.error(f"Failed to fetch holidays: {e}")
         return 0

@@ -33,26 +33,55 @@ async def get_briefing(
     Returns:
         Dictionary with briefing data
     """
-    try:
-        # Parse target_date if provided
-        parsed_date = None
-        if target_date:
-            try:
-                parsed_date = date.fromisoformat(target_date)
-            except ValueError:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Invalid date format. Use YYYY-MM-DD."
-                )
-        
-        briefing = await get_daily_briefing(target_date=parsed_date, db=db)
-        return briefing
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate daily briefing: {str(e)}"
-        ) from e
+    # TEMPORARY: Return hardcoded response for fast API response
+    # TODO: Re-enable full briefing generation once blocking issues are resolved
+    from datetime import datetime
+    hour = datetime.now().hour
+    if hour < 12:
+        greeting = "Good Morning, Myles"
+    elif hour < 17:
+        greeting = "Good Afternoon, Myles"
+    else:
+        greeting = "Good Evening, Myles"
+    
+    current_date_str = datetime.now().strftime("%A, %B %d, %Y")
+    
+    return {
+        "greeting": greeting,
+        "current_date": current_date_str,
+        "daily_theme": "Educational Content",
+        "suggested_action": "Create a post about your wellness journey",
+        "upcoming_holidays": [],
+        "trend_alert": None,
+        "trend_pulse": None,
+        "stats": {
+            "posts_this_week": 0,
+            "scheduled_posts": 0,
+            "engagement_rate": None,
+        },
+    }
+    
+    # Original implementation (commented out for now)
+    # try:
+    #     # Parse target_date if provided
+    #     parsed_date = None
+    #     if target_date:
+    #         try:
+    #             parsed_date = date.fromisoformat(target_date)
+    #         except ValueError:
+    #             raise HTTPException(
+    #                 status_code=400,
+    #                 detail="Invalid date format. Use YYYY-MM-DD."
+    #             )
+    #     
+    #     briefing = await get_daily_briefing(target_date=parsed_date, db=db)
+    #     return briefing
+    #     
+    # except Exception as e:
+    #     raise HTTPException(
+    #         status_code=500,
+    #         detail=f"Failed to generate daily briefing: {str(e)}"
+    #     ) from e
 
 
 @router.get("/trends-pulse")

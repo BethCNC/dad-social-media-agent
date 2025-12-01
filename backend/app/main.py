@@ -54,7 +54,7 @@ async def startup_event():
     async def sync_holidays_background():
         try:
             logger.info("Syncing US holidays...")
-            count = sync_us_holidays()
+            count = await sync_us_holidays()
             logger.info(f"Successfully synced {count} holidays")
         except Exception as e:
             logger.warning(f"Failed to sync holidays on startup (will retry on next request): {e}")

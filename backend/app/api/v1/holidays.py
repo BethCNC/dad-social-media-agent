@@ -106,7 +106,7 @@ async def sync_holidays() -> dict:
         Dictionary with sync status and count
     """
     try:
-        count = sync_us_holidays()
+        count = await sync_us_holidays()
         return {
             "status": "success",
             "holidays_synced": count,

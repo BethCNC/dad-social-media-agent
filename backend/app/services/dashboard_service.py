@@ -34,127 +34,83 @@ async def get_daily_briefing(target_date: Optional[date] = None, db: Optional[Se
     if target_date is None:
         target_date = date.today()
     
-    if db is None:
-        db = SessionLocal()
-        should_close = True
-    else:
-        should_close = False
+    # Skip database operations for now to ensure fast response
+    # TODO: Make database operations async/non-blocking
+    # if db is None:
+    #     db = SessionLocal()
+    #     should_close = True
+    # else:
+    #     should_close = False
+    should_close = False
     
     try:
         # 1. Get current date info
         from datetime import datetime
         current_date_str = target_date.strftime("%A, %B %d, %Y")
         
-        # 2. Get daily content theme from weekly schedule
+        # 2. Get daily content theme from weekly schedule (skip for now to ensure fast response)
         daily_theme = "Educational Content"  # Default
-        try:
-            # Find the Monday of this week
-            from datetime import timedelta
-            days_since_monday = target_date.weekday()
-            week_monday = target_date - timedelta(days=days_since_monday)
-            
-            # Get weekly schedule (may raise HTTPException if not found - that's okay)
-            try:
-                weekly_schedule = await get_weekly_schedule(week_monday, db)
-                
-                # Find today's post
-                today_post = None
-                for post in weekly_schedule.posts:
-                    if post.post_date == target_date:
-                        today_post = post
-                        break
-                
-                if today_post:
-                    # Use series name or content pillar as theme
-                    if today_post.series_name:
-                        daily_theme = today_post.series_name
-                    else:
-                        # Map content pillar to theme
-                        pillar_map = {
-                            "education": "Educational Content",
-                            "routine": "Routine & Habits",
-                            "story": "Story-Based Content",
-                            "product_integration": "Product Integration"
-                        }
-                        daily_theme = pillar_map.get(today_post.content_pillar, "Educational Content")
-            except HTTPException:
-                # No schedule exists yet - use default theme
-                logger.info(f"No weekly schedule found for week starting {week_monday}, using default theme")
-        except Exception as e:
-            logger.warning(f"Could not load daily theme from schedule: {e}")
-            # Keep default theme
+        # TODO: Make weekly schedule lookup async/non-blocking
+        # try:
+        #     # Find the Monday of this week
+        #     from datetime import timedelta
+        #     days_since_monday = target_date.weekday()
+        #     week_monday = target_date - timedelta(days=days_since_monday)
+        #     
+        #     # Get weekly schedule (may raise HTTPException if not found - that's okay)
+        #     try:
+        #         weekly_schedule = await get_weekly_schedule(week_monday, db)
+        #         
+        #         # Find today's post
+        #         today_post = None
+        #         for post in weekly_schedule.posts:
+        #             if post.post_date == target_date:
+        #                 today_post = post
+        #                 break
+        #         
+        #         if today_post:
+        #             # Use series name or content pillar as theme
+        #             if today_post.series_name:
+        #                 daily_theme = today_post.series_name
+        #             else:
+        #                 # Map content pillar to theme
+        #                 pillar_map = {
+        #                     "education": "Educational Content",
+        #                     "routine": "Routine & Habits",
+        #                     "story": "Story-Based Content",
+        #                     "product_integration": "Product Integration"
+        #                 }
+        #                 daily_theme = pillar_map.get(today_post.content_pillar, "Educational Content")
+        #     except HTTPException:
+        #         # No schedule exists yet - use default theme
+        #         logger.info(f"No weekly schedule found for week starting {week_monday}, using default theme")
+        # except Exception as e:
+        #     logger.warning(f"Could not load daily theme from schedule: {e}")
+        #     # Keep default theme
         
-        # 3. Get upcoming holidays
+        # 3. Get upcoming holidays (skip for now to ensure fast response)
         upcoming_holidays = []
-        try:
-            holiday_context = get_holiday_context_for_date(target_date, window_days=14, db=db)
-            
-            for holiday in holiday_context.marketing_relevant_holidays[:3]:  # Top 3
-                upcoming_holidays.append({
-                    "name": holiday.name,
-                    "date": str(holiday.date),
-                })
-        except Exception as e:
-            logger.warning(f"Could not load holidays: {e}")
-            # Continue without holidays
+        # TODO: Make holiday lookup async/non-blocking
+        # try:
+        #     holiday_context = get_holiday_context_for_date(target_date, window_days=14, db=db)
+        #     
+        #     for holiday in holiday_context.marketing_relevant_holidays[:3]:  # Top 3
+        #         upcoming_holidays.append({
+        #             "name": holiday.name,
+        #             "date": str(holiday.date),
+        #         })
+        # except Exception as e:
+        #     logger.warning(f"Could not load holidays: {e}")
+        #     # Continue without holidays
         
-        # 4. Get trend hook from trending videos (with timeout)
+        # 4. Get trend hook from trending videos (non-blocking, with short timeout)
+        # Skip trend fetching for now to ensure fast API response
+        # TODO: Make this async/background task in future
         trend_alert = None
-        try:
-            import asyncio
-            # Fetch trending videos from multiple hashtags using aggregated function
-            from app.services.trend_service import fetch_trending_videos_multiple_hashtags
-            
-            # Wrap in timeout to prevent hanging
-            async def fetch_with_timeout():
-                all_videos = fetch_trending_videos_multiple_hashtags(
-                    hashtags=["feelgreatsystem", "unicity", "insulinresistance"],
-                    max_results=10
-                )
-                
-                if all_videos:
-                    # Extract captions for trend analysis
-                    captions = [v.get("caption", "") for v in all_videos if v.get("caption")]
-                    
-                    if captions:
-                        # Use Gemini to analyze trends and generate a compliant hook
-                        trend_analysis = await analyze_social_trend(captions)
-                        
-                        return {
-                            "title": trend_analysis.get("trend_title", "Trending Now"),
-                            "why_it_works": trend_analysis.get("why_it_works", ""),
-                            "hook_script": trend_analysis.get("hook_script", ""),
-                            "suggested_caption": trend_analysis.get("suggested_caption", ""),
-                        }
-                return None
-            
-            try:
-                trend_alert = await asyncio.wait_for(fetch_with_timeout(), timeout=5.0)
-            except asyncio.TimeoutError:
-                logger.warning("Trend alert fetch timed out after 5 seconds")
-        except Exception as e:
-            logger.warning(f"Could not generate trend alert: {e}")
-            # trend_alert stays None
-        
-        # 5. Get trend pulse data (for the Social Trends Pulse card) with timeout
-        from app.services.trend_analytics_service import analyze_trend_pulse
         trend_pulse = None
-        try:
-            import asyncio
-            
-            async def fetch_pulse_with_timeout():
-                return analyze_trend_pulse(
-                    hashtags=["feelgreatsystem", "unicity", "insulinresistance"],
-                    max_results=15
-                )
-            
-            try:
-                trend_pulse = await asyncio.wait_for(fetch_pulse_with_timeout(), timeout=5.0)
-            except asyncio.TimeoutError:
-                logger.warning("Trend pulse fetch timed out after 5 seconds")
-        except Exception as e:
-            logger.warning(f"Could not generate trend pulse data: {e}")
-            # trend_pulse stays None
+        
+        # For now, return None for trends to ensure fast response
+        # In production, this could be a background task that updates periodically
         
         # 5. Generate suggested action
         suggested_action = _generate_suggested_action(
@@ -193,8 +149,10 @@ async def get_daily_briefing(target_date: Optional[date] = None, db: Optional[Se
         }
         
     finally:
-        if should_close:
-            db.close()
+        # Skip database close for now
+        # if should_close:
+        #     db.close()
+        pass
 
 
 def _generate_suggested_action(
