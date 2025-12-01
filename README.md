@@ -2,6 +2,12 @@
 
 An AI-powered application that helps create and schedule TikTok and Instagram content. Designed for older, non-technical users with a simple, step-by-step wizard interface.
 
+## 🚀 Quick Deploy to Coolify
+
+**Ready to deploy?** → See **[DEPLOY_NOW.md](./DEPLOY_NOW.md)** for step-by-step deployment (15-20 minutes)
+
+**Detailed guide?** → See **[COOLIFY_DEPLOYMENT.md](./COOLIFY_DEPLOYMENT.md)** for comprehensive documentation
+
 ## Features
 
 - **Monthly Content Schedule**: Generate 30 days of content ideas following TikTok playbook best practices
