@@ -34,7 +34,8 @@ export function DayThemeCard({
     <div
       className={cn(
         // Outer card: p-3 (12px) matches Figma gap/lg, gap-[24px] matches Figma gap/2xl between outer and inner
-        "flex flex-col gap-[24px] h-[310px] min-h-[187px] min-w-[187px] w-full p-3 rounded-lg border border-border-strong place-self-stretch",
+        // No margin - grid gap handles spacing between cards
+        "flex flex-col gap-[24px] h-[310px] min-h-[187px] min-w-[187px] w-full p-3 rounded-lg border border-border-strong m-0",
         className
       )}
       style={{

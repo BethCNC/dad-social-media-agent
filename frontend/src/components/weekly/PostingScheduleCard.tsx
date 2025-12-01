@@ -45,8 +45,8 @@ export function PostingScheduleCard({
       {/* Calendar Grid */}
       {/* Container padding: p-12 (48px) matches Figma padding/4xl */}
       <div className="p-12 shrink-0 w-full">
-        {/* Grid gap: 24px matches Figma gap between day cards */}
-        <div className="grid grid-cols-4 grid-rows-2 gap-[24px] h-[511px] shrink-0 w-full">
+        {/* Grid gap: 24px matches Figma gap between day cards - using both row and column gap explicitly */}
+        <div className="grid grid-cols-4 grid-rows-2 gap-x-[24px] gap-y-[24px] h-[511px] shrink-0 w-full">
           {/* Grid areas match Figma: [grid-area:1_/_1], [grid-area:1_/_2], etc. */}
           {/* Monday - Row 1, Col 1 */}
           <DayThemeCard {...DEFAULT_DAY_CONFIG[0]} />
