@@ -98,42 +98,60 @@ async def get_daily_briefing(target_date: Optional[date] = None, db: Optional[Se
             logger.warning(f"Could not load holidays: {e}")
             # Continue without holidays
         
-        # 4. Get trend hook from trending videos
+        # 4. Get trend hook from trending videos (with timeout)
         trend_alert = None
         try:
+            import asyncio
             # Fetch trending videos from multiple hashtags using aggregated function
             from app.services.trend_service import fetch_trending_videos_multiple_hashtags
-            all_videos = fetch_trending_videos_multiple_hashtags(
-                hashtags=["feelgreatsystem", "unicity", "insulinresistance"],
-                max_results=10
-            )
             
-            if all_videos:
-                # Extract captions for trend analysis
-                captions = [v.get("caption", "") for v in all_videos if v.get("caption")]
+            # Wrap in timeout to prevent hanging
+            async def fetch_with_timeout():
+                all_videos = fetch_trending_videos_multiple_hashtags(
+                    hashtags=["feelgreatsystem", "unicity", "insulinresistance"],
+                    max_results=10
+                )
                 
-                if captions:
-                    # Use Gemini to analyze trends and generate a compliant hook
-                    trend_analysis = await analyze_social_trend(captions)
+                if all_videos:
+                    # Extract captions for trend analysis
+                    captions = [v.get("caption", "") for v in all_videos if v.get("caption")]
                     
-                    trend_alert = {
-                        "title": trend_analysis.get("trend_title", "Trending Now"),
-                        "why_it_works": trend_analysis.get("why_it_works", ""),
-                        "hook_script": trend_analysis.get("hook_script", ""),
-                        "suggested_caption": trend_analysis.get("suggested_caption", ""),
-                    }
+                    if captions:
+                        # Use Gemini to analyze trends and generate a compliant hook
+                        trend_analysis = await analyze_social_trend(captions)
+                        
+                        return {
+                            "title": trend_analysis.get("trend_title", "Trending Now"),
+                            "why_it_works": trend_analysis.get("why_it_works", ""),
+                            "hook_script": trend_analysis.get("hook_script", ""),
+                            "suggested_caption": trend_analysis.get("suggested_caption", ""),
+                        }
+                return None
+            
+            try:
+                trend_alert = await asyncio.wait_for(fetch_with_timeout(), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.warning("Trend alert fetch timed out after 5 seconds")
         except Exception as e:
             logger.warning(f"Could not generate trend alert: {e}")
             # trend_alert stays None
         
-        # 5. Get trend pulse data (for the Social Trends Pulse card)
+        # 5. Get trend pulse data (for the Social Trends Pulse card) with timeout
         from app.services.trend_analytics_service import analyze_trend_pulse
         trend_pulse = None
         try:
-            trend_pulse = analyze_trend_pulse(
-                hashtags=["feelgreatsystem", "unicity", "insulinresistance"],
-                max_results=15
-            )
+            import asyncio
+            
+            async def fetch_pulse_with_timeout():
+                return analyze_trend_pulse(
+                    hashtags=["feelgreatsystem", "unicity", "insulinresistance"],
+                    max_results=15
+                )
+            
+            try:
+                trend_pulse = await asyncio.wait_for(fetch_pulse_with_timeout(), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.warning("Trend pulse fetch timed out after 5 seconds")
         except Exception as e:
             logger.warning(f"Could not generate trend pulse data: {e}")
             # trend_pulse stays None

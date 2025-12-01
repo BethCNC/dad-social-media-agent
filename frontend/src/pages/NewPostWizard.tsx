@@ -1,44 +1,69 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Search, Loader2, CheckCircle2, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ContentBriefForm } from '../components/forms/ContentBriefForm';
-import { ContentTypeSelector, type ContentType } from '../components/forms/ContentTypeSelector';
 import { ScriptPreview } from '../components/planning/ScriptPreview';
 import { CaptionPreview } from '../components/planning/CaptionPreview';
 import { AssetGrid } from '../components/assets/AssetGrid';
 import { RenderStatusCard } from '../components/video/RenderStatusCard';
-import { ScheduleForm } from '../components/social/ScheduleForm';
-import { ScheduleGenerator } from '../components/schedule/ScheduleGenerator';
-import { ScheduleCalendar } from '../components/schedule/ScheduleCalendar';
-import { ContentPreviewModal } from '../components/schedule/ContentPreviewModal';
-import { type GeneratedPlan, type TikTokMusicHint } from '../lib/contentApi';
-import { type MonthlySchedule, type ScheduledContentItem } from '../lib/scheduleApi';
-import { generateMonthlySchedule, type ScheduleRequest } from '../lib/scheduleApi';
-import { generateWeeklySchedule } from '../lib/weeklyApi';
+import { type GeneratedPlan } from '../lib/contentApi';
 import { searchAssets, searchAssetsContextual, regenerateImage, type AssetResult } from '../lib/assetsApi';
 import { renderVideo, type VideoRenderRequest } from '../lib/videoApi';
-import { type ScheduleResponse } from '../lib/socialApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { format, startOfWeek } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
-type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
+interface StepIndicatorProps {
+  currentStep: number;
+  totalSteps: number;
+  steps: Array<{ number: number; label: string }>;
+}
+
+const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, totalSteps, steps }) => {
+  return (
+    <div className="mb-8">
+      {/* Step circles with connecting lines */}
+      <div className="flex justify-center items-center gap-2 mb-4">
+        {steps.map((step, index) => (
+          <React.Fragment key={step.number}>
+            <div className={cn(
+              "flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-colors",
+              currentStep === step.number && "bg-bg-action text-fg-inverse",
+              currentStep > step.number && "bg-bg-success text-fg-inverse",
+              currentStep < step.number && "bg-bg-subtle text-fg-subtle"
+            )}>
+              {currentStep > step.number ? '✓' : step.number}
+            </div>
+            {index < steps.length - 1 && (
+              <div className={cn(
+                "h-0.5 w-12 transition-colors",
+                currentStep > step.number ? "bg-bg-success" : "bg-bg-subtle"
+              )} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Step label */}
+      <p className="text-center text-lg font-semibold text-fg-body">
+        Step {currentStep} of {totalSteps}: {steps.find(s => s.number === currentStep)?.label}
+      </p>
+    </div>
+  );
+};
+
+type WizardStep = 1 | 2 | 3 | 4;
 
 export const NewPostWizard = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState<WizardStep>(0);
-  const [contentType, setContentType] = useState<ContentType | null>(null);
-  const [customPostCount, setCustomPostCount] = useState<number | null>(null);
-  const [monthlySchedule, setMonthlySchedule] = useState<MonthlySchedule | null>(null);
-  const [selectedScheduleItem, setSelectedScheduleItem] = useState<ScheduledContentItem | null>(null);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);
   const [script, setScript] = useState<string>('');
   const [caption, setCaption] = useState<string>('');
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [assets, setAssets] = useState<AssetResult[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set());
   const [selectedAssetOrder, setSelectedAssetOrder] = useState<string[]>([]); // Track selection order
@@ -47,145 +72,21 @@ export const NewPostWizard = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  // Default visual style based on template type: images default to AI, videos default to stock
-  const [visualStyle, setVisualStyle] = useState<'pexels' | 'ai_generation'>(() => {
-    // Will be updated when templateType changes
-    return 'pexels';
-  });
+  // Lock to stock videos for now
+  const [visualStyle] = useState<'pexels' | 'ai_generation'>('pexels');
   const [templateType, setTemplateType] = useState<'image' | 'video'>('video'); // Template type: image or video
   const [hasSearched, setHasSearched] = useState(false); // Track if user has triggered a search
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
-  const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
   const { toast } = useToast();
-
-  const handleContentTypeSelect = (type: ContentType, customCount?: number) => {
-    setContentType(type);
-    if (customCount) {
-      setCustomPostCount(customCount);
-    }
-
-    // Handle different content types
-    if (type === 'single') {
-      // Skip schedule generation, go directly to topic selection
-      setCurrentStep(1);
-    } else if (type === 'weekly') {
-      // Navigate to weekly schedule generation page
-      handleGenerateWeeklySchedule();
-    } else if (type === 'monthly' || type === 'custom') {
-      // Show monthly/custom schedule generator
-      // Stay on step 0 but show schedule generator
-    }
-  };
-
-  const handleGenerateWeeklySchedule = async () => {
-    try {
-      setIsGeneratingSchedule(true);
-      const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
-      await generateWeeklySchedule({
-        week_start_date: format(monday, 'yyyy-MM-dd'),
-        platforms: ['TikTok', 'Instagram'],
-      });
-      // Navigate to weekly schedule page after generation
-      navigate('/weekly');
-    } catch (err: any) {
-      console.error('Error generating weekly schedule:', err);
-      setRenderError(
-        err.response?.data?.detail ||
-        'We couldn\'t generate your weekly schedule. Please try again.'
-      );
-    } finally {
-      setIsGeneratingSchedule(false);
-    }
-  };
-
-  const handleScheduleGenerated = (schedule: MonthlySchedule) => {
-    setMonthlySchedule(schedule);
-  };
-
-  const handleGenerateCustomSchedule = async (postCount: number) => {
-    try {
-      setIsGeneratingSchedule(true);
-      const today = new Date();
-      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-
-      // Calculate posts_per_week based on custom count
-      // If they want X posts, calculate how many per week over ~30 days
-      const postsPerWeek = Math.round((postCount / 30) * 7);
-
-      const request: ScheduleRequest = {
-        start_date: format(firstDay, 'yyyy-MM-dd'),
-        platforms: ['TikTok', 'Instagram'],
-        posts_per_week: Math.max(1, Math.min(7, postsPerWeek)),
-      };
-
-      const schedule = await generateMonthlySchedule(request);
-      // Limit to the requested number of posts
-      const limitedItems = schedule.items.slice(0, postCount);
-      const limitedSchedule: MonthlySchedule = {
-        ...schedule,
-        items: limitedItems,
-      };
-      setMonthlySchedule(limitedSchedule);
-    } catch (err: any) {
-      console.error('Error generating custom schedule:', err);
-      setRenderError(
-        err.response?.data?.detail ||
-        'We couldn\'t generate your schedule. Please try again.'
-      );
-    } finally {
-      setIsGeneratingSchedule(false);
-    }
-  };
-
-  const handleDayClick = (item: ScheduledContentItem) => {
-    setSelectedScheduleItem(item);
-    setShowScheduleModal(true);
-  };
-
-  const handleUseScheduleContent = (item: ScheduledContentItem) => {
-    // Pre-fill the plan from schedule item
-    const plan: GeneratedPlan = {
-      script: item.script,
-      caption: item.caption,
-      shot_plan: item.shot_plan,
-    };
-
-    setGeneratedPlan(plan);
-    // Always use 'video' template - backend handles Ken Burns for static images
-    setScript(item.script);
-    setCaption(item.caption);
-    setShowScheduleModal(false);
-    setSelectedScheduleItem(null);
-    setCurrentStep(2); // Skip to step 2 (review script & caption)
-  };
-
-  const handleSkipSchedule = () => {
-    // Reset to single post mode and skip to topic selection
-    setContentType('single');
-    setCurrentStep(1);
-  };
-
-  // Handle pre-fills from dashboard navigation
-  useEffect(() => {
-    const state = location.state as any;
-    if (state?.prefillTopic || state?.trendIdea) {
-      // Coming from dashboard with a pre-filled topic - skip content type selection
-      setContentType('single');
-      setCurrentStep(1);
-    }
-  }, [location.state]);
 
   const handlePlanGenerated = (plan: GeneratedPlan, templateTypeFromBrief?: 'image' | 'video') => {
     setGeneratedPlan(plan);
     // Use template type from brief if provided, otherwise default to video
     if (templateTypeFromBrief) {
       setTemplateType(templateTypeFromBrief);
-      // Set default visual style based on template type
-      // Images work better with AI generation, videos work better with stock videos
-      setVisualStyle(templateTypeFromBrief === 'image' ? 'ai_generation' : 'pexels');
     }
     setScript(plan.script);
     setCaption(plan.caption);
@@ -228,9 +129,6 @@ export const NewPostWizard = () => {
       setSelectedAssetOrder([asset.id]);
       setSelectedAssets([asset]);
 
-      // Set content type to single and go to topic selection
-      // We could skip to visuals, but they need a script first
-      setContentType('single');
       setCurrentStep(1);
     } else if (trendIdea) {
       // Pre-fill script and caption from trend
@@ -262,29 +160,14 @@ export const NewPostWizard = () => {
     }
   }, [location.state]);
 
-  // Auto-start render when entering step 4
+  // Play a soft success sound when rendering finishes
   useEffect(() => {
-    if (currentStep === 4 && !renderJobId && !videoUrl && selectedAssetIds.size > 0) {
-      startRender();
+    if (videoUrl && !isRendering) {
+      const audio = new Audio('/success.mp3');
+      audio.volume = 0.3;
+      audio.play().catch(() => {});
     }
-  }, [currentStep]);
-
-  // Auto-search when entering step 3
-  useEffect(() => {
-    if (currentStep === 3 && generatedPlan && !hasSearched && assets.length === 0) {
-      // For image posts, always use AI generation (force it)
-      if (templateType === 'image') {
-        setVisualStyle('ai_generation');
-      }
-      // Auto-trigger contextual search based on shot plan
-      // For images, this will use AI generation; for videos, it uses the selected visual style
-      if (generatedPlan.shot_plan && generatedPlan.shot_plan.length > 0 && script && caption) {
-        setHasSearched(true); // Mark as searched to prevent re-triggering
-        // Use a small delay to ensure visualStyle is updated for image posts
-        setTimeout(() => handleContextualSearch(), 100);
-      }
-    }
-  }, [currentStep, templateType]); // Depend on currentStep and templateType
+  }, [videoUrl, isRendering]);
 
   const handleContextualSearch = async () => {
     if (!generatedPlan || !script || !caption) return;
@@ -362,8 +245,61 @@ export const NewPostWizard = () => {
     }
   };
 
+  const handleAutomaticSearch = async () => {
+    setHasSearched(true);
+    await handleContextualSearch();
+  };
+
+  const handleManualSearch = async () => {
+    setHasSearched(true);
+    await handleSearch();
+  };
+
+  const handleRegenerateImage = async (assetId: string, prompt: string) => {
+    setIsSearching(true);
+    setSearchError(null);
+    try {
+      const newAsset = await regenerateImage(prompt);
+
+      setAssets(prev => prev.map(asset =>
+        asset.id === assetId ? newAsset : asset
+      ));
+
+      setSelectedAssets(prev => prev.map(asset =>
+        asset.id === assetId ? newAsset : asset
+      ));
+
+      if (selectedAssetIds.has(assetId)) {
+        setSelectedAssetIds(prev => {
+          const next = new Set(prev);
+          next.delete(assetId);
+          next.add(newAsset.id);
+          return next;
+        });
+        setSelectedAssetOrder(prev =>
+          prev.map(id => id === assetId ? newAsset.id : id)
+        );
+      }
+
+      setAssetPrompts(prev => {
+        const next = new Map(prev);
+        const existingPrompt = prev.get(assetId) || prompt;
+        next.delete(assetId);
+        next.set(newAsset.id, existingPrompt);
+        return next;
+      });
+    } catch (err: any) {
+      setSearchError(
+        err.response?.data?.detail ||
+        'We couldn\'t regenerate the image. Please try again.'
+      );
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const handleAssetSelectionChange = (id: string, selected: boolean) => {
-    const maxSelection = 2; // Always allow 2 selections for video template
+    const maxSelection = 1; // Single video selection
 
     // Find the asset object if we're selecting
     const assetObj = assets.find(a => a.id === id);
@@ -409,7 +345,7 @@ export const NewPostWizard = () => {
   };
 
   const startRender = async () => {
-    const requiredCount = 2; // Always require 2 assets for video template
+    const requiredCount = 1; // Require a single video selection
     if (selectedAssetIds.size !== requiredCount || !script.trim()) {
       setRenderError(`Please select exactly ${requiredCount} visuals and ensure script is filled.`);
       return;
@@ -469,168 +405,26 @@ export const NewPostWizard = () => {
     setIsRendering(false);
   };
 
-  const handleNext = () => {
-    if (currentStep < 5) {
-      // Only allow progression if we have a plan for step 2+
-      if (currentStep === 1 || generatedPlan) {
-        // For step 3, require exactly 2 assets (always using video template)
-        if (currentStep === 3) {
-          const requiredCount = 2;
-          if (selectedAssetIds.size !== requiredCount) {
-            return;
-          }
-        }
-        // For step 4, require video to be rendered
-        if (currentStep === 4 && !videoUrl) {
-          return;
-        }
-        setCurrentStep((prev) => (prev + 1) as WizardStep);
-      }
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 1) {
-      setCurrentStep((prev) => (prev - 1) as WizardStep);
-    }
-  };
-
-  const stepTitles = [
-    'Step 1: Choose Content Type',
-    'Step 2: Choose Your Topic',
-    'Step 3: Review Your Script & Caption',
-    'Step 4: Choose Your Visuals',
-    `Step 5: Create Your ${templateType === 'image' ? 'Image' : 'Video'}`,
-    'Step 6: Schedule Your Post',
+  const STEPS = [
+    { number: 1, label: "What's your topic?" },
+    { number: 2, label: "Review your script" },
+    { number: 3, label: "Pick your video" },
+    { number: 4, label: "Download & post" },
   ];
 
-  const renderStepContent = () => {
+  const renderStep = () => {
+    const prefillTopic = (location.state as any)?.prefillTopic;
+
     switch (currentStep) {
-      case 0:
-        // Show content type selector if not selected, or schedule generator/calendar based on type
-        if (!contentType) {
-          return <ContentTypeSelector onSelect={handleContentTypeSelect} />;
-        }
-
-        // If single post selected, should have skipped to step 1, but handle it anyway
-        if (contentType === 'single') {
-          // This shouldn't happen, but just in case, skip to step 1
-          return (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-fg-subtle text-xl">
-                  Creating a single post... Redirecting to topic selection.
-                </p>
-              </CardContent>
-            </Card>
-          );
-        }
-
-        // Weekly schedule - should have navigated away, but show loading state
-        if (contentType === 'weekly') {
-          return (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-                <p className="text-fg-subtle text-xl">
-                  {isGeneratingSchedule ? 'Generating weekly schedule...' : 'Redirecting to weekly schedule...'}
-                </p>
-              </CardContent>
-            </Card>
-          );
-        }
-
-        // Monthly or Custom schedule
-        if (contentType === 'monthly' || contentType === 'custom') {
-          if (!monthlySchedule) {
-            // Show schedule generator
-            if (contentType === 'custom' && customPostCount) {
-              // Custom count - generate schedule directly
-              return (
-                <div className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Generate {customPostCount} Post{customPostCount !== 1 ? 's' : ''}</CardTitle>
-                      <p className="text-fg-subtle">
-                        Creating a custom schedule with {customPostCount} posts
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <Button
-                        onClick={() => handleGenerateCustomSchedule(customPostCount)}
-                        disabled={isGeneratingSchedule}
-                        size="lg"
-                        className="w-full"
-                      >
-                        {isGeneratingSchedule ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                            Generating...
-                          </>
-                        ) : (
-                          `Generate ${customPostCount} Post${customPostCount !== 1 ? 's' : ''}`
-                        )}
-                      </Button>
-                      <Button
-                        onClick={() => setContentType(null)}
-                        variant="outline"
-                        className="w-full mt-4"
-                      >
-                        Choose Different Option
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              );
-            } else {
-              // Monthly - show schedule generator
-              return (
-                <div className="space-y-6">
-                  <ScheduleGenerator onScheduleGenerated={handleScheduleGenerated} />
-                  <Button
-                    onClick={() => setContentType(null)}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Choose Different Option
-                  </Button>
-                </div>
-              );
-            }
-          } else {
-            // Schedule generated - show calendar
-            return (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold">
-                    Your {contentType === 'custom' ? `${customPostCount} Post` : 'Monthly'} Schedule
-                  </h2>
-                  <Button variant="outline" onClick={() => {
-                    setMonthlySchedule(null);
-                    setContentType(null);
-                  }}>
-                    Generate New Schedule
-                  </Button>
-                </div>
-                <ScheduleCalendar
-                  schedule={monthlySchedule}
-                  onDayClick={handleDayClick}
-                />
-                <div className="flex gap-2">
-                  <Button onClick={handleSkipSchedule} variant="outline">
-                    Skip to Manual Content Creation
-                  </Button>
-                </div>
-              </div>
-            );
-          }
-        }
-
-        // Fallback
-        return <ContentTypeSelector onSelect={handleContentTypeSelect} />;
       case 1:
-        const prefillTopic = (location.state as any)?.prefillTopic;
-        return <ContentBriefForm onPlanGenerated={handlePlanGenerated} initialTopic={prefillTopic} />;
+        return (
+          <ContentBriefForm
+            onPlanGenerated={handlePlanGenerated}
+            initialTopic={prefillTopic}
+            onGeneratingChange={setIsGeneratingPlan}
+            formId="content-brief-form"
+          />
+        );
       case 2:
         if (!generatedPlan) {
           return (
@@ -656,288 +450,117 @@ export const NewPostWizard = () => {
           </div>
         );
       case 3:
-        const requiredCount = templateType === 'image' ? 1 : 2; // 1 for image template, 2 for video template
+        const requiredCount = 1;
         const hasCorrectSelection = selectedAssetIds.size === requiredCount;
 
         return (
           <div className="space-y-6">
-            {/* Visual Style Segmented Control - Only show for video posts */}
-            {templateType === 'video' && (
-              <Card className="bg-bg-elevated border-border-default">
-                <CardContent className="py-4">
-                  <p className="text-fg-headings font-semibold text-lg mb-4">
-                    Choose Your Visual Style
-                  </p>
-                  <div className="flex gap-2 bg-bg-page p-1 rounded-lg border border-border-default">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Don't clear assets - persist selections when switching tabs
-                        setVisualStyle('ai_generation');
-                      }}
-                      className={cn(
-                        "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all",
-                        visualStyle === 'ai_generation'
-                          ? 'bg-bg-action text-fg-inverse shadow-sm'
-                          : 'text-fg-body hover:bg-bg-subtle'
-                      )}
-                      disabled={isSearching}
-                    >
-                      AI Generated
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Don't clear assets - persist selections when switching tabs
-                        setVisualStyle('pexels');
-                        // Auto-search when switching to stock videos
-                        if (generatedPlan && generatedPlan.shot_plan.length > 0 && !hasSearched) {
-                          const firstShot = generatedPlan.shot_plan[0];
-                          if (firstShot?.description) {
-                            setSearchQuery(firstShot.description);
-                            setTimeout(() => handleContextualSearch(), 100);
-                          }
-                        }
-                      }}
-                      className={cn(
-                        "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all relative",
-                        visualStyle === 'pexels'
-                          ? 'bg-bg-action text-fg-inverse shadow-sm'
-                          : 'text-fg-body hover:bg-bg-subtle'
-                      )}
-                      disabled={isSearching}
-                    >
-                      Stock Video
-                      {visualStyle === 'pexels' && (
-                        <span className="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Recommended</span>
-                      )}
-                    </button>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">Choose Your Video</CardTitle>
+                <CardDescription className="text-lg">
+                  Select 1 video that matches your script
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <AssetGrid
+                  assets={assets}
+                  selectedIds={selectedAssetIds}
+                  selectedOrder={selectedAssetOrder}
+                  onSelectionChange={handleAssetSelectionChange}
+                  maxSelection={requiredCount}
+                  templateType={templateType}
+                  onRegenerate={handleRegenerateImage}
+                  assetPrompts={assetPrompts}
+                />
+
+                {/* Collapsed search - only show if needed */}
+                {assets.length === 0 && !isSearching && (
+                  <div className="text-center py-8">
+                    <p className="text-fg-subtle mb-4">No videos loaded yet</p>
+                    <Button onClick={handleAutomaticSearch}>
+                      Load Videos
+                    </Button>
                   </div>
-                  <p className="text-sm text-fg-subtle mt-3">
-                    {visualStyle === 'pexels'
-                      ? '✅ Recommended: Stock videos work reliably with Creatomate. Search for real videos that match your content.'
-                      : '⚠️ Note: AI-generated images may not work in local development. Consider using stock videos instead.'}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+                )}
 
-            {/* For image posts, show info card about AI generation */}
-            {templateType === 'image' && (
-              <Card className="bg-blue-50 border-blue-200">
-                <CardContent className="py-4">
-                  <p className="text-blue-900 font-semibold text-lg mb-2">
-                    AI-Generated Images
-                  </p>
-                  <p className="text-sm text-blue-800">
-                    ✅ We'll create unique AI-generated images for your image post. Click "Generate AI Images" below to get started.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+                {!hasSearched && assets.length > 0 && (
+                  <div className="text-center">
+                    <Button
+                      variant="outline"
+                      onClick={() => setHasSearched(true)}
+                    >
+                      🔍 Search for different videos
+                    </Button>
+                  </div>
+                )}
 
-            {/* Template Type Display (read-only, selected in Step 1) */}
-            <Card className="bg-purple-50 border-purple-200">
-              <CardContent className="py-4">
-                <p className="text-purple-900 font-semibold text-lg mb-2">
-                  Content Type: {templateType === 'image' ? '📸 Image Post' : '🎬 Video Post'}
-                </p>
-                <p className="text-sm text-purple-800">
-                  {templateType === 'image'
-                    ? 'You selected Image Post in Step 1. Select 1 visual to create an animated image post.'
-                    : 'You selected Video Post in Step 1. Select 2 visuals to create a video post.'}
-                </p>
+                {hasSearched && (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Search videos (e.g., 'coffee', 'workout', 'nature')"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleManualSearch();
+                      }}
+                      className="text-lg"
+                    />
+                    <Button
+                      onClick={handleManualSearch}
+                      disabled={isSearching || !searchQuery.trim()}
+                    >
+                      {isSearching ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Search className="w-5 h-5" />
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {isSearching && (
+                  <div className="text-center py-4">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+                    <p className="text-fg-subtle mt-2">Searching for videos...</p>
+                  </div>
+                )}
+
+                {searchError && (
+                  <Card className="bg-bg-error-subtle border-border-error">
+                    <CardContent className="py-3">
+                      <p className="text-fg-error text-sm">{searchError}</p>
+                    </CardContent>
+                  </Card>
+                )}
               </CardContent>
             </Card>
 
-            {/* Template Requirements Info */}
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="py-4">
-                <p className="text-blue-900 font-semibold text-lg mb-2">
-                  Template Requirements
-                </p>
-                <p className="text-blue-800 text-base">
-                  Please select exactly {requiredCount} {requiredCount === 1 ? 'visual' : 'visuals'} for the {templateType} template.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Search/Generate Controls - Different UI based on visual style */}
-            {visualStyle === 'ai_generation' ? (
-              // AI Generated Mode: Show Generate button
-              <div className="space-y-4">
-                {!hasSearched && assets.length === 0 && (
-                  <div className="w-full">
-                    <p className="text-lg text-fg-subtle mb-4">
-                      Click "Generate AI Images" to create unique visuals based on your shot plan.
-                    </p>
-                  </div>
-                )}
-                <Button
-                  onClick={async () => {
-                    if (generatedPlan && script && caption) {
-                      setHasSearched(true);
-                      await handleContextualSearch();
-                    }
-                  }}
-                  disabled={isSearching || !generatedPlan || !script || !caption}
-                  size="lg"
-                  className="w-full py-6 text-lg"
-                  aria-label={`Generate AI ${templateType === 'image' ? 'Images' : 'Images'}`}
-                >
-                  {isSearching ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                      <span className="ml-2">Dreaming up {templateType === 'image' ? 'images' : 'images'}...</span>
-                    </>
-                  ) : (
-                    `Generate AI ${templateType === 'image' ? 'Images' : 'Images'}`
-                  )}
-                </Button>
-              </div>
-            ) : templateType === 'video' ? (
-              // Stock Video Mode: Show search bar with auto-search
-              <div className="space-y-4">
-                {assets.length === 0 && !hasSearched && generatedPlan && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-green-800 text-sm mb-2">
-                      💡 We'll automatically search for stock videos based on your content. You can also search manually below.
-                    </p>
-                  </div>
-                )}
-                <div className="flex gap-4">
-                  <Input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !isSearching && searchQuery.trim()) {
-                        setHasSearched(true);
-                        handleSearch();
-                      }
-                    }}
-                    placeholder="Enter keywords to search for stock videos (e.g., 'nature sunset', 'healthy food')..."
-                    className="text-lg h-12"
-                    aria-label="Search for stock videos"
-                  />
-                  <Button
-                    onClick={() => {
-                      setHasSearched(true);
-                      handleSearch();
-                    }}
-                    disabled={isSearching || !searchQuery.trim()}
-                    size="lg"
-                    className="py-6 px-8 text-lg"
-                    aria-label="Search videos"
-                  >
-                    {isSearching ? (
-                      <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Search className="w-5 h-5" aria-hidden="true" />
-                    )}
-                    <span className="ml-2">Search</span>
-                  </Button>
-                </div>
-                {generatedPlan && script && caption && (
-                  <Button
-                    onClick={async () => {
-                      setHasSearched(true);
-                      await handleContextualSearch();
-                    }}
-                    disabled={isSearching || !generatedPlan || !script || !caption}
-                    variant="outline"
-                    size="lg"
-                    className="w-full py-6 text-lg"
-                    aria-label={`Search ${templateType === 'image' ? 'images' : 'videos'} based on content`}
-                  >
-                    {isSearching ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
-                        <span className="ml-2">Searching...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Search className="w-5 h-5" aria-hidden="true" />
-                        <span className="ml-2">Auto-Search {templateType === 'image' ? 'Images' : 'Videos'} Based on Your Content</span>
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            ) : null}
-
-            {searchError && (
-              <Card className="border-destructive/20 bg-destructive/10">
+            {/* Selection confirmation */}
+            {hasCorrectSelection && (
+              <Card className="bg-bg-success-subtle border-2 border-border-success">
                 <CardContent className="py-4">
-                  <p className="text-destructive text-lg font-medium">{searchError}</p>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-8 h-8 text-fg-success" />
+                    <div>
+                      <p className="text-lg font-semibold text-fg-success">
+                        ✓ Perfect! You've selected your video
+                      </p>
+                      <p className="text-sm text-fg-subtle">
+                        Click "Create My Video" below to continue
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             )}
 
-            <AssetGrid
-              assets={[
-                // Show selected assets first
-                ...selectedAssets,
-                // Then show search results (filtering out any that are already in selectedAssets)
-                ...assets.filter(a => !selectedAssetIds.has(a.id))
-              ]}
-              selectedIds={selectedAssetIds}
-              selectedOrder={selectedAssetOrder}
-              onSelectionChange={handleAssetSelectionChange}
-              maxSelection={requiredCount}
-              templateType={templateType}
-              onRegenerate={visualStyle === 'ai_generation' ? async (assetId: string, prompt: string) => {
-                try {
-                  setIsSearching(true);
-                  setSearchError(null);
-                  const newAsset = await regenerateImage(prompt);
-
-                  // Update the asset in the list
-                  setAssets(prev => prev.map(asset =>
-                    asset.id === assetId ? newAsset : asset
-                  ));
-
-                  // Also update selectedAssets if it's there
-                  setSelectedAssets(prev => prev.map(asset =>
-                    asset.id === assetId ? newAsset : asset
-                  ));
-
-                  // If the regenerated asset was selected, update selection
-                  if (selectedAssetIds.has(assetId)) {
-                    setSelectedAssetIds(prev => {
-                      const next = new Set(prev);
-                      next.delete(assetId);
-                      next.add(newAsset.id);
-                      return next;
-                    });
-                    setSelectedAssetOrder(prev =>
-                      prev.map(id => id === assetId ? newAsset.id : id)
-                    );
-                  }
-                } catch (err: any) {
-                  setSearchError(
-                    err.response?.data?.detail ||
-                    'We couldn\'t regenerate the image. Please try again.'
-                  );
-                } finally {
-                  setIsSearching(false);
-                }
-              } : undefined}
-              assetPrompts={assetPrompts}
-            />
-
+            {/* Show requirement if not met */}
             {!hasCorrectSelection && assets.length > 0 && (
-              <Card className={selectedAssetIds.size === 0 ? "border-amber-200 bg-amber-50" : "border-destructive/20 bg-destructive/10"}>
-                <CardContent className="py-4">
-                  <p className={cn(
-                    "text-lg font-medium",
-                    selectedAssetIds.size === 0 ? "text-amber-800" : "text-destructive"
-                  )}>
-                    {selectedAssetIds.size === 0
-                      ? `Please select ${requiredCount} visuals to continue.`
-                      : selectedAssetIds.size < requiredCount
-                        ? `Please select ${requiredCount - selectedAssetIds.size} more visual${requiredCount - selectedAssetIds.size > 1 ? 's' : ''} to continue.`
-                        : `Please select exactly ${requiredCount} visuals. You have selected ${selectedAssetIds.size}.`}
+              <Card className="bg-bg-warning-subtle border-border-warning">
+                <CardContent className="py-3">
+                  <p className="text-fg-warning text-sm">
+                    Please select {requiredCount} video to continue
                   </p>
                 </CardContent>
               </Card>
@@ -945,180 +568,209 @@ export const NewPostWizard = () => {
           </div>
         );
       case 4:
-        // Render + Music & Audio info
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-6">
-            <div>
-              {renderError && (
-                <div className="space-y-4 mb-6">
-                  <Card className="border-destructive/20 bg-destructive/10">
-                    <CardContent className="py-4">
-                      <p className="text-destructive text-lg font-medium">{renderError}</p>
-                    </CardContent>
-                  </Card>
-                  <Button
-                    onClick={startRender}
-                    disabled={isRendering}
-                    size="lg"
-                    className="w-full py-6 text-lg"
-                    aria-label={`Retry ${templateType} rendering`}
-                  >
-                    Try Again
-                  </Button>
-                </div>
-              )}
-
-              {videoUrl ? (
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-green-600 text-2xl">
-                        Your {templateType === 'image' ? 'image' : 'video'} is ready!
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {templateType === 'image' ? (
-                        <img
-                          src={videoUrl}
-                          alt="Rendered image"
-                          className="w-full rounded-lg shadow-lg"
-                        />
-                      ) : (
-                        <video
-                          src={videoUrl}
-                          controls
-                          className="w-full rounded-lg shadow-lg"
-                          aria-label="Rendered video preview"
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                      )}
-                      <Button
-                        variant="outline"
-                        className="w-full mt-4"
-                        onClick={() => {
-                          const link = document.createElement('a');
-                          link.href = videoUrl;
-                          link.download = templateType === 'image' ? `rendered-image.png` : `rendered-video.mp4`;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download {templateType === 'image' ? 'Image' : 'Video'}
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {/* Compliance Check Badge */}
-                  <Card className="border-green-200 bg-green-50">
-                    <CardContent className="py-4 flex items-center gap-3">
-                      <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
-                      <div>
-                        <p className="font-semibold text-green-900">Compliance Check Passed</p>
-                        <p className="text-sm text-green-700">
-                          Your content follows all Unicity compliance guidelines and is ready to post.
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : renderJobId ? (
-                <RenderStatusCard
-                  jobId={renderJobId}
-                  onComplete={handleRenderComplete}
-                  onError={handleRenderError}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" aria-hidden="true" />
-                    <p className="text-muted-foreground text-xl">
-                      We're building your {templateType === 'image' ? 'image' : 'video'}, this may take under a minute.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Music & Audio side card */}
-            <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Rendering in progress */}
+            {isRendering && !videoUrl && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Music & Audio</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    This quick preview is focused on visuals and script. When posts are generated in your weekly
-                    schedule, the app will auto-select a safe background track based on the mood of your script.
+                <CardContent className="py-12 text-center">
+                  <Loader2 className="w-16 h-16 animate-spin text-primary mx-auto mb-4" />
+                  <h2 className="text-2xl font-bold mb-2">Creating Your Video...</h2>
+                  <p className="text-lg text-fg-subtle">
+                    This usually takes 30-60 seconds. Hang tight!
                   </p>
-                  {generatedPlan?.music_mood && (
-                    <p className="text-sm">
-                      <span className="font-medium">Suggested mood:</span>{' '}
-                      <span className="capitalize">{generatedPlan.music_mood}</span>
-                    </p>
+
+                  {renderJobId && (
+                    <div className="mt-6">
+                      <RenderStatusCard jobId={renderJobId} onComplete={handleRenderComplete} onError={handleRenderError} />
+                    </div>
                   )}
                 </CardContent>
               </Card>
+            )}
 
-              {generatedPlan?.tiktok_music_hints && generatedPlan.tiktok_music_hints.length > 0 && (
+            {/* Render error */}
+            {renderError && (
+              <Card className="border-2 border-border-error bg-bg-error-subtle">
+                <CardContent className="py-8">
+                  <div className="flex items-start gap-4">
+                    <AlertCircle className="w-10 h-10 text-fg-error flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-bold text-fg-error mb-3">
+                        Video Creation Issue
+                      </h3>
+                      <p className="text-lg text-fg-body mb-4 whitespace-pre-line">
+                        {renderError}
+                      </p>
+                      <div className="flex gap-3">
+                        <Button onClick={startRender} size="lg">
+                          Try Again
+                        </Button>
+                        <Button
+                          onClick={() => setCurrentStep(3)}
+                          variant="outline"
+                          size="lg"
+                        >
+                          Pick Different Video
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Success! Video is ready */}
+            {videoUrl && !isRendering && (
+              <div className="space-y-6">
+                {/* Big success message */}
+                <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500">
+                  <CardContent className="py-10 text-center">
+                    <CheckCircle2 className="w-24 h-24 text-green-600 mx-auto mb-4" />
+                    <h1 className="text-5xl font-bold text-green-900 mb-2">
+                      🎉 Your Video is Ready!
+                    </h1>
+                    <p className="text-xl text-green-800">
+                      Great job! Now let's get it posted.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Video preview */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Suggested TikTok music searches</CardTitle>
+                    <CardTitle className="text-2xl">Preview Your Video</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-xs text-muted-foreground">
-                      When you upload this video to TikTok or Instagram, tap “Add sound” and paste one of these phrases
-                      into the search bar to find safe background music.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {generatedPlan.tiktok_music_hints.map((hint: TikTokMusicHint, index: number) => (
-                        <Button
-                          key={`${hint.label}-${index}`}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="text-xs px-3 py-1 rounded-full"
-                          onClick={() => navigator.clipboard.writeText(hint.searchPhrase)}
-                        >
-                          {hint.label}
-                        </Button>
-                      ))}
+                  <CardContent>
+                    <div className="aspect-[9/16] max-w-md mx-auto bg-black rounded-lg overflow-hidden shadow-2xl">
+                      <video
+                        src={videoUrl}
+                        controls
+                        autoPlay
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </CardContent>
                 </Card>
-              )}
-            </div>
+
+                {/* Action buttons */}
+                <Card className="border-2 border-bg-action">
+                  <CardHeader>
+                    <CardTitle className="text-2xl">What do you want to do?</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Download button - PRIMARY ACTION */}
+                    <Button
+                      size="xl"
+                      className="w-full h-20 text-2xl font-bold bg-green-600 hover:bg-green-700"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = videoUrl;
+                        link.download = `unicity-video-${Date.now()}.mp4`;
+                        link.click();
+                        toast({
+                          title: "Download started!",
+                          description: "Check your downloads folder",
+                        });
+                      }}
+                    >
+                      📥 Download Video to Phone
+                    </Button>
+
+                    {/* Copy caption button */}
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full h-16 text-xl"
+                      onClick={() => {
+                        navigator.clipboard.writeText(caption);
+                        toast({
+                          title: "✅ Caption copied!",
+                          description: "Paste it when you post to TikTok/Instagram",
+                          duration: 3000,
+                        });
+                      }}
+                    >
+                      📋 Copy Caption to Clipboard
+                    </Button>
+
+                    {/* Show the caption */}
+                    <Card className="bg-bg-elevated">
+                      <CardHeader>
+                        <CardTitle className="text-lg">Your Caption</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-base text-fg-body whitespace-pre-wrap leading-relaxed">
+                          {caption}
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    {/* Instructions */}
+                    <Card className="bg-blue-50 border-2 border-blue-200">
+                      <CardHeader>
+                        <CardTitle className="text-xl text-blue-900 flex items-center gap-2">
+                          📱 How to Post This to TikTok/Instagram
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ol className="list-decimal list-inside space-y-3 text-lg text-blue-900">
+                          <li>Download the video above (if you haven't already)</li>
+                          <li>Open TikTok or Instagram app on your phone</li>
+                          <li>Tap the <strong>"+"</strong> button to create a post</li>
+                          <li>Select the video you just downloaded</li>
+                          <li>Paste the caption (already copied to clipboard!)</li>
+                          <li>Add trending music (optional but recommended)</li>
+                          <li>Tap <strong>"Post"</strong> and you're done! 🎉</li>
+                        </ol>
+                      </CardContent>
+                    </Card>
+                  </CardContent>
+                </Card>
+
+                {/* Next actions */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button
+                    size="xl"
+                    className="h-16 px-8 text-xl"
+                    onClick={() => {
+                      // Reset wizard state
+                      setCurrentStep(1);
+                      setGeneratedPlan(null);
+                      setScript('');
+                      setCaption('');
+                      setAssets([]);
+                      setSelectedAssetIds(new Set());
+                      setSelectedAssetOrder([]);
+                      setSelectedAssets([]);
+                      setVideoUrl(null);
+                      setRenderJobId(null);
+                      setRenderError(null);
+                      setSearchQuery('');
+                      setHasSearched(false);
+
+                      toast({
+                        title: "Let's create another!",
+                        description: "Starting fresh from Step 1",
+                      });
+                    }}
+                  >
+                    ➕ Create Another Post
+                  </Button>
+                  <Button
+                    size="xl"
+                    variant="outline"
+                    className="h-16 px-8 text-xl"
+                    onClick={() => navigate('/dashboard')}
+                  >
+                    ✅ Done - Back to Dashboard
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-        );
-      case 5:
-        if (!videoUrl) {
-          return (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground text-xl">
-                  Please complete the previous steps first.
-                </p>
-              </CardContent>
-            </Card>
-          );
-        }
-        return (
-          <ScheduleForm
-            videoUrl={videoUrl}
-            caption={caption}
-            onScheduled={(response: ScheduleResponse) => {
-              // Handle successful scheduling
-              console.log('Post scheduled:', response);
-              toast({
-                title: "Post Scheduled Successfully",
-                description: "Your post has been added to your weekly schedule.",
-                variant: "default",
-              });
-              navigate('/weekly');
-            }}
-          />
         );
       default:
         return null;
@@ -1126,85 +778,86 @@ export const NewPostWizard = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <Card>
-        <CardHeader className="space-y-6">
-          <CardTitle className="text-3xl font-bold">
-            {stepTitles[currentStep]}
-          </CardTitle>
-          <div className="flex items-center gap-2" role="progressbar" aria-valuenow={currentStep} aria-valuemin={0} aria-valuemax={5} aria-label={`Step ${currentStep + 1} of 6`}>
-            {[0, 1, 2, 3, 4, 5].map((step) => (
-              <div
-                key={step}
-                className={cn(
-                  "flex-1 h-3 rounded-full transition-colors",
-                  step <= currentStep
-                    ? 'bg-primary'
-                    : 'bg-muted'
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <StepIndicator currentStep={currentStep} totalSteps={4} steps={STEPS} />
+
+      <div className="min-h-[400px]">
+        {renderStep()}
+      </div>
+
+      {/* Bottom navigation */}
+      <div className="flex justify-between items-center mt-8 pt-6 border-t border-border-default">
+        {/* Back button */}
+        {currentStep > 1 && currentStep < 4 ? (
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setCurrentStep((prev) => Math.max(1, (prev - 1) as WizardStep))}
+            disabled={isGeneratingPlan || isRendering}
+          >
+            <ChevronLeft className="w-5 h-5 mr-2" />
+            Back
+          </Button>
+        ) : (
+          <div />
+        )}
+
+        {/* Next/Action button - only show for steps 1-3 */}
+        {currentStep < 4 && (
+          <Button
+            size="lg"
+            className="min-w-[200px]"
+            form={currentStep === 1 ? 'content-brief-form' : undefined}
+            type={currentStep === 1 ? 'submit' : 'button'}
+            onClick={
+              currentStep === 1
+                ? undefined
+                : () => {
+                    if (currentStep === 2) {
+                      setCurrentStep(3);
+                    } else if (currentStep === 3 && selectedAssetIds.size === 1) {
+                      startRender();
+                      setCurrentStep(4);
+                    }
+                  }
+            }
+            disabled={
+              (currentStep === 1 && isGeneratingPlan) ||
+              (currentStep === 2 && !script.trim()) ||
+              (currentStep === 3 && selectedAssetIds.size !== 1) ||
+              isRendering
+            }
+          >
+            {currentStep === 1 && (
+              <>
+                {isGeneratingPlan ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    Generate Script
+                    <ChevronRight className="w-5 h-5 ml-2" />
+                  </>
                 )}
-                aria-hidden="true"
-              />
-            ))}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          <div className="min-h-[400px]">
-            {renderStepContent()}
-          </div>
-
-          <div className="flex justify-between items-center pt-8 border-t border-border">
-            <Button
-              onClick={handlePrevious}
-              disabled={currentStep === 0}
-              variant="outline"
-              size="lg"
-              className="py-6 px-8 text-lg"
-              aria-label="Go to previous step"
-            >
-              <ChevronLeft className="w-5 h-5" aria-hidden="true" />
-              Previous
-            </Button>
-            {currentStep === 0 && contentType && contentType !== 'single' && contentType !== 'weekly' ? (
-              <Button
-                onClick={handleSkipSchedule}
-                size="lg"
-                className="py-6 px-8 text-lg"
-                aria-label="Skip to manual content creation"
-              >
-                Skip to Manual Content
-                <ChevronRight className="w-5 h-5 ml-2" aria-hidden="true" />
-              </Button>
-            ) : currentStep === 0 && !contentType ? null : (
-              <Button
-                onClick={handleNext}
-                disabled={
-                  currentStep === 5 ||
-                  (currentStep >= 2 && !generatedPlan) ||
-                  (currentStep === 3 && selectedAssetIds.size !== 2) ||
-                  (currentStep === 4 && !videoUrl)
-                }
-                size="lg"
-                className="py-6 px-8 text-lg"
-                aria-label="Go to next step"
-              >
-                Next
-                <ChevronRight className="w-5 h-5" aria-hidden="true" />
-              </Button>
+              </>
             )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {showScheduleModal && selectedScheduleItem && (
-        <ContentPreviewModal
-          item={selectedScheduleItem}
-          onClose={() => {
-            setShowScheduleModal(false);
-            setSelectedScheduleItem(null);
-          }}
-          onUseContent={handleUseScheduleContent}
-        />
-      )}
+            {currentStep === 2 && (
+              <>
+                Next: Choose Video
+                <ChevronRight className="w-5 h-5 ml-2" />
+              </>
+            )}
+            {currentStep === 3 && (
+              <>
+                Create My Video
+                <ChevronRight className="w-5 h-5 ml-2" />
+              </>
+            )}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

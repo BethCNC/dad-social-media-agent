@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Plus, Video, TrendingUp, Shield, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
+import { Video, TrendingUp, Shield, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getDailyBriefing, type DailyBriefing } from '@/lib/dashboardApi';
 import { SocialTrendsPulse } from '@/components/trends/SocialTrendsPulse';
+import { CreatePostCard } from '@/components/dashboard/CreatePostCard';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -84,32 +85,10 @@ export const Dashboard = () => {
         </div>
 
         {/* Create Post Card */}
-        <div className="bg-bg-elevated rounded-xl p-8 border border-border-default shadow-sm relative overflow-hidden group">
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-            <div className="space-y-6 max-w-2xl">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-bg-action rounded-lg">
-                  <Sparkles className="w-8 h-8 text-fg-inverse" />
-                </div>
-                <h2 className="text-4xl font-bold text-fg-headings">Create Your Next Post</h2>
-              </div>
-
-              {/* Suggested Content Container */}
-              <div className="bg-bg-page rounded-lg p-6 border border-border-default">
-                <p className="text-2xl font-semibold text-fg-headings mb-2">Suggested Content for Today:</p>
-                <p className="text-lg text-fg-body">{briefing.suggested_action}</p>
-              </div>
-            </div>
-
-            <Button
-              onClick={handleCreatePost}
-              className="h-16 px-8 bg-bg-action hover:bg-gray-800 text-fg-inverse text-xl font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-3 shrink-0"
-            >
-              <Plus className="w-6 h-6" />
-              Create Post Now
-            </Button>
-          </div>
-        </div>
+        <CreatePostCard
+          suggestedContent={briefing.suggested_action}
+          onCreatePost={handleCreatePost}
+        />
 
         {/* Calendar Content */}
         <div className="space-y-8">
