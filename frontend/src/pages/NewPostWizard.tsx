@@ -296,7 +296,7 @@ export const NewPostWizard = () => {
       // For image posts, always use AI generation regardless of visualStyle state
       // For video posts, use the selected visual style
       const effectiveVisualStyle = templateType === 'image' ? 'ai_generation' : visualStyle;
-      
+
       // Use contextual generation for better relevance with visual style preference
       const results = await searchAssetsContextual({
         topic: '', // We don't have topic in wizard, use first shot description
@@ -518,7 +518,7 @@ export const NewPostWizard = () => {
           return (
             <Card>
               <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground text-xl">
+                <p className="text-fg-subtle text-xl">
                   Creating a single post... Redirecting to topic selection.
                 </p>
               </CardContent>
@@ -532,7 +532,7 @@ export const NewPostWizard = () => {
             <Card>
               <CardContent className="py-12 text-center">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-                <p className="text-muted-foreground text-xl">
+                <p className="text-fg-subtle text-xl">
                   {isGeneratingSchedule ? 'Generating weekly schedule...' : 'Redirecting to weekly schedule...'}
                 </p>
               </CardContent>
@@ -551,7 +551,7 @@ export const NewPostWizard = () => {
                   <Card>
                     <CardHeader>
                       <CardTitle>Generate {customPostCount} Post{customPostCount !== 1 ? 's' : ''}</CardTitle>
-                      <p className="text-muted-foreground">
+                      <p className="text-fg-subtle">
                         Creating a custom schedule with {customPostCount} posts
                       </p>
                     </CardHeader>
@@ -636,7 +636,7 @@ export const NewPostWizard = () => {
           return (
             <Card>
               <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground text-xl">
+                <p className="text-fg-subtle text-xl">
                   Please complete the previous step first.
                 </p>
               </CardContent>
@@ -663,12 +663,12 @@ export const NewPostWizard = () => {
           <div className="space-y-6">
             {/* Visual Style Segmented Control - Only show for video posts */}
             {templateType === 'video' && (
-              <Card className="bg-gray-50 border-gray-200">
+              <Card className="bg-bg-elevated border-border-default">
                 <CardContent className="py-4">
-                  <p className="text-gray-900 font-semibold text-lg mb-4">
+                  <p className="text-fg-headings font-semibold text-lg mb-4">
                     Choose Your Visual Style
                   </p>
-                  <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-300">
+                  <div className="flex gap-2 bg-bg-page p-1 rounded-lg border border-border-default">
                     <button
                       type="button"
                       onClick={() => {
@@ -678,8 +678,8 @@ export const NewPostWizard = () => {
                       className={cn(
                         "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all",
                         visualStyle === 'ai_generation'
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-bg-action text-fg-inverse shadow-sm'
+                          : 'text-fg-body hover:bg-bg-subtle'
                       )}
                       disabled={isSearching}
                     >
@@ -702,8 +702,8 @@ export const NewPostWizard = () => {
                       className={cn(
                         "flex-1 py-3 px-4 rounded-md text-lg font-medium transition-all relative",
                         visualStyle === 'pexels'
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-bg-action text-fg-inverse shadow-sm'
+                          : 'text-fg-body hover:bg-bg-subtle'
                       )}
                       disabled={isSearching}
                     >
@@ -713,7 +713,7 @@ export const NewPostWizard = () => {
                       )}
                     </button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-3">
+                  <p className="text-sm text-fg-subtle mt-3">
                     {visualStyle === 'pexels'
                       ? '✅ Recommended: Stock videos work reliably with Creatomate. Search for real videos that match your content.'
                       : '⚠️ Note: AI-generated images may not work in local development. Consider using stock videos instead.'}
@@ -768,7 +768,7 @@ export const NewPostWizard = () => {
               <div className="space-y-4">
                 {!hasSearched && assets.length === 0 && (
                   <div className="w-full">
-                    <p className="text-lg text-muted-foreground mb-4">
+                    <p className="text-lg text-fg-subtle mb-4">
                       Click "Generate AI Images" to create unique visuals based on your shot plan.
                     </p>
                   </div>

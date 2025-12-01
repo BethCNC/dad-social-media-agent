@@ -157,14 +157,14 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                 className={cn(
                   'p-6 border-2 rounded-lg text-left transition-all',
                   templateType === 'image'
-                    ? 'border-primary bg-primary/5'
+                    ? 'border-border-primary bg-bg-action/5'
                     : 'border-border hover:border-primary/50'
                 )}
               >
                 <div className="font-semibold text-lg mb-2 flex items-center gap-2">
                   <span>📸</span> Image Post
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-fg-subtle">
                   Create an animated image post with movement effects and text overlay. Perfect for quotes, tips, or announcements.
                 </div>
               </button>
@@ -174,14 +174,14 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                 className={cn(
                   'p-6 border-2 rounded-lg text-left transition-all',
                   templateType === 'video'
-                    ? 'border-primary bg-primary/5'
+                    ? 'border-border-primary bg-bg-action/5'
                     : 'border-border hover:border-primary/50'
                 )}
               >
                 <div className="font-semibold text-lg mb-2 flex items-center gap-2">
                   <span>🎬</span> Video Post
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-fg-subtle">
                   Create a dynamic video post with multiple clips. Great for tutorials, stories, or engaging content.
                 </div>
               </button>
@@ -200,12 +200,12 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                 className={cn(
                   'p-6 border-2 rounded-lg text-left transition-all',
                   mode === 'manual'
-                    ? 'border-primary bg-primary/5'
+                    ? 'border-border-primary bg-bg-action/5'
                     : 'border-border hover:border-primary/50'
                 )}
               >
                 <div className="font-semibold text-lg mb-2">I already have a topic</div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-fg-subtle">
                   Describe what you want your video to be about, and we'll create the script and caption for you.
                 </div>
               </button>
@@ -215,12 +215,12 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                 className={cn(
                   'p-6 border-2 rounded-lg text-left transition-all',
                   mode === 'auto'
-                    ? 'border-primary bg-primary/5'
+                    ? 'border-border-primary bg-bg-action/5'
                     : 'border-border hover:border-primary/50'
                 )}
               >
                 <div className="font-semibold text-lg mb-2">Suggest a topic for me</div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-fg-subtle">
                   Let the AI suggest a topic based on what's relevant right now, including upcoming holidays.
                 </div>
               </button>
@@ -243,10 +243,10 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                 placeholder="For example: '3 tips for feeling more stable energy throughout the day' or 'My morning routine for better focus'..."
                 aria-describedby="topic-description"
               />
-              <p id="topic-description" className="text-base text-muted-foreground">
+              <p id="topic-description" className="text-base text-fg-subtle">
                 Be as detailed as possible. The AI will use this to create your script and caption.
               </p>
-              
+
               {/* Optional Image Upload */}
               <div className="space-y-3 pt-2">
                 <Label htmlFor="imageUpload" className="text-lg font-semibold">
@@ -294,7 +294,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                     </Button>
                   </div>
                 )}
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-fg-subtle">
                   Upload an image to help guide the script generation. The AI will analyze the image and create content inspired by it.
                 </p>
               </div>
@@ -326,7 +326,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                     Select a holiday (optional)
                   </Label>
                   {isLoadingHolidays ? (
-                    <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="flex items-center gap-2 text-fg-subtle">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Loading holidays...</span>
                     </div>
@@ -344,7 +344,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                           className={cn(
                             'px-4 py-2 rounded-lg border-2 transition-all text-base',
                             selectedHolidayId === holiday.id
-                              ? 'border-primary bg-primary text-primary-foreground'
+                              ? 'border-border-primary bg-bg-action text-fg-inverse'
                               : 'border-border hover:border-primary/50'
                           )}
                         >
@@ -353,11 +353,11 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                       ))}
                     </div>
                   ) : (
-                    <p className="text-base text-muted-foreground">
+                    <p className="text-base text-fg-subtle">
                       No upcoming holidays found. The AI will suggest a general wellness topic.
                     </p>
                   )}
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-fg-subtle">
                     {selectedHolidayId
                       ? 'The AI will create content related to the selected holiday.'
                       : 'The AI will choose a relevant holiday or suggest a general wellness topic.'}
@@ -426,7 +426,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                 className={cn(
                   'p-4 border-2 rounded-lg text-center transition-all',
                   lengthSeconds === 30
-                    ? 'border-primary bg-primary text-primary-foreground'
+                    ? 'border-border-primary bg-bg-action text-fg-inverse'
                     : 'border-border hover:border-primary/50'
                 )}
               >
@@ -439,7 +439,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                 className={cn(
                   'p-4 border-2 rounded-lg text-center transition-all',
                   lengthSeconds === 45
-                    ? 'border-primary bg-primary text-primary-foreground'
+                    ? 'border-border-primary bg-bg-action text-fg-inverse'
                     : 'border-border hover:border-primary/50'
                 )}
               >
@@ -452,7 +452,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                 className={cn(
                   'p-4 border-2 rounded-lg text-center transition-all',
                   lengthSeconds === 60
-                    ? 'border-primary bg-primary text-primary-foreground'
+                    ? 'border-border-primary bg-bg-action text-fg-inverse'
                     : 'border-border hover:border-primary/50'
                 )}
               >
@@ -460,7 +460,7 @@ export const ContentBriefForm = ({ onPlanGenerated, initialTopic }: ContentBrief
                 <div className="text-sm opacity-90">60 seconds</div>
               </button>
             </div>
-            <p className="text-base text-muted-foreground">
+            <p className="text-base text-fg-subtle">
               Choose a length, or leave blank to let the AI decide
             </p>
           </div>

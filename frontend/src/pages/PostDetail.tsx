@@ -230,7 +230,7 @@ export const PostDetail = () => {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-red-600">Post not found</p>
+            <p className="text-fg-error">Post not found</p>
             <Button onClick={() => navigate('/')} className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Dashboard
@@ -283,9 +283,9 @@ export const PostDetail = () => {
       </div>
 
       {error && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-border-error bg-bg-error-subtle">
           <CardContent className="pt-6">
-            <p className="text-sm text-red-700">{error}</p>
+            <p className="text-sm text-fg-error">{error}</p>
           </CardContent>
         </Card>
       )}
@@ -320,14 +320,14 @@ export const PostDetail = () => {
                 <Label>
                   {previewUrl ? 'Preview' : 'Current'} {post.template_type === 'image' ? 'Image' : 'Video'}
                   {previewUrl && (
-                    <span className="ml-2 text-xs text-blue-600">(Creatomate Template)</span>
+                    <span className="ml-2 text-xs text-bg-action">(Creatomate Template)</span>
                   )}
                 </Label>
                 {isRenderingPreview ? (
                   <div className="flex items-center justify-center min-h-[400px] border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
                     <div className="text-center">
-                      <Loader2 className="h-8 w-8 mx-auto text-gray-400 mb-2 animate-spin" />
-                      <p className="text-sm text-gray-500">Rendering preview...</p>
+                      <Loader2 className="h-8 w-8 mx-auto text-fg-on-disabled mb-2 animate-spin" />
+                      <p className="text-sm text-fg-subtle">Rendering preview...</p>
                     </div>
                   </div>
                 ) : (
@@ -366,7 +366,7 @@ export const PostDetail = () => {
                     )}
                     {previewUrl && (
                       <div className="space-y-2 pt-3 border-t">
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-fg-subtle">
                           This is a preview rendered with your Creatomate template. Click "Apply" to save it to this post.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-2">
@@ -415,9 +415,9 @@ export const PostDetail = () => {
             ) : (
               <div className="flex items-center justify-center min-h-[400px] border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
                 <div className="text-center">
-                  <Video className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">No media rendered yet</p>
-                  <p className="text-xs text-gray-400 mt-1">Select an asset below to preview</p>
+                  <Video className="h-12 w-12 mx-auto text-fg-on-disabled mb-2" />
+                  <p className="text-sm text-fg-subtle">No media rendered yet</p>
+                  <p className="text-xs text-fg-on-disabled mt-1">Select an asset below to preview</p>
                 </div>
               </div>
             )}
@@ -425,15 +425,15 @@ export const PostDetail = () => {
             {/* Copy Preview */}
             <div className="space-y-3 pt-4 border-t">
               <div>
-                <Label className="text-xs text-gray-500">Hook</Label>
+                <Label className="text-xs text-fg-subtle">Hook</Label>
                 <p className="text-sm font-medium mt-1">{post.hook}</p>
               </div>
               <div>
-                <Label className="text-xs text-gray-500">Script</Label>
+                <Label className="text-xs text-fg-subtle">Script</Label>
                 <p className="text-sm whitespace-pre-wrap mt-1">{post.script}</p>
               </div>
               <div>
-                <Label className="text-xs text-gray-500">Caption</Label>
+                <Label className="text-xs text-fg-subtle">Caption</Label>
                 <p className="text-sm whitespace-pre-wrap mt-1">{post.caption}</p>
               </div>
             </div>
@@ -446,11 +446,11 @@ export const PostDetail = () => {
           <Card>
             <CardHeader>
               <CardTitle>{post.topic}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">{formattedDate}</p>
+              <p className="text-sm text-fg-subtle mt-1">{formattedDate}</p>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                <span className="px-2 py-1 text-xs font-medium bg-bg-secondary text-fg-headings rounded">
                   {PILLAR_LABELS[post.content_pillar] || post.content_pillar}
                 </span>
                 {post.series_name && (
@@ -458,7 +458,7 @@ export const PostDetail = () => {
                     {post.series_name}
                   </span>
                 )}
-                <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded flex items-center gap-1">
+                <span className="px-2 py-1 text-xs font-medium bg-bg-elevated text-fg-body rounded flex items-center gap-1">
                   {post.template_type === 'image' ? (
                     <ImageIcon className="h-3 w-3" />
                   ) : (
@@ -488,7 +488,7 @@ export const PostDetail = () => {
                 )}
                 {post.tiktok_music_hints && post.tiktok_music_hints.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-fg-subtle">
                       When posting manually to TikTok or Instagram, tap “Add sound” and paste one of these phrases into
                       the search bar to find music.
                     </p>
@@ -558,7 +558,7 @@ export const PostDetail = () => {
                 </div>
               ) : alternativeMedia.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-fg-subtle mb-4">
                     No alternative media found. Try searching with different keywords.
                   </p>
                   <Button
@@ -572,17 +572,17 @@ export const PostDetail = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-blue-900 mb-1">
+                  <div className="bg-bg-elevated border border-border-default rounded-lg p-4">
+                    <p className="text-sm font-semibold text-fg-headings mb-1">
                       Template Requirements
                     </p>
-                    <p className="text-sm text-blue-800">
+                    <p className="text-sm text-fg-body">
                       {post.template_type === 'image'
                         ? 'Please select exactly 1 image for the image template.'
                         : 'Please select exactly 2 video clips for the video template.'}
                     </p>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-fg-subtle">
                     Select an alternative {post.template_type === 'image' ? 'image' : 'video clip'} option:
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -596,39 +596,39 @@ export const PostDetail = () => {
                           className={cn(
                             "relative cursor-pointer rounded-lg border-2 overflow-hidden transition-all",
                             isSelected
-                              ? "border-primary ring-2 ring-primary ring-offset-2"
-                              : "border-gray-200 hover:border-gray-300 hover:shadow-md"
+                              ? "border-border-primary ring-2 ring-border-primary ring-offset-2"
+                              : "border-border-default hover:border-border-strong hover:shadow-md"
                           )}
                           onClick={() => handleSelectAlternative(asset)}
                         >
-                          <div className="aspect-[9/16] bg-gray-100 relative">
+                          <div className="aspect-[9/16] bg-bg-subtle relative">
                             <img
                               src={asset.thumbnail_url}
                               alt="Video thumbnail"
                               className="w-full h-full object-cover"
                             />
                             {isRendering && (
-                              <div className="absolute inset-0 bg-primary/30 flex items-center justify-center backdrop-blur-sm">
-                                <div className="bg-white rounded-full p-3 shadow-lg">
-                                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                              <div className="absolute inset-0 bg-bg-action/30 flex items-center justify-center backdrop-blur-sm">
+                                <div className="bg-bg-page rounded-full p-3 shadow-lg">
+                                  <Loader2 className="h-6 w-6 text-bg-action animate-spin" />
                                 </div>
                               </div>
                             )}
                             {isSelected && !isRendering && (
-                              <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                                <div className="bg-primary text-white rounded-full p-2 shadow-lg">
+                              <div className="absolute inset-0 bg-bg-action/20 flex items-center justify-center">
+                                <div className="bg-bg-action text-fg-inverse rounded-full p-2 shadow-lg">
                                   <Check className="h-4 w-4" />
                                 </div>
                               </div>
                             )}
                             {isSelected && (
-                              <div className="absolute top-2 left-2 bg-primary text-white px-2 py-1 rounded text-[10px] font-semibold">
+                              <div className="absolute top-2 left-2 bg-bg-action text-fg-inverse px-2 py-1 rounded text-[10px] font-semibold">
                                 {isRendering ? 'Rendering...' : 'Selected'}
                               </div>
                             )}
                           </div>
-                          <div className="p-2 bg-white">
-                            <p className="text-xs text-gray-500 truncate">
+                          <div className="p-2 bg-bg-page">
+                            <p className="text-xs text-fg-subtle truncate">
                               {asset.duration_seconds}s
                             </p>
                           </div>

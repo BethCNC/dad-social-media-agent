@@ -85,7 +85,7 @@ export const WeeklySchedulePage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Weekly Schedule</h1>
-          <p className="text-muted-foreground mt-2 text-base">
+          <p className="text-fg-subtle mt-2 text-base">
             Plan and manage your weekly content schedule
           </p>
         </div>
@@ -99,9 +99,9 @@ export const WeeklySchedulePage = () => {
 
       {/* Error Message */}
       {error && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-border-error bg-bg-error-subtle">
           <CardContent className="pt-6">
-            <p className="text-lg text-red-700 font-medium">{error}</p>
+            <p className="text-lg text-fg-error font-medium">{error}</p>
           </CardContent>
         </Card>
       )}
@@ -111,7 +111,7 @@ export const WeeklySchedulePage = () => {
         <Card>
           <CardContent className="py-12 text-center">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground text-lg">Loading schedule...</p>
+            <p className="text-fg-subtle text-lg">Loading schedule...</p>
           </CardContent>
         </Card>
       ) : currentSchedule ? (

@@ -19,7 +19,7 @@ export const Shell = ({ children }: ShellProps) => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-bg-page">
       <header className="bg-card shadow-sm border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -37,8 +37,8 @@ export const Shell = ({ children }: ShellProps) => {
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? "bg-bg-action text-fg-inverse"
+                        : "text-fg-subtle hover:bg-bg-subtle hover:text-fg-body"
                     )}
                   >
                     <Icon className="w-4 h-4" />

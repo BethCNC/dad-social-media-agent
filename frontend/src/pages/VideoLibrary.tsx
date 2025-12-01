@@ -129,7 +129,7 @@ export const VideoLibrary = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Video Library</h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-fg-subtle mt-2">
             Upload your own B-roll and background footage to use in your posts
           </p>
         </div>
@@ -144,23 +144,23 @@ export const VideoLibrary = () => {
       </div>
 
       {error && (
-        <Card className="border-destructive bg-destructive/10">
+        <Card className="border-border-error bg-bg-error-subtle">
           <CardContent className="py-4">
-            <p className="text-destructive">{error}</p>
+            <p className="text-fg-error">{error}</p>
           </CardContent>
         </Card>
       )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <Loader2 className="w-8 h-8 animate-spin text-fg-subtle" />
         </div>
       ) : videos.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Video className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <Video className="w-16 h-16 mx-auto text-fg-subtle mb-4" />
             <h3 className="text-xl font-semibold mb-2">No videos uploaded yet</h3>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-fg-subtle mb-6">
               Upload your first video to get started
             </p>
             <Button onClick={() => setShowUploadModal(true)}>
@@ -173,7 +173,7 @@ export const VideoLibrary = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {videos.map((video) => (
             <Card key={video.id} className="overflow-hidden">
-              <div className="aspect-video bg-muted relative">
+              <div className="aspect-video bg-bg-subtle relative">
                 {video.thumbnail_url ? (
                   <img
                     src={video.thumbnail_url}
@@ -182,7 +182,7 @@ export const VideoLibrary = () => {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Video className="w-12 h-12 text-muted-foreground" />
+                    <Video className="w-12 h-12 text-fg-subtle" />
                   </div>
                 )}
                 <div className="absolute top-2 right-2 bg-black/75 text-white px-2 py-1 rounded text-sm">
@@ -194,7 +194,7 @@ export const VideoLibrary = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 {video.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-sm text-fg-subtle line-clamp-2">
                     {video.description}
                   </p>
                 )}
@@ -203,14 +203,14 @@ export const VideoLibrary = () => {
                     {video.tags.map((tag, idx) => (
                       <span
                         key={idx}
-                        className="text-xs bg-muted px-2 py-1 rounded"
+                        className="text-xs bg-bg-subtle px-2 py-1 rounded"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
                 )}
-                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+                <div className="flex items-center justify-between text-xs text-fg-subtle pt-2">
                   <span>Used {video.use_count} times</span>
                   <span>{formatDate(video.created_at)}</span>
                 </div>
@@ -283,7 +283,7 @@ export const VideoLibrary = () => {
                   className="mt-1"
                 />
                 {uploadFile && (
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-fg-subtle mt-1">
                     Selected: {uploadFile.name}
                   </p>
                 )}
@@ -355,7 +355,7 @@ export const VideoLibrary = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={confirmDelete} className="bg-bg-error text-fg-inverse hover:bg-bg-error/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

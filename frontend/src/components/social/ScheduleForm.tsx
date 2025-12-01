@@ -144,7 +144,7 @@ export const ScheduleForm = ({
                   className="h-11"
                   aria-describedby="date-description"
                 />
-                <p id="date-description" className="text-sm text-muted-foreground">
+                <p id="date-description" className="text-sm text-fg-subtle">
                   Leave empty to post immediately
                 </p>
               </div>
@@ -162,7 +162,7 @@ export const ScheduleForm = ({
                   className="h-11"
                   aria-describedby="time-description"
                 />
-                <p id="time-description" className="text-sm text-muted-foreground">
+                <p id="time-description" className="text-sm text-fg-subtle">
                   Required if date is set
                 </p>
               </div>
