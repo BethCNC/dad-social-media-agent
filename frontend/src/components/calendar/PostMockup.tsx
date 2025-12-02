@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Heart, MessageCircle, Share2, Camera, MoreVertical, Music, Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface PostMockupProps {
   mediaUrl?: string;
@@ -22,7 +21,7 @@ export const PostMockup = ({
   username = '@username',
   templateType,
   platform,
-  status,
+  status: _status,
   likes = 0,
   comments = 0,
   shares = 0,

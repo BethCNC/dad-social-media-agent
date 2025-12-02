@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { type WeeklySchedule, type WeeklyPost } from '../../lib/weeklyApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Image, Video, Calendar, Clock, Loader2 } from 'lucide-react';
+import { Image, Video, Calendar, Clock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { searchAssets, searchAssetsContextual, type AssetResult } from '@/lib/assetsApi';
+import { searchAssets, searchAssetsContextual } from '@/lib/assetsApi';
 
 interface WeeklyScheduleViewProps {
   schedule: WeeklySchedule;
@@ -47,7 +47,6 @@ const PostCard = ({ post, date, dayName, previewThumbnail, onClick }: PostCardPr
   // Determine preview source - prioritize rendered media, then thumbnail, then placeholder
   const hasRenderedMedia = !!post.media_url;
   const hasPreviewThumbnail = !!previewThumbnail;
-  const showPlaceholder = !hasRenderedMedia && !hasPreviewThumbnail;
 
   return (
     <Card
