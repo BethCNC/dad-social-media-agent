@@ -1,21 +1,50 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getDailyBriefing, type DailyBriefing } from '@/lib/dashboardApi';
 import { CreatePostCard } from '@/components/dashboard/CreatePostCard';
 import { PostingScheduleCard } from '@/components/weekly/PostingScheduleCard';
 import { PostingRules } from '@/components/dashboard/PostingRules';
+import { QuickHelp } from '@/components/dashboard/QuickHelp';
+import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
+import { ContextualHelp } from '@/components/dashboard/ContextualHelp';
+import { CalendarDays, Video, Clock, Calendar, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { getWeeklySchedule } from '@/lib/weeklyApi';
+import { format, startOfWeek } from 'date-fns';
 
 export const Dashboard = () => {
   console.log('Dashboard component rendering');
   const navigate = useNavigate();
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [todayPostCount, setTodayPostCount] = useState(0);
 
   useEffect(() => {
-    const fetchBriefing = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getDailyBriefing();
-        setBriefing(data);
+        // Fetch daily briefing
+        const briefingData = await getDailyBriefing();
+        setBriefing(briefingData);
+        
+        // Check for weekly schedule and today's posts
+        try {
+          const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
+          const schedule = await getWeeklySchedule(format(monday, 'yyyy-MM-dd'));
+          
+          // Count posts for today
+          const today = new Date();
+          const todayStr = format(today, 'yyyy-MM-dd');
+          const todayPosts = schedule.posts.filter(post => 
+            post.post_date && post.post_date.startsWith(todayStr)
+          );
+          setTodayPostCount(todayPosts.length);
+        } catch (scheduleError: any) {
+          // 404 is expected when no schedule exists - that's fine
+          if (scheduleError.response?.status !== 404) {
+            console.error('Failed to fetch weekly schedule:', scheduleError);
+          }
+          setTodayPostCount(0);
+        }
       } catch (error) {
         console.error('Failed to fetch briefing:', error);
       } finally {
@@ -23,11 +52,12 @@ export const Dashboard = () => {
       }
     };
 
-    fetchBriefing();
+    fetchData();
   }, []);
 
   const handleCreatePost = () => {
-    navigate('/wizard');
+    // Primary flow is now bank-first: take user to the Content Bank.
+    navigate('/bank');
   };
 
   if (isLoading) {
@@ -51,25 +81,71 @@ export const Dashboard = () => {
 
 
   return (
-    <div className="min-h-screen bg-bg-page relative">
-      <div className="absolute left-1/2 top-[120px] -translate-x-1/2 flex flex-col gap-[48px] items-start w-[1200px]">
-        {/* Greeting Container */}
-        <div className="flex flex-col gap-0 w-full">
-          <h1 className="text-6xl text-fg-headings w-full">{briefing.greeting}</h1>
-          <p className="text-3xl text-fg-subtle w-full">{briefing.current_date}</p>
+    <div className="min-h-screen bg-bg-page">
+      <div className="flex flex-col gap-6 max-w-4xl mx-auto">
+        {/* Greeting Container - Smaller, less prominent */}
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-semibold text-fg-headings">{briefing.greeting}</h1>
+          <p className="text-lg text-fg-subtle">{briefing.current_date}</p>
         </div>
 
-        {/* Create Post Card */}
+        {/* Content Bank entry point */}
         <CreatePostCard
           suggestedContent={briefing.suggested_action}
           onCreatePost={handleCreatePost}
         />
 
-        {/* Posting Schedule */}
-        <PostingScheduleCard />
+        {/* Quick Actions Row */}
+        <div className="flex items-center justify-center gap-4 w-full flex-wrap">
+          <div className="flex items-center gap-2">
+            <Link to="/weekly">
+              <Button variant="outline" size="lg" className="gap-3">
+                <CalendarDays className="w-5 h-5" />
+                <span className="text-lg">Plan This Week</span>
+              </Button>
+            </Link>
+            <ContextualHelp 
+              content="Generate a week of content ideas. Download videos individually and post manually with trending audio."
+            />
+          </div>
+          
+          <Link to="/videos">
+            <Button variant="outline" size="lg" className="gap-3">
+              <Video className="w-5 h-5" />
+              <span className="text-lg">View Video Library</span>
+            </Button>
+          </Link>
+          
+          {todayPostCount > 0 && (
+            <Link to="/weekly">
+              <Button variant="outline" size="lg" className="gap-3">
+                <Clock className="w-5 h-5" />
+                <span className="text-lg">
+                  Today's Posts {todayPostCount > 1 ? `(${todayPostCount})` : ''}
+                </span>
+              </Button>
+            </Link>
+          )}
+        </div>
 
-        {/* Posting Rules */}
-        <PostingRules />
+        {/* Collapsible Help Section */}
+        <QuickHelp />
+
+        {/* Collapsible Posting Schedule */}
+        <CollapsibleSection 
+          title="Weekly Theme Guide" 
+          icon={<Calendar className="w-5 h-5 text-fg-subtle" />}
+        >
+          <PostingScheduleCard />
+        </CollapsibleSection>
+
+        {/* Collapsible Posting Rules */}
+        <CollapsibleSection 
+          title="Posting Rules & Compliance" 
+          icon={<Shield className="w-5 h-5 text-fg-subtle" />}
+        >
+          <PostingRules />
+        </CollapsibleSection>
 
       </div>
     </div>

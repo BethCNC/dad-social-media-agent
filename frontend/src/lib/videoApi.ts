@@ -11,6 +11,9 @@ export interface VideoRenderRequest {
   script: string;
   title?: string | null;
   template_type?: string; // "image" or "video"
+  music_url?: string | null;
+  voiceover_url?: string | null;
+  prioritize_voiceover?: boolean;
 }
 
 export interface RenderJob {

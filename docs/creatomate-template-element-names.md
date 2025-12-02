@@ -16,10 +16,15 @@ If your rendered video only shows one video clip and no text, it means the eleme
 
 Creatomate templates can use various naming conventions:
 
-- `Background-1`, `Background-2`, `Text-1`, `Text-2` (what we're currently using)
+### Video Templates
+- `Background-1`, `Background-2`, `Text-1`, `Text-2`, `Music`, `Voiceover` (common pattern)
 - `Video-1`, `Video-2`, `Text-1`, `Text-2`
 - `Clip-1`, `Clip-2`, `Caption-1`, `Caption-2`
 - `Background`, `Background2`, `Text`, `Text2`
+- Custom names you've set
+
+### Image Templates
+- `Image`, `Text`, `Voiceover` (common pattern for image-based templates with voiceover)
 - Custom names you've set
 
 ## How to Update the Application
@@ -49,6 +54,23 @@ modifications["Text-2.text"] = text_2 if text_2 else ""
 
 Replace `Text-1` and `Text-2` with your actual text element names.
 
+### For Image Templates
+
+Find this section (around line 121-131):
+```python
+if template_type == "image":
+    modifications["Image.source"] = asset_urls[0]
+    modifications["Text.text"] = request.script.strip()
+    if request.voiceover_url:
+        modifications["Voiceover.source"] = request.voiceover_url
+```
+
+Replace `Image`, `Text`, and `Voiceover` with your actual element names.
+
+### For Voiceover Elements
+
+If your template has a voiceover/audio element, make sure it's named exactly `Voiceover` (or update the code to match your element name). The app will automatically set `Voiceover.source` when a `voiceover_url` is provided in the render request.
+
 ## Example
 
 If your template uses:
@@ -74,6 +96,22 @@ Modifications being sent: {'Video-1.source': 'https://...', 'Video-2.source': 'h
 ```
 
 If the element names match your template, both videos and text should appear in the rendered output.
+
+### Image Template Example
+
+If your image template uses:
+- `Image` for the main image
+- `Text` for the script text overlay
+- `Voiceover` for the audio track
+
+The app will automatically send:
+```python
+modifications = {
+    "Image.source": "https://...",
+    "Text.text": "Your script text here...",
+    "Voiceover.source": "https://.../voiceover.mp3"  # if voiceover_url is provided
+}
+```
 
 ## Still Not Working?
 

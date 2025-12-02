@@ -114,12 +114,12 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
     # NOTE: Element names must match EXACTLY what's in your Creatomate template
     # To find element names: Open template in Creatomate editor → Select element → Check "Name" field
     # Common names: Background-1, Background-2, Video-1, Video-2, Text-1, Text-2, etc.
-    # Image templates use: Image.source, Text.text
-    # Video templates use: Music.source, Background-1.source, Background-2.source, Text-1.text, Text-2.text
+    # Image templates use: Image.source, Text.text, Voiceover.source (optional)
+    # Video templates use: Music.source, Background-1.source, Background-2.source, Text-1.text, Text-2.text, Voiceover.source (optional)
     modifications = {}
     
     if template_type == "image":
-        # Image template structure: Image.source, Text.text
+        # Image template structure: Image.source, Text.text, Voiceover.source (optional)
         if asset_urls:
             # Use first asset as the image source
             modifications["Image.source"] = asset_urls[0]
@@ -129,19 +129,34 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
         # Map script text to Text.text (single text element for images)
         if request.script:
             modifications["Text.text"] = request.script.strip()
+        
+        # If we have a dedicated voiceover track, map it to a Voiceover element.
+        # NOTE: Your Creatomate template must have an audio element named "Voiceover"
+        # for this to take effect. See docs/creatomate-setup.md.
+        if getattr(request, "voiceover_url", None):
+            modifications["Voiceover.source"] = request.voiceover_url  # type: ignore[assignment]
+            logger.info(f"Using voiceover track for Voiceover.source: {request.voiceover_url[:80]}...")
     
     else:
-        # Video template structure: Music, Background-1, Background-2, Text-1, Text-2
+        # Video template structure: Music, Background-1, Background-2, Text-1, Text-2, Voiceover
         # Add Music source (optional - use explicit music_url first, then default)
-        if request.music_url:
+        # If prioritize_voiceover is True, we skip Music to let the VO carry the track.
+        if request.music_url and not getattr(request, "prioritize_voiceover", False):
             modifications["Music.source"] = request.music_url
             logger.info(f"Using per-post music URL for Music.source: {request.music_url[:80]}...")
         else:
             music_source = getattr(settings, "CREATOMATE_DEFAULT_MUSIC", None)
-            if music_source:
+            if music_source and not getattr(request, "prioritize_voiceover", False):
                 modifications["Music.source"] = music_source
                 logger.info("Using CREATOMATE_DEFAULT_MUSIC for Music.source")
         
+        # If we have a dedicated voiceover track, map it to a Voiceover element.
+        # NOTE: Your Creatomate template must have an audio element named "Voiceover"
+        # for this to take effect. See docs/creatomate-setup.md.
+        if getattr(request, "voiceover_url", None):
+            modifications["Voiceover.source"] = request.voiceover_url  # type: ignore[assignment]
+            logger.info(f"Using voiceover track for Voiceover.source: {request.voiceover_url[:80]}...")
+
         # Map assets to Background elements (Background-1, Background-2)
         # Template expects exactly 2 video clips: Background-1 and Background-2
         if len(asset_urls) < 2:

@@ -25,6 +25,10 @@ class VideoRenderRequest(BaseModel):
     template_type: str = "video"  # "image" or "video"
     # Optional background music URL to use for Music.source in Creatomate template
     music_url: str | None = None
+    # Optional voiceover track URL to map to a dedicated Voiceover element in the Creatomate template
+    voiceover_url: str | None = None
+    # When True, background music should be reduced or omitted in favor of the voiceover track
+    prioritize_voiceover: bool = False
 
 
 class RenderJob(BaseModel):

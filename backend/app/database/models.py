@@ -123,3 +123,61 @@ class AudioTrack(Base):
     license_notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class ContentBankItem(Base):
+    """Pre-generated scripts and captions that live in the content bank.
+
+    Each row is effectively a "data row" for a potential video, including
+    script, caption, theming metadata, and render/usage state.
+    """
+    __tablename__ = "content_bank_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # Core creative fields
+    title = Column(String(255), nullable=False)
+    script = Column(Text, nullable=False)
+    caption = Column(Text, nullable=False)
+    content_pillar = Column(String(50), nullable=False)  # education, routine, story, product_integration
+    tone = Column(String(50), nullable=False)
+    length_seconds = Column(Integer, nullable=True)
+
+    # Lifecycle & provenance
+    status = Column(String(20), nullable=False, default="draft")  # draft, approved, archived
+    created_from = Column(String(20), nullable=False, default="ai_batch")  # manual, ai_batch, import
+
+    # Diversity / series metadata
+    topic_cluster = Column(String(100), nullable=True)  # e.g., "afternoon_energy", "evening_routine"
+    series_name = Column(String(255), nullable=True)  # e.g., "Energy Tip Tuesday"
+    target_problem = Column(String(255), nullable=True)  # short description of the user problem
+
+    # Media / render state
+    voiceover_url = Column(String(500), nullable=True)
+    primary_asset_url = Column(String(500), nullable=True)  # main image or video clip
+    secondary_asset_url = Column(String(500), nullable=True)  # optional second clip
+    rendered_video_url = Column(String(500), nullable=True)
+    last_render_status = Column(String(50), nullable=True)  # pending, succeeded, failed, none
+
+    # Usage & basic analytics
+    times_used = Column(Integer, nullable=False, default=0)
+    last_used_at = Column(DateTime, nullable=True)
+    posted_at = Column(DateTime, nullable=True)  # when actually posted to social (manual entry)
+    platforms = Column(String(255), nullable=True)  # e.g., "tiktok,instagram"
+    performance_notes = Column(Text, nullable=True)  # optional human-entered notes
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class BatchJob(Base):
+    """Simple batch job tracking for content generation and rendering."""
+    __tablename__ = "batch_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    type = Column(String(50), nullable=False)  # content_generation, video_render
+    payload_json = Column(JSON, nullable=False)
+    status = Column(String(20), nullable=False, default="pending")  # pending, running, succeeded, failed
+    progress = Column(Integer, nullable=False, default=0)  # 0-100
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime, nullable=True)

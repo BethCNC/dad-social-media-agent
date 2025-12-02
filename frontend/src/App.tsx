@@ -5,6 +5,7 @@ import { NewPostWizard } from './pages/NewPostWizard';
 import { PostDetail } from './pages/PostDetail';
 import { VideoLibrary } from './pages/VideoLibrary';
 import { WeeklySchedulePage } from './pages/WeeklySchedule';
+import { ContentBankPage } from './pages/ContentBankPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/weekly" element={<WeeklySchedulePage />} />
           <Route path="/posts/:id" element={<PostDetail />} />
           <Route path="/videos" element={<VideoLibrary />} />
+          <Route path="/bank" element={<ContentBankPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Shell>

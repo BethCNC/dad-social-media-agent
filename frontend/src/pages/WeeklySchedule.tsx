@@ -84,9 +84,9 @@ export const WeeklySchedulePage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Weekly Schedule</h1>
+          <h1 className="text-3xl font-bold">Content Planning</h1>
           <p className="text-fg-subtle mt-2 text-base">
-            Plan and manage your weekly content schedule
+            Generate a week of content ideas. Download videos individually and post manually with trending audio.
           </p>
         </div>
         <div className="flex gap-4">
@@ -173,10 +173,10 @@ export const WeeklySchedulePage = () => {
         <Card className="text-center">
           <CardHeader className="space-y-4 pb-8">
             <CardTitle className="text-2xl font-bold">
-              Generate This Week's Content
+              Generate This Week's Content Plan
             </CardTitle>
             <CardDescription className="text-base">
-              Create a complete week of AI-generated posts following TikTok best practices
+              Create a complete week of AI-generated posts for planning. You'll download and post each video manually with trending audio.
             </CardDescription>
           </CardHeader>
           <CardContent>

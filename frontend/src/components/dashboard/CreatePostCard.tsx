@@ -1,4 +1,7 @@
-import { Sparkles, Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ContextualHelp } from './ContextualHelp';
 
 interface CreatePostCardProps {
     suggestedContent: string;
@@ -7,50 +10,42 @@ interface CreatePostCardProps {
 
 export const CreatePostCard = ({ suggestedContent, onCreatePost }: CreatePostCardProps) => {
     return (
-        <div className="bg-bg-elevated border border-border-strong rounded-xl overflow-hidden w-full shrink-0">
-            {/* Card Header */}
-            <div className="bg-bg-action flex items-center gap-4 px-12 py-3 w-[1200px] shrink-0">
-                <div className="relative shrink-0 w-[42px] h-[42px] flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-fg-inverse" />
-                </div>
-                <h2 className="text-4xl text-fg-inverse whitespace-nowrap shrink-0">
-                    Create Your Next Post
-                </h2>
-            </div>
-
-            {/* Main Content */}
-            <div className="flex gap-6 items-start p-12 shrink-0 w-full">
-                {/* Left: Subtitle */}
-                <div className="flex items-center justify-center w-[395px] shrink-0">
-                    <p className="text-xl text-fg-body">
-                        Generate AI-powered social content that follows Unicity guidelines and Maximizes engagement in under 5 minutes.
-                    </p>
-                </div>
-
-                {/* Right: Suggested Content and Button */}
-                <div className="flex-1 flex flex-col gap-6 min-w-0 grow shrink-0">
-                    {/* Suggested Content Container */}
-                    <div className="bg-bg-subtle border border-border-strong rounded flex flex-col gap-2 px-6 py-3 shrink-0 w-full">
-                        <p className="text-2xl text-fg-body whitespace-nowrap shrink-0">
-                            Suggested Content for Today:
-                        </p>
-                        <p className="text-lg text-fg-body text-center shrink-0">
-                            {suggestedContent}
-                        </p>
+        <Card className="bg-bg-elevated border-2 border-border-strong">
+            <CardContent className="p-8">
+                <div className="flex flex-col items-center gap-6">
+                    {/* Header with help icon */}
+                    <div className="flex items-center gap-3 w-full justify-center">
+                        <Sparkles className="w-8 h-8 text-bg-action" />
+                        <h2 className="text-3xl font-bold text-fg-headings">
+                            Pick Todays Script
+                        </h2>
+                        <ContextualHelp 
+                            content="Start from a bank of ready-made, compliant scripts. Well then walk you through creating the video and downloading it to post with trending audio."
+                            className="ml-2"
+                        />
                     </div>
 
-                    {/* CTA Button */}
-                    <button
+                    {/* Suggested Content - Optional, smaller */}
+                    {suggestedContent && (
+                        <div className="w-full max-w-md">
+                            <p className="text-sm text-fg-subtle mb-2 text-center">Suggested script for today:</p>
+                            <p className="text-base text-fg-body text-center bg-bg-subtle border border-border-default rounded-lg p-3">
+                                {suggestedContent}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Primary CTA Button */}
+                    <Button
                         onClick={onCreatePost}
-                        className="bg-bg-action border-2 border-border-primary rounded flex items-center justify-center gap-4 px-6 py-3 shrink-0 w-full"
+                        size="lg"
+                        className="w-full max-w-md h-16 text-xl font-semibold gap-3"
                     >
-                        <Plus className="w-7 h-7 text-white shrink-0" />
-                        <span className="text-xl font-semibold text-white text-center whitespace-nowrap shrink-0">
-                            Create New Post
-                        </span>
-                    </button>
+                        <Plus className="w-6 h-6" />
+                        Open Content Bank
+                    </Button>
                 </div>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 };

@@ -257,6 +257,20 @@ export const NewPostWizard = () => {
     await handleSearch();
   };
 
+  // Auto-populate visuals when entering Step 3 using Pexels (videos)
+  // or Google-powered AI image generation, based on the selected template type.
+  useEffect(() => {
+    if (
+      currentStep === 3 &&
+      generatedPlan &&
+      !hasSearched &&
+      assets.length === 0 &&
+      !isSearching
+    ) {
+      void handleAutomaticSearch();
+    }
+  }, [currentStep, generatedPlan, hasSearched, assets.length, isSearching]);
+
   const handleRegenerateImage = async (assetId: string, prompt: string) => {
     setIsSearching(true);
     setSearchError(null);
@@ -410,7 +424,10 @@ export const NewPostWizard = () => {
   const STEPS = [
     { number: 1, label: "What's your topic?" },
     { number: 2, label: "Review your script" },
-    { number: 3, label: "Pick your video" },
+    {
+      number: 3,
+      label: templateType === 'image' ? 'Pick your image' : 'Pick your video',
+    },
     { number: 4, label: "Download & post" },
   ];
 
@@ -459,9 +476,13 @@ export const NewPostWizard = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-2xl">Choose Your Video</CardTitle>
+                <CardTitle className="text-2xl">
+                  {templateType === 'image' ? 'Choose Your Image' : 'Choose Your Video'}
+                </CardTitle>
                 <CardDescription className="text-lg">
-                  Select 1 video that matches your script
+                  {templateType === 'image'
+                    ? 'Select 1 image that matches your script'
+                    : 'Select 1 video that matches your script'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -479,9 +500,13 @@ export const NewPostWizard = () => {
                 {/* Collapsed search - only show if needed */}
                 {assets.length === 0 && !isSearching && (
                   <div className="text-center py-8">
-                    <p className="text-fg-subtle mb-4">No videos loaded yet</p>
+                    <p className="text-fg-subtle mb-4">
+                      {templateType === 'image'
+                        ? 'No images loaded yet'
+                        : 'No videos loaded yet'}
+                    </p>
                     <Button onClick={handleAutomaticSearch}>
-                      Load Videos
+                      {templateType === 'image' ? 'Load Images' : 'Load Videos'}
                     </Button>
                   </div>
                 )}
@@ -492,7 +517,9 @@ export const NewPostWizard = () => {
                       variant="outline"
                       onClick={() => setHasSearched(true)}
                     >
-                      🔍 Search for different videos
+                      {templateType === 'image'
+                        ? '🔍 Search for different images'
+                        : '🔍 Search for different videos'}
                     </Button>
                   </div>
                 )}
@@ -500,7 +527,11 @@ export const NewPostWizard = () => {
                 {hasSearched && (
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Search videos (e.g., 'coffee', 'workout', 'nature')"
+                      placeholder={
+                        templateType === 'image'
+                          ? "Search images (e.g., 'nature', 'product', 'coffee')"
+                          : "Search videos (e.g., 'coffee', 'workout', 'nature')"
+                      }
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyDown={(e) => {
@@ -524,7 +555,11 @@ export const NewPostWizard = () => {
                 {isSearching && (
                   <div className="text-center py-4">
                     <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-                    <p className="text-fg-subtle mt-2">Searching for videos...</p>
+                    <p className="text-fg-subtle mt-2">
+                      {templateType === 'image'
+                        ? 'Searching for images...'
+                        : 'Searching for videos...'}
+                    </p>
                   </div>
                 )}
 
@@ -546,10 +581,14 @@ export const NewPostWizard = () => {
                     <CheckCircle2 className="w-8 h-8 text-fg-success" />
                     <div>
                       <p className="text-lg font-semibold text-fg-success">
-                        ✓ Perfect! You've selected your video
+                        {templateType === 'image'
+                          ? "✓ Perfect! You've selected your image"
+                          : "✓ Perfect! You've selected your video"}
                       </p>
                       <p className="text-sm text-fg-subtle">
-                        Click "Create My Video" below to continue
+                        {templateType === 'image'
+                          ? 'Click "Create My Image Post" below to continue'
+                          : 'Click "Create My Video" below to continue'}
                       </p>
                     </div>
                   </div>
@@ -562,7 +601,9 @@ export const NewPostWizard = () => {
               <Card className="bg-bg-warning-subtle border-border-warning">
                 <CardContent className="py-3">
                   <p className="text-fg-warning text-sm">
-                    Please select {requiredCount} video to continue
+                    {templateType === 'image'
+                      ? `Please select ${requiredCount} image to continue`
+                      : `Please select ${requiredCount} video to continue`}
                   </p>
                 </CardContent>
               </Card>
@@ -853,7 +894,7 @@ export const NewPostWizard = () => {
             )}
             {currentStep === 2 && (
               <>
-                Next: Choose Video
+                {templateType === 'image' ? 'Next: Choose Image' : 'Next: Choose Video'}
                 <ChevronRight className="w-5 h-5 ml-2" />
               </>
             )}

@@ -1,25 +1,13 @@
 """Application configuration and settings management."""
-import os
 from functools import lru_cache
 from pathlib import Path
-from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.models.audio import AudioMode
 
-# Find project root (where .env file is located)
+# Find project root (where .env file is located for local development)
 # This file is in backend/app/core/, so go up 3 levels to project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-ENV_FILE = PROJECT_ROOT / ".env"
-
-# Load .env file using python-dotenv (this handles empty files gracefully)
-# If .env file exists and has content, load it. Otherwise, rely on system environment variables.
-if ENV_FILE.exists() and ENV_FILE.stat().st_size > 0:
-    load_dotenv(dotenv_path=ENV_FILE, override=False)
-else:
-    # .env file is empty or doesn't exist - try to load from system environment
-    # This allows users to set environment variables directly instead of using .env file
-    load_dotenv(override=False)
 
 
 class Settings(BaseSettings):
@@ -35,6 +23,11 @@ class Settings(BaseSettings):
     
     # Optional: Default background music for Creatomate videos
     CREATOMATE_DEFAULT_MUSIC: str = ""  # URL to music file (Creatomate asset or external URL)
+
+    # Optional: Text-to-speech configuration for voiceover generation
+    TTS_API_URL: str | None = None  # Base URL of TTS endpoint returning {"audio_url": "https://..."}
+    TTS_API_KEY: str | None = None  # API key or bearer token, if required
+    TTS_VOICE_ID: str | None = None  # Provider-specific voice identifier
     
     # Application settings
     FRONTEND_URL: str = "http://localhost:5173"
@@ -55,34 +48,26 @@ class Settings(BaseSettings):
         return upload_dir
     
     model_config = SettingsConfigDict(
-        # Don't specify env_file here - we load it manually with load_dotenv above
-        # This allows us to load from .env file OR system environment variables
+        # Load from .env file if present (local dev), otherwise use environment variables (production)
+        # Use absolute path to project root .env file for local development
+        # If the file doesn't exist, pydantic-settings will silently fall back to environment variables
+        env_file=str(PROJECT_ROOT / ".env"),
+        env_file_encoding="utf-8",
+        # Ignore extra fields in .env file that aren't defined in Settings
+        extra="ignore",
         case_sensitive=True,
     )
 
 
 @lru_cache()
 def get_settings() -> Settings:
-    """Get cached settings instance."""
-    try:
-        return Settings()
-    except Exception as e:
-        # Provide helpful error message if .env file is empty or missing
-        if ENV_FILE.exists() and ENV_FILE.stat().st_size == 0:
-            raise ValueError(
-                f"Your .env file at {ENV_FILE} is empty. "
-                "Please add your API keys to the .env file. "
-                "See .env.example for the required format."
-            ) from e
-        elif not ENV_FILE.exists():
-            raise ValueError(
-                f"Your .env file at {ENV_FILE} does not exist. "
-                "Please create it with your API keys. "
-                "See .env.example for the required format."
-            ) from e
-        else:
-            raise ValueError(
-                f"Failed to load settings. Missing required environment variables. "
-                f"Please check your .env file at {ENV_FILE} contains all required keys."
-            ) from e
+    """Get cached settings instance.
+    
+    Loads settings from:
+    - .env file in project root (if present, for local development)
+    - Environment variables (for production/Docker)
+    
+    If required fields are missing, Pydantic will raise ValidationError.
+    """
+    return Settings()
 

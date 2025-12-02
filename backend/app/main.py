@@ -76,8 +76,44 @@ app.include_router(api_router, prefix="/api")
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "ok"}
+    """Health check endpoint with external API connectivity checks.
+    
+    Returns basic status and optionally checks external API reachability
+    for production monitoring.
+    """
+    import httpx
+    
+    status = {"status": "healthy", "version": "1.0.0"}
+    
+    # In production, optionally check external API connectivity
+    if settings.ENV == "production":
+        checks = {}
+        
+        # Check Creatomate API
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(
+                    "https://api.creatomate.com/v2/renders",
+                    headers={"Authorization": f"Bearer {settings.CREATOMATE_API_KEY}"},
+                )
+                checks["creatomate"] = "reachable" if response.status_code in [200, 401, 403] else "error"
+        except Exception:
+            checks["creatomate"] = "unreachable"
+        
+        # Check Pexels API
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(
+                    "https://api.pexels.com/videos/search?query=test&per_page=1",
+                    headers={"Authorization": settings.PEXELS_API_KEY},
+                )
+                checks["pexels"] = "reachable" if response.status_code in [200, 401, 403] else "error"
+        except Exception:
+            checks["pexels"] = "unreachable"
+        
+        status["external_apis"] = checks
+    
+    return status
 
 # Mount static directory for serving generated images and frontend
 static_dir = settings.UPLOAD_DIR.parent  # static/ directory
