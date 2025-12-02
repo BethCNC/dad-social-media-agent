@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(chmod:*)",
+      "Bash(git --no-pager status --short)",
+      "Bash(GIT_LFS_SKIP_SMUDGE=1 git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''''EOF''''\nAdd comprehensive Coolify deployment resources\n\nThis commit prepares the application for production deployment to Coolify with a complete deployment workflow.\n\nChanges:\n- Fix Dockerfile healthcheck to use urllib instead of httpx (removes external dependency)\n- Add VITE_API_BASE_URL build argument support for frontend production builds\n- Create comprehensive deployment guide (COOLIFY_DEPLOYMENT.md)\n- Create quick-start deployment checklist (DEPLOY_NOW.md)\n- Add production environment templates (.env.production)\n- Add deployment verification script (verify-deployment.sh)\n- Update README with deployment quick links\n\nThese changes enable:\n- One-step deployment to Coolify\n- Proper frontend API URL configuration at build time\n- Complete deployment verification\n- Clear troubleshooting guidance\n- Persistent storage configuration\n- Production best practices\n\nReady for user testing deployment.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)",
+      "Bash(git lfs install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
