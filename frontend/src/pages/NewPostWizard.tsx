@@ -56,7 +56,6 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, totalSteps, 
 
 type WizardStep = 1 | 2 | 3 | 4;
 
-// Ordered array for step navigation
 const WIZARD_STEPS: WizardStep[] = [1, 2, 3, 4];
 
 export const NewPostWizard = () => {
@@ -667,7 +666,7 @@ export const NewPostWizard = () => {
                     {/* Download button - PRIMARY ACTION */}
                     <Button
                       size="lg"
-                      className="w-full h-20 text-2xl font-bold bg-green-600 hover:bg-green-700"
+                      className="w-full h-20 px-6 text-2xl font-bold bg-green-600 hover:bg-green-700"
                       onClick={() => {
                         const link = document.createElement('a');
                         link.href = videoUrl;
@@ -796,9 +795,11 @@ export const NewPostWizard = () => {
             variant="outline"
             size="lg"
             onClick={() => {
-              const currentIndex = WIZARD_STEPS.indexOf(currentStep);
-              const prevStep = currentIndex > 0 ? WIZARD_STEPS[currentIndex - 1] : 1;
-              setCurrentStep(prevStep);
+              setCurrentStep(prev => {
+                const index = WIZARD_STEPS.indexOf(prev);
+                if (index === -1 || index === 0) return prev;
+                return WIZARD_STEPS[index - 1];
+              });
             }}
             disabled={isGeneratingPlan || isRendering}
           >

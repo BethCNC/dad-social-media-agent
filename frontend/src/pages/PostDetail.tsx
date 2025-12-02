@@ -50,7 +50,6 @@ export const PostDetail = () => {
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isRenderingPreview, setIsRenderingPreview] = useState(false);
-  const [_previewJobId, setPreviewJobId] = useState<string | null>(null);
 
   const backPath = (location.state as any)?.from || '/';
   const backLabel = backPath === '/weekly' ? 'Back to Schedule' : 'Back to Dashboard';
@@ -149,7 +148,6 @@ export const PostDetail = () => {
     setSelectedAlternativeId(asset.id);
     setIsRenderingPreview(true);
     setPreviewUrl(null);
-    setPreviewJobId(null);
 
     try {
       // Render preview using Creatomate template
@@ -165,7 +163,6 @@ export const PostDetail = () => {
       };
 
       const job = await renderPreview(renderRequest);
-      setPreviewJobId(job.job_id);
 
       // Poll for preview completion
       const pollPreview = async () => {
