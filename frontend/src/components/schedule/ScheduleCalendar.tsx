@@ -23,7 +23,6 @@ const PILLAR_LABELS: Record<string, string> = {
 
 export const ScheduleCalendar = ({ schedule, onDayClick }: ScheduleCalendarProps) => {
   const startDate = new Date(schedule.start_date);
-  const endDate = new Date(schedule.end_date);
   
   // Create a map of date -> item for quick lookup
   const itemsByDate = new Map<string, ScheduledContentItem>();

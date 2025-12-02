@@ -52,7 +52,6 @@ export const AssetGrid = ({
     }
   };
 
-  const isSelectionLimitReached = maxSelection !== undefined && selectedIds.size >= maxSelection;
   const canSelect = (assetId: string) => {
     if (!maxSelection) return true;
     if (selectedIds.has(assetId)) return true; // Can always deselect

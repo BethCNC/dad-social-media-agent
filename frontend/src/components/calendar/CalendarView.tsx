@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type WeeklyPost } from '@/lib/weeklyApi';
 import { PostMockup } from './PostMockup';
 import { cn } from '@/lib/utils';
-import { searchAssetsContextual, type AssetResult } from '@/lib/assetsApi';
+import { searchAssetsContextual } from '@/lib/assetsApi';
 
 interface CalendarViewProps {
   posts: WeeklyPost[];
@@ -124,7 +124,7 @@ export const CalendarView = ({ posts, weekStartDate, onPostClick, onWeekChange }
   };
   
   // Determine platform for a post (default to TikTok)
-  const getPlatform = (post: WeeklyPost): 'tiktok' | 'instagram' => {
+  const getPlatform = (_post: WeeklyPost): 'tiktok' | 'instagram' => {
     // For now, default to TikTok. In the future, this could be determined from schedule.platforms
     // or a post.platforms field if added
     return 'tiktok';

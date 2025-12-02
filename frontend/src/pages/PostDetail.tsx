@@ -50,7 +50,7 @@ export const PostDetail = () => {
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isRenderingPreview, setIsRenderingPreview] = useState(false);
-  const [previewJobId, setPreviewJobId] = useState<string | null>(null);
+  const [_previewJobId, setPreviewJobId] = useState<string | null>(null);
 
   const backPath = (location.state as any)?.from || '/';
   const backLabel = backPath === '/weekly' ? 'Back to Schedule' : 'Back to Dashboard';

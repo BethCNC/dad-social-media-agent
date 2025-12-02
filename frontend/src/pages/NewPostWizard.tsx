@@ -56,6 +56,9 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, totalSteps, 
 
 type WizardStep = 1 | 2 | 3 | 4;
 
+// Ordered array for step navigation
+const WIZARD_STEPS: WizardStep[] = [1, 2, 3, 4];
+
 export const NewPostWizard = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -663,7 +666,7 @@ export const NewPostWizard = () => {
                   <CardContent className="space-y-4">
                     {/* Download button - PRIMARY ACTION */}
                     <Button
-                      size="xl"
+                      size="lg"
                       className="w-full h-20 text-2xl font-bold bg-green-600 hover:bg-green-700"
                       onClick={() => {
                         const link = document.createElement('a');
@@ -733,7 +736,7 @@ export const NewPostWizard = () => {
                 {/* Next actions */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button
-                    size="xl"
+                    size="lg"
                     className="h-16 px-8 text-xl"
                     onClick={() => {
                       // Reset wizard state
@@ -760,7 +763,7 @@ export const NewPostWizard = () => {
                     ➕ Create Another Post
                   </Button>
                   <Button
-                    size="xl"
+                    size="lg"
                     variant="outline"
                     className="h-16 px-8 text-xl"
                     onClick={() => navigate('/dashboard')}
@@ -792,7 +795,11 @@ export const NewPostWizard = () => {
           <Button
             variant="outline"
             size="lg"
-            onClick={() => setCurrentStep((prev) => Math.max(1, (prev - 1) as WizardStep))}
+            onClick={() => {
+              const currentIndex = WIZARD_STEPS.indexOf(currentStep);
+              const prevStep = currentIndex > 0 ? WIZARD_STEPS[currentIndex - 1] : 1;
+              setCurrentStep(prevStep);
+            }}
             disabled={isGeneratingPlan || isRendering}
           >
             <ChevronLeft className="w-5 h-5 mr-2" />
