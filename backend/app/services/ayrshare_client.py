@@ -82,7 +82,7 @@ async def schedule_post(request: ScheduleRequest) -> ScheduleResponse:
             if e.response.headers.get("content-type", "").startswith("application/json"):
                 error_data = e.response.json()
                 error_detail = error_data.get("message", "Unknown error")
-        except:
+        except (ValueError, KeyError, TypeError):
             error_detail = "Unknown error"
         raise Exception(f"We couldn't schedule this post. Please check your Ayrshare connection and try again.") from e
     except httpx.RequestError as e:

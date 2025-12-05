@@ -76,3 +76,20 @@ export const fetchBankItems = async (filters: BankItemFilters = {}): Promise<Ban
   const response = await api.get<BankItem[]>(url);
   return response.data;
 };
+
+export const updateBankItem = async (itemId: number, updates: Partial<BankItem>): Promise<BankItem> => {
+  const response = await api.patch<BankItem>(`/api/content/bank/${itemId}`, updates);
+  return response.data;
+};
+
+export const generateVoiceover = async (itemId: number): Promise<BankItem> => {
+  const response = await api.post<BankItem>(`/api/content/bank/${itemId}/voiceover`);
+  return response.data;
+};
+
+export const renderFromBank = async (itemId: number, templateType: string = 'video'): Promise<{ job_id: string; status: string; video_url?: string | null }> => {
+  const response = await api.post<{ job_id: string; status: string; video_url?: string | null }>(
+    `/api/video/render-from-bank/${itemId}?template_type=${templateType}`
+  );
+  return response.data;
+};

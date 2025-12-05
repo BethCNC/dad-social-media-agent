@@ -13,7 +13,6 @@ import { getWeeklySchedule } from '@/lib/weeklyApi';
 import { format, startOfWeek } from 'date-fns';
 
 export const Dashboard = () => {
-  console.log('Dashboard component rendering');
   const navigate = useNavigate();
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
   const [isLoading, setIsLoading] = useState(true);

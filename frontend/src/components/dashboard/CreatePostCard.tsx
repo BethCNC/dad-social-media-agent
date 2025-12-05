@@ -16,11 +16,11 @@ export const CreatePostCard = ({ suggestedContent, onCreatePost }: CreatePostCar
                     {/* Header with help icon */}
                     <div className="flex items-center gap-3 w-full justify-center">
                         <Sparkles className="w-8 h-8 text-bg-action" />
-                        <h2 className="text-3xl font-bold text-fg-headings">
-                            Pick Todays Script
+                        <h2 className="text-3xl font-semibold tracking-tight text-fg-headings">
+                            Pick Today's Script
                         </h2>
                         <ContextualHelp 
-                            content="Start from a bank of ready-made, compliant scripts. Well then walk you through creating the video and downloading it to post with trending audio."
+                            content="Start from a bank of ready-made, compliant scripts. We'll then walk you through creating the video and downloading it to post with trending audio."
                             className="ml-2"
                         />
                     </div>

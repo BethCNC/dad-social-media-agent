@@ -345,7 +345,7 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
             error_detail = error_data.get("message") or error_data.get("error") or str(error_data)
             logger.error(f"❌ Creatomate API error detail: {error_detail}")
             logger.error(f"   Full error response: {error_data}")
-        except:
+        except (ValueError, KeyError, TypeError):
             error_text = e.response.text[:500]  # Limit error text length
             logger.error(f"Could not parse error response: {error_text}")
             error_detail = error_text

@@ -15,6 +15,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
+interface WizardLocationState {
+  trendIdea?: {
+    hook_script?: string;
+    suggested_caption?: string;
+  };
+  prefillTopic?: string;
+  preselectedVideo?: {
+    id: string;
+    video_url: string;
+    thumbnail_url?: string;
+    duration_seconds?: number;
+  };
+}
+
 interface StepIndicatorProps {
   currentStep: number;
   totalSteps: number;
@@ -111,7 +125,7 @@ export const NewPostWizard = () => {
 
   // Check for trend idea or prefill topic in location state and pre-fill
   useEffect(() => {
-    const state = location.state as any;
+    const state = location.state as WizardLocationState | null;
     const trendIdea = state?.trendIdea;
     const prefillTopic = state?.prefillTopic;
     const preselectedVideo = state?.preselectedVideo;
@@ -384,9 +398,6 @@ export const NewPostWizard = () => {
         return;
       }
 
-      console.log('Selected assets for rendering:', assetsToRender.map(a => ({ id: a.id, url: a.video_url })));
-      console.log('Script to render:', script);
-
       const renderRequest: VideoRenderRequest = {
         assets: assetsToRender.map((asset) => ({
           // Use asset.id (which should be the URL) or fallback to video_url
@@ -432,7 +443,7 @@ export const NewPostWizard = () => {
   ];
 
   const renderStep = () => {
-    const prefillTopic = (location.state as any)?.prefillTopic;
+    const prefillTopic = (location.state as WizardLocationState | null)?.prefillTopic;
 
     switch (currentStep) {
       case 1:

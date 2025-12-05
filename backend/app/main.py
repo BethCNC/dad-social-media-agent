@@ -29,6 +29,7 @@ async def startup_event():
     init_db()
 
     # Seed audio tracks (idempotent)
+    db = None
     try:
         db = SessionLocal()
         created = seed_audio_tracks(db)
@@ -37,10 +38,11 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Failed to seed audio tracks: {e}")
     finally:
-        try:
-            db.close()
-        except Exception:
-            pass
+        if db is not None:
+            try:
+                db.close()
+            except Exception as close_error:
+                logger.warning(f"Failed to close database connection: {close_error}")
     
     # Log Creatomate template configuration
     logger.info("=" * 60)
