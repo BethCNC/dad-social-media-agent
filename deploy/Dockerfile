@@ -10,7 +10,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 
 # Install dependencies (use ci for faster, reproducible builds)
-RUN npm ci --only=production
+# Note: We need ALL dependencies including devDependencies for the build
+RUN npm ci
 
 # Copy frontend source
 COPY frontend/ ./
