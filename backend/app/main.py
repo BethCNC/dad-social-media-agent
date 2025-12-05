@@ -156,15 +156,7 @@ if uploads_dir.exists():
 # Mount static files if they exist (for production frontend)
 prod_static_dir = "/app/static"
 if os.path.exists(prod_static_dir):
-    # Catch-all route for React Router (serve index.html for all non-API routes)
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        """Serve React app for all non-API routes."""
-        # Exclude API routes, health endpoint, and static files
-        if full_path.startswith("api") or full_path == "health" or full_path.startswith("static"):
-            return {"error": "Not found"}
-        index_path = os.path.join(prod_static_dir, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        return {"error": "Not found"}
+    # Mount the static directory to serve all frontend files (JS, CSS, assets, etc.)
+    # html=True makes it serve index.html for routes that don't match a file (SPA routing)
+    app.mount("/", StaticFiles(directory=prod_static_dir, html=True), name="frontend")
 
