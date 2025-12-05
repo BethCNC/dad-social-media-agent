@@ -5,19 +5,55 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+      args:
+        # Set this to your production API URL during build
+        VITE_API_BASE_URL: ${API_BASE_URL:-http://localhost:8000}
     ports:
       - "8000:8000"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - PEXELS_API_KEY=${PEXELS_API_KEY}
+      # Required API Keys
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - CREATOMATE_API_KEY=${CREATOMATE_API_KEY}
+      - CREATOMATE_IMAGE_TEMPLATE_ID=${CREATOMATE_IMAGE_TEMPLATE_ID}
+      - CREATOMATE_VIDEO_TEMPLATE_ID=${CREATOMATE_VIDEO_TEMPLATE_ID}
       - AYRSHARE_API_KEY=${AYRSHARE_API_KEY}
-      - FRONTEND_URL=http://localhost:5173
-      - ENV=development
-    env_file:
-      - ../.env
+
+      # Optional API Keys
+      - APIFY_API_TOKEN=${APIFY_API_TOKEN:-}
+      - TTS_API_URL=${TTS_API_URL:-}
+      - TTS_API_KEY=${TTS_API_KEY:-}
+      - TTS_VOICE_ID=${TTS_VOICE_ID:-}
+
+      # Application Settings
+      - API_BASE_URL=${API_BASE_URL:-http://localhost:8000}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5174}
+      - ENV=${ENV:-production}
+      - PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # Audio System
+      - AUDIO_MODE=${AUDIO_MODE:-MUTED_FOR_PLATFORM_MUSIC}
+
+      # Optional: Default background music
+      - CREATOMATE_DEFAULT_MUSIC=${CREATOMATE_DEFAULT_MUSIC:-}
+
     volumes:
-      # Mount backend for hot reload in development (optional)
-      - ../backend:/app/backend
+      # Persist database and uploads across container restarts
+      - app_data:/app/static/uploads
+      - db_data:/app/backend
+
     restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  app_data:
+    driver: local
+  db_data:
+    driver: local
 

@@ -380,10 +380,15 @@ async def generate_image_asset(prompt: str) -> str:
         logger.info(f"Saved generated image to {file_path}")
         
         # Return public URL using API endpoint instead of static file serving
-        # This ensures Creatomate can access images even through ngrok
-        # The /api/assets/images/ endpoint serves files directly, avoiding ngrok's browser warning
-        public_url = f"{settings.API_BASE_URL}/api/assets/images/{filename}"
-        logger.info(f"Generated image URL for Creatomate: {public_url}")
+        # For local development, always use localhost for frontend display (avoids ngrok browser warnings)
+        # For production, use API_BASE_URL
+        if settings.ENV == "development":
+            # In development, always use localhost so frontend can load images directly
+            public_url = f"http://localhost:{settings.PORT}/api/assets/images/{filename}"
+        else:
+            # In production, use API_BASE_URL (could be ngrok or production domain)
+            public_url = f"{settings.API_BASE_URL}/api/assets/images/{filename}"
+        logger.info(f"Generated image URL: {public_url}")
         return public_url
         
     except Exception as e:
