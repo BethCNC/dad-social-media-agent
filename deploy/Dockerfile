@@ -17,9 +17,9 @@ RUN npm ci
 COPY frontend/ ./
 
 # Build argument for API URL (will be baked into the frontend build)
-# In Coolify, set this as a build-time variable
-ARG VITE_API_BASE_URL=http://localhost:8000
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+# Coolify passes API_BASE_URL, so we use that to set VITE_API_BASE_URL
+ARG API_BASE_URL=http://localhost:8000
+ENV VITE_API_BASE_URL=${API_BASE_URL}
 
 # Build frontend (production mode)
 RUN npm run build
