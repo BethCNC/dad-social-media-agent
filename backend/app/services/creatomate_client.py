@@ -10,6 +10,31 @@ settings = get_settings()
 CREATOMATE_API_BASE = "https://api.creatomate.com/v2"
 
 
+def strip_voiceover_timing_markers(script: str) -> str:
+    """Remove voiceover timing markers from script text.
+
+    Timing markers like (0-3s) or (3-10s) are used for voiceover
+    synchronization but should not appear in the rendered video text.
+
+    Args:
+        script: Script text potentially containing timing markers
+
+    Returns:
+        Script text with timing markers removed
+    """
+    if not script:
+        return script
+
+    # Remove timing markers in format (0-3s), (3-10s), etc.
+    # Pattern matches: opening paren, digits, dash, digits, 's', closing paren
+    cleaned = re.sub(r'\(\d+-\d+s\)', '', script)
+
+    # Clean up any double spaces or leading/trailing whitespace
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+    return cleaned
+
+
 async def start_render(request: VideoRenderRequest) -> RenderJob:
     """
     Start a video or image rendering job with Creatomate using a pre-defined template.
@@ -125,10 +150,12 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
             modifications["Image.source"] = asset_urls[0]
             if len(asset_urls) > 1:
                 logger.warning(f"Image template only supports 1 image, using first of {len(asset_urls)} assets")
-        
+
         # Map script text to Text.text (single text element for images)
+        # Strip voiceover timing markers like (0-3s) before rendering
         if request.script:
-            modifications["Text.text"] = request.script.strip()
+            cleaned_script = strip_voiceover_timing_markers(request.script)
+            modifications["Text.text"] = cleaned_script
         
         # If we have a dedicated voiceover track, map it to a Voiceover element.
         # NOTE: Your Creatomate template must have an audio element named "Voiceover"
@@ -205,28 +232,31 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
         
         # Map script text to Text elements (Text-1, Text-2)
         # Split script into two parts for better visual distribution
+        # Strip voiceover timing markers like (0-3s) before rendering
         if request.script:
-            script_text = request.script.strip()
-            
+            # First, remove timing markers from the script
+            cleaned_script = strip_voiceover_timing_markers(request.script)
+            script_text = cleaned_script.strip()
+
             # Try to split by newlines first (if script has structured sections)
             if '\n' in script_text:
                 lines = [line.strip() for line in script_text.split('\n') if line.strip()]
                 mid_point = len(lines) // 2
-                
+
                 text_1 = '\n'.join(lines[:mid_point]).strip()
                 text_2 = '\n'.join(lines[mid_point:]).strip()
             else:
                 # Split by sentences (period, exclamation, question mark)
                 sentences = re.split(r'([.!?]\s+)', script_text)
                 # Rejoin sentences with their punctuation
-                sentences = [sentences[i] + (sentences[i+1] if i+1 < len(sentences) else '') 
+                sentences = [sentences[i] + (sentences[i+1] if i+1 < len(sentences) else '')
                             for i in range(0, len(sentences), 2) if sentences[i].strip()]
-                
+
                 mid_point = len(sentences) // 2
                 text_1 = ''.join(sentences[:mid_point]).strip()
                 text_2 = ''.join(sentences[mid_point:]).strip()
-            
-            # Set Text-1 and Text-2
+
+            # Set Text-1 and Text-2 with cleaned text
             modifications["Text-1.text"] = text_1 if text_1 else script_text
             modifications["Text-2.text"] = text_2 if text_2 else ""
             logger.info(
