@@ -156,7 +156,31 @@ if uploads_dir.exists():
 # Mount static files if they exist (for production frontend)
 prod_static_dir = "/app/static"
 if os.path.exists(prod_static_dir):
-    # Mount the static directory to serve all frontend files (JS, CSS, assets, etc.)
-    # html=True makes it serve index.html for routes that don't match a file (SPA routing)
-    app.mount("/", StaticFiles(directory=prod_static_dir, html=True), name="frontend")
+    # Mount assets directory for JS/CSS files
+    import os
+    assets_path = os.path.join(prod_static_dir, "assets")
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+
+    # Serve other static files (favicons, images, etc.) from root static dir
+    # This needs to be done with a route to avoid conflicting with /api
+    @app.get("/{file_path:path}")
+    async def serve_static_or_spa(file_path: str):
+        """Serve static files or SPA index.html for client-side routing."""
+        # Don't serve for API routes (already handled by router)
+        if file_path.startswith("api/"):
+            return {"error": "Not found"}
+
+        # Try to serve static file first
+        full_path = os.path.join(prod_static_dir, file_path)
+        if os.path.isfile(full_path):
+            return FileResponse(full_path)
+
+        # Fall back to index.html for SPA routing (except for /static and /health)
+        if not file_path.startswith("static/") and file_path != "health":
+            index_path = os.path.join(prod_static_dir, "index.html")
+            if os.path.exists(index_path):
+                return FileResponse(index_path)
+
+        return {"error": "Not found"}
 
