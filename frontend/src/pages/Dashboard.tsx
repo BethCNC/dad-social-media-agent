@@ -88,7 +88,7 @@ export const Dashboard = () => {
           <p className="text-lg text-fg-subtle">{briefing.current_date}</p>
         </div>
 
-        {/* Content Bank entry point */}
+        {/* Primary CTA: Create Post */}
         <CreatePostCard
           suggestedContent={briefing.suggested_action}
           onCreatePost={handleCreatePost}
