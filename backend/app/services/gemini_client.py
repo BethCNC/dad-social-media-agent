@@ -315,10 +315,10 @@ OUTPUT REQUIREMENTS:
 
 For each content piece, you MUST provide:
 1. Script with clear hook (1-3 seconds), context, value steps, soft CTA
+   - IMPORTANT: Script should be PURE SPOKEN DIALOGUE ONLY - NO bracketed notes or timing markers
 2. Caption with hook, body, soft CTA using "link in bio" format (NO URLs), MANDATORY Unicity brand hashtags ({', '.join(hashtags.get('general', []))}), additional relevant hashtags (1-2 specific + 1-2 broad), and health disclaimer
 3. Shot plan (3-6 shots, NO people/faces)
-4. Suggested keywords for on-screen text (include in script as notes or separate field)
-5. Main keyword phrase that should be spoken and appear in caption
+4. Main keyword phrase that should be spoken naturally in the script and appear in caption
 
 CRITICAL CAPTION FORMAT:
 - Hook (first line)
@@ -496,9 +496,10 @@ CRITICAL REQUIREMENTS:
 
 Generate a JSON object with the following fields:
 
-1. "script": string - conversational script (15-45 seconds) following the structure above
-   - Include notes for on-screen text overlays (especially in first 3 seconds with main keyword)
-   - Ensure main keyword is spoken near the start
+1. "script": string - PURE SPOKEN DIALOGUE ONLY (15-45 seconds) following the structure above
+   - DO NOT include bracketed notes, timing markers, or overlay instructions in the script
+   - The script should contain ONLY the exact words to be spoken in the voiceover
+   - Ensure main keyword is spoken naturally near the start
 2. "caption": string - social media caption with:
    - Hook (first line, attention-grabbing)
    - Body (1-3 sentences explaining value)
@@ -708,8 +709,9 @@ Requirements:
 - Each post must include:
   - Hook (1-3 seconds, MUST grab attention immediately or viewers scroll - use pain points)
   - Full script (15-45 seconds, following structure: Hook → Context/Empathy → Value Steps → Soft CTA)
-    * Include on-screen text suggestions (especially for first 3 seconds with main keyword)
-    * Main keyword must be spoken near the start
+    * PURE SPOKEN DIALOGUE ONLY - NO bracketed notes, timing markers, or overlay instructions
+    * The script should contain ONLY the exact words to be spoken in the voiceover
+    * Main keyword must be spoken naturally near the start
   - Caption with TikTok SEO:
     * Hook (first line)
     * Body (1-3 sentences)
@@ -912,8 +914,9 @@ Requirements:
 - Each post must include:
   - Hook (1-3 seconds, MUST grab attention immediately or viewers scroll - use pain points)
   - Full script (15-45 seconds, following structure: Hook → Context/Empathy → Value Steps → Soft CTA)
-    * Include on-screen text suggestions (especially for first 3 seconds with main keyword)
-    * Main keyword must be spoken near the start
+    * PURE SPOKEN DIALOGUE ONLY - NO bracketed notes, timing markers, or overlay instructions
+    * The script should contain ONLY the exact words to be spoken in the voiceover
+    * Main keyword must be spoken naturally near the start
   - Caption with TikTok SEO:
     * Hook (first line, attention-grabbing)
     * Body (1-3 sentences explaining value)

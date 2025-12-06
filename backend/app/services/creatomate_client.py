@@ -11,16 +11,22 @@ CREATOMATE_API_BASE = "https://api.creatomate.com/v2"
 
 
 def strip_voiceover_timing_markers(script: str) -> str:
-    """Remove voiceover timing markers from script text.
+    """Remove voiceover timing markers and directional language from script text.
 
-    Timing markers like (0-3s) or (3-10s) are used for voiceover
-    synchronization but should not appear in the rendered video text.
+    Removes:
+    - Timing markers: (0-3s), (3-10s), etc.
+    - Bracketed notes: [Text on screen: ...], [Text overlay: ...], [Show: ...], etc.
+    - Parenthetical directional notes: (Text: ...), (Overlay: ...), (Show: ...), etc.
+    - Any other bracketed or parenthetical production instructions
+
+    These markers are used for production guidance but should not appear
+    in the rendered video text.
 
     Args:
-        script: Script text potentially containing timing markers
+        script: Script text potentially containing timing markers and directional language
 
     Returns:
-        Script text with timing markers removed
+        Clean script text suitable for rendering
     """
     if not script:
         return script
@@ -29,7 +35,24 @@ def strip_voiceover_timing_markers(script: str) -> str:
     # Pattern matches: opening paren, digits, dash, digits, 's', closing paren
     cleaned = re.sub(r'\(\d+-\d+s\)', '', script)
 
-    # Clean up any double spaces or leading/trailing whitespace
+    # Remove bracketed directional notes like:
+    # [Text on screen: ...], [Text overlay: ...], [Show: ...], [Display: ...]
+    # Pattern matches: [anything containing colons or common directional keywords]
+    cleaned = re.sub(r'\[([Tt]ext|[Oo]verlay|[Ss]how|[Dd]isplay)[^\]]*\]', '', cleaned)
+
+    # Also remove any remaining bracketed notes that might contain production instructions
+    # Pattern matches: [Text: ...], [Note: ...], etc.
+    cleaned = re.sub(r'\[[^\]]*:[^\]]*\]', '', cleaned)
+
+    # Remove parenthetical directional notes like:
+    # (Text: ...), (Overlay: ...), (Show on screen: ...), (Display: ...)
+    cleaned = re.sub(r'\(([Tt]ext|[Oo]verlay|[Ss]how|[Dd]isplay)[^\)]*\)', '', cleaned)
+
+    # Remove any remaining parenthetical production notes with colons
+    # Pattern matches: (Note: ...), (Action: ...), etc.
+    cleaned = re.sub(r'\([^\)]*:[^\)]*\)', '', cleaned)
+
+    # Clean up any double spaces, multiple newlines, or leading/trailing whitespace
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
 
     return cleaned
