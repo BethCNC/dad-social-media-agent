@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { NavTabs, NavTabItem } from "@/components/ui/nav-tabs";
 
 const NAV_ITEMS = [
-  { path: "/", label: "Content Bank", icon: Video },
-  { path: "/home", label: "Home", icon: Home },
+  { path: "/", label: "Home", icon: Home },
+  { path: "/bank", label: "Content Bank", icon: Video },
   { path: "/wizard", label: "Custom Post", icon: Plus },
   { path: "/weekly", label: "Planning", icon: Calendar },
   { path: "/settings", label: "Settings", icon: Settings },
@@ -42,8 +42,8 @@ export const NavBar = () => {
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path ||
-                  (item.path === "/" && (location.pathname === "/" || location.pathname === "/bank")) ||
-                  (item.path === "/home" && location.pathname === "/home") ||
+                  (item.path === "/" && location.pathname === "/") ||
+                  (item.path === "/bank" && location.pathname.startsWith("/bank")) ||
                   (item.path === "/wizard" && location.pathname.startsWith("/wizard")) ||
                   (item.path === "/weekly" && location.pathname.startsWith("/weekly"));
                 return (
