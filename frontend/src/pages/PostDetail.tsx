@@ -52,7 +52,7 @@ export const PostDetail = () => {
   const [isRenderingPreview, setIsRenderingPreview] = useState(false);
 
   const backPath = (location.state as any)?.from || '/';
-  const backLabel = backPath === '/weekly' ? 'Back to Schedule' : 'Back to Dashboard';
+  const backLabel = backPath === '/weekly' ? 'Back to Schedule' : 'Back to Home';
 
   useEffect(() => {
     const loadPost = async () => {
@@ -230,7 +230,7 @@ export const PostDetail = () => {
             <p className="text-fg-error">Post not found</p>
             <Button onClick={() => navigate('/')} className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+              Back to Home
             </Button>
           </CardContent>
         </Card>

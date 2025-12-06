@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { NavTabs, NavTabItem } from "@/components/ui/nav-tabs";
 
 const NAV_ITEMS = [
-  { path: "/", label: "Dashboard", icon: Home },
+  { path: "/", label: "Home", icon: Home },
   { path: "/bank", label: "Content Bank", icon: Video },
   { path: "/wizard", label: "Custom Post", icon: Plus },
   { path: "/weekly", label: "Planning", icon: Calendar },

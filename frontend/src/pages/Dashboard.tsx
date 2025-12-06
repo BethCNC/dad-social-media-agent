@@ -64,7 +64,7 @@ export const Dashboard = () => {
       <div className="flex items-center justify-center min-h-screen bg-bg-page">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-primary mx-auto"></div>
-          <p className="text-fg-subtle">Loading your dashboard...</p>
+          <p className="text-fg-subtle">Loading...</p>
         </div>
       </div>
     );
@@ -73,7 +73,7 @@ export const Dashboard = () => {
   if (!briefing) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-bg-page">
-        <p className="text-fg-subtle">Unable to load dashboard</p>
+        <p className="text-fg-subtle">Unable to load data</p>
       </div>
     );
   }

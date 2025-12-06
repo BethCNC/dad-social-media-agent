@@ -817,9 +817,9 @@ export const NewPostWizard = () => {
                     size="lg"
                     variant="outline"
                     className="h-16 px-8 text-xl"
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate('/')}
                   >
-                    ✅ Done - Back to Dashboard
+                    ✅ Done - Back to Home
                   </Button>
                 </div>
               </div>
