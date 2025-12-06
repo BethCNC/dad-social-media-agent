@@ -12,12 +12,13 @@ function App() {
     <BrowserRouter>
       <Shell>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<ContentBankPage />} />
+          <Route path="/home" element={<Dashboard />} />
           <Route path="/wizard" element={<NewPostWizard />} />
           <Route path="/weekly" element={<WeeklySchedulePage />} />
           <Route path="/posts/:id" element={<PostDetail />} />
           <Route path="/videos" element={<VideoLibrary />} />
-          <Route path="/bank" element={<ContentBankPage />} />
+          <Route path="/bank" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Shell>
