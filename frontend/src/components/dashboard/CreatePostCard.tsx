@@ -17,10 +17,10 @@ export const CreatePostCard = ({ suggestedContent, onCreatePost }: CreatePostCar
                     <div className="flex items-center gap-3 w-full justify-center">
                         <Sparkles className="w-8 h-8 text-bg-action" />
                         <h2 className="text-3xl font-semibold tracking-tight text-fg-headings">
-                            Pick Today's Script
+                            Create Post for Today
                         </h2>
-                        <ContextualHelp 
-                            content="Start from a bank of ready-made, compliant scripts. We'll then walk you through creating the video and downloading it to post with trending audio."
+                        <ContextualHelp
+                            content="Simple 4-step process: 1) Enter your topic 2) Review AI-generated script 3) Choose visuals 4) Download video. Then post to TikTok/Instagram with trending audio."
                             className="ml-2"
                         />
                     </div>
@@ -28,7 +28,7 @@ export const CreatePostCard = ({ suggestedContent, onCreatePost }: CreatePostCar
                     {/* Suggested Content - Optional, smaller */}
                     {suggestedContent && (
                         <div className="w-full max-w-md">
-                            <p className="text-sm text-fg-subtle mb-2 text-center">Suggested script for today:</p>
+                            <p className="text-sm text-fg-subtle mb-2 text-center">Suggested topic for today:</p>
                             <p className="text-base text-fg-body text-center bg-bg-subtle border border-border-default rounded-lg p-3">
                                 {suggestedContent}
                             </p>
@@ -42,8 +42,13 @@ export const CreatePostCard = ({ suggestedContent, onCreatePost }: CreatePostCar
                         className="w-full max-w-md h-16 text-xl font-semibold gap-3"
                     >
                         <Plus className="w-6 h-6" />
-                        Open Content Bank
+                        Start Creating
                     </Button>
+
+                    {/* Quick Flow Overview */}
+                    <div className="text-center text-sm text-fg-subtle max-w-lg">
+                        <p>Create → Download → Open TikTok/Instagram → Upload → Add Trending Audio → Post</p>
+                    </div>
                 </div>
             </CardContent>
         </Card>
