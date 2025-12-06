@@ -55,8 +55,8 @@ export const Dashboard = () => {
   }, []);
 
   const handleCreatePost = () => {
-    // Primary flow is now bank-first: take user to the Content Bank.
-    navigate('/bank');
+    // Primary flow: take user directly to post creation wizard
+    navigate('/wizard');
   };
 
   if (isLoading) {
