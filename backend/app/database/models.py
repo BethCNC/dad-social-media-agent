@@ -107,6 +107,22 @@ class UserVideo(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
+class UserImage(Base):
+    """User-uploaded or AI-generated images."""
+    __tablename__ = "user_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String(255), nullable=False)
+    image_url = Column(String(500), nullable=False)
+    thumbnail_url = Column(String(500), nullable=True)
+    tags = Column(JSON, nullable=True)  # Array of tags
+    description = Column(Text, nullable=True)
+    source = Column(String(50), default="upload", nullable=False)  # upload, ai_generation, pexels
+    use_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
 class AudioTrack(Base):
     """Background music tracks (CC0 / royalty-free) used in rendered videos."""
     __tablename__ = "audio_tracks"
@@ -181,3 +197,16 @@ class BatchJob(Base):
     error = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime, nullable=True)
+
+
+class KnowledgeItem(Base):
+    """Knowledge base content for RAG."""
+    __tablename__ = "knowledge_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)
+    source = Column(String(255), nullable=True)  # Source description (e.g., "Uploaded PDF", "Email")
+    category = Column(String(50), nullable=True)  # e.g., "product", "promotion", "testimony"
+    embedding = Column(JSON, nullable=True)  # Vector embedding stored as JSON list of floats
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

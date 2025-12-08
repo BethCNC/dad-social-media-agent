@@ -7,7 +7,7 @@ import { PostingRules } from '@/components/dashboard/PostingRules';
 import { QuickHelp } from '@/components/dashboard/QuickHelp';
 import { CollapsibleSection } from '@/components/dashboard/CollapsibleSection';
 import { ContextualHelp } from '@/components/dashboard/ContextualHelp';
-import { CalendarDays, Video, Clock, Calendar, Shield } from 'lucide-react';
+import { CalendarDays, Video, Clock, Calendar, Shield, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getWeeklySchedule } from '@/lib/weeklyApi';
 import { format, startOfWeek } from 'date-fns';
@@ -24,16 +24,16 @@ export const Dashboard = () => {
         // Fetch daily briefing
         const briefingData = await getDailyBriefing();
         setBriefing(briefingData);
-        
+
         // Check for weekly schedule and today's posts
         try {
           const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
           const schedule = await getWeeklySchedule(format(monday, 'yyyy-MM-dd'));
-          
+
           // Count posts for today
           const today = new Date();
           const todayStr = format(today, 'yyyy-MM-dd');
-          const todayPosts = schedule.posts.filter(post => 
+          const todayPosts = schedule.posts.filter(post =>
             post.post_date && post.post_date.startsWith(todayStr)
           );
           setTodayPostCount(todayPosts.length);
@@ -88,6 +88,19 @@ export const Dashboard = () => {
           <p className="text-lg text-fg-subtle">{briefing.current_date}</p>
         </div>
 
+        {/* Welcome / Onboarding Card */}
+        <div className="bg-bg-secondary/30 border border-border-default rounded-lg p-4 flex items-start gap-4">
+          <Info className="w-6 h-6 text-primary shrink-0 mt-1" />
+          <div className="space-y-1">
+            <h3 className="font-semibold text-fg-headings">Getting Started</h3>
+            <ul className="list-disc list-inside text-sm text-fg-body space-y-1">
+              <li><strong>Step 1:</strong> Go to <Link to="/settings" className="underline hover:text-primary">Settings</Link> to set your brand name and links.</li>
+              <li><strong>Step 2:</strong> Upload some B-roll videos in <Link to="/videos" className="underline hover:text-primary">Video Assets</Link>.</li>
+              <li><strong>Step 3:</strong> Create your first post using the <strong>Create Post</strong> button below!</li>
+            </ul>
+          </div>
+        </div>
+
         {/* Primary CTA: Create Post */}
         <CreatePostCard
           suggestedContent={briefing.suggested_action}
@@ -103,18 +116,18 @@ export const Dashboard = () => {
                 <span className="text-lg">Plan This Week</span>
               </Button>
             </Link>
-            <ContextualHelp 
+            <ContextualHelp
               content="Generate a week of content ideas. Download videos individually and post manually with trending audio."
             />
           </div>
-          
+
           <Link to="/videos">
             <Button variant="outline" size="lg" className="gap-3">
               <Video className="w-5 h-5" />
               <span className="text-lg">View Video Library</span>
             </Button>
           </Link>
-          
+
           {todayPostCount > 0 && (
             <Link to="/weekly">
               <Button variant="outline" size="lg" className="gap-3">
@@ -131,16 +144,16 @@ export const Dashboard = () => {
         <QuickHelp />
 
         {/* Collapsible Posting Schedule */}
-        <CollapsibleSection 
-          title="Weekly Theme Guide" 
+        <CollapsibleSection
+          title="Weekly Theme Guide"
           icon={<Calendar className="w-5 h-5 text-fg-subtle" />}
         >
           <PostingScheduleCard />
         </CollapsibleSection>
 
         {/* Collapsible Posting Rules */}
-        <CollapsibleSection 
-          title="Posting Rules & Compliance" 
+        <CollapsibleSection
+          title="Posting Rules & Compliance"
           icon={<Shield className="w-5 h-5 text-fg-subtle" />}
         >
           <PostingRules />

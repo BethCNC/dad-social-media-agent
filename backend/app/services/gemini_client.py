@@ -404,10 +404,33 @@ async def generate_nano_banana_image(prompt: str) -> str:
     return await generate_image_asset(prompt)
 
 
+async def generate_embedding(text: str) -> List[float]:
+    """
+    Generate vector embedding for text using Gemini.
+    
+    Args:
+        text: Text to embed
+        
+    Returns:
+        List of floats representing the embedding vector
+    """
+    try:
+        response = client.models.embed_content(
+            model="text-embedding-004",
+            contents=text,
+        )
+        return response.embeddings[0].values
+    except Exception as e:
+        logger.error(f"Gemini embedding error: {e}")
+        raise
+
+
+
 async def generate_content_plan_gemini(
     brief: ContentBrief, 
     holiday_context: Optional[dict] = None,
-    image_bytes: Optional[bytes] = None
+    image_bytes: Optional[bytes] = None,
+    rag_context: Optional[str] = None
 ) -> GeneratedPlan:
     """
     Generate content plan using Gemini 3.0 Pro with Unicity client profile.
@@ -419,6 +442,7 @@ async def generate_content_plan_gemini(
         brief: Content brief with idea, platforms, tone, and optional length
         holiday_context: Optional holiday context dictionary with holidays_on_date, upcoming_holidays, etc.
         image_bytes: Optional image bytes for multimodal content generation
+        rag_context: Optional string containing retrieved knowledge chunks for RAG
         
     Returns:
         GeneratedPlan with script, caption, and shot_plan
@@ -477,12 +501,17 @@ async def generate_content_plan_gemini(
 
     hashtags = client_profile.get("hashtags", {})
     
+    # Build RAG context section
+    rag_section = ""
+    if rag_context:
+        rag_section = f"\n\nBRAND KNOWLEDGE (Retrieved from internal database):\n{rag_context}\n\nUse this knowledge to make the content specific and accurate to the brand's latest info."
+
     user_message = f"""Create a short-form video plan for the following:
 
 Idea/Topic: {topic}
 Tone: {brief.tone}
 Platforms: {', '.join(brief.platforms)}
-{length_hint}{holiday_section}
+{length_hint}{holiday_section}{rag_section}
 
 CRITICAL REQUIREMENTS:
 1. HOOK (first 1-3 seconds): Must grab attention immediately with a pain point or clear value promise
@@ -500,6 +529,7 @@ Generate a JSON object with the following fields:
    - DO NOT include bracketed notes, timing markers, or overlay instructions in the script
    - The script should contain ONLY the exact words to be spoken in the voiceover
    - Ensure main keyword is spoken naturally near the start
+   - VISUAL FORMATTING: Cap text density to max 7-10 words per phrase for on-screen readability. Use line breaks.
 2. "caption": string - social media caption with:
    - Hook (first line, attention-grabbing)
    - Body (1-3 sentences explaining value)
@@ -712,9 +742,11 @@ Requirements:
     * PURE SPOKEN DIALOGUE ONLY - NO bracketed notes, timing markers, or overlay instructions
     * The script should contain ONLY the exact words to be spoken in the voiceover
     * Main keyword must be spoken naturally near the start
+    * VISUAL FORMATTING: Cap text density to max 7-10 words per phrase for on-screen readability. Use line breaks.
   - Caption with TikTok SEO:
     * Hook (first line)
     * Body (1-3 sentences)
+    * Use line breaks for better readability
     * Soft CTA using "link in bio" format (e.g., "If you're curious what I use, the link's in my bio." - NEVER include actual URLs)
     * MANDATORY Unicity brand hashtags: {', '.join(hashtags.get('general', []))}
     * Additional hashtags: 1-2 specific + 1-2 broad (total 4-7 hashtags including brand hashtags)
@@ -917,12 +949,26 @@ Requirements:
     * PURE SPOKEN DIALOGUE ONLY - NO bracketed notes, timing markers, or overlay instructions
     * The script should contain ONLY the exact words to be spoken in the voiceover
     * Main keyword must be spoken naturally near the start
+    * VARY THE SCRIPT STRUCTURE. Do not use the same formula for every post. Randomly rotate between:
+      - 'Did You Know' Hook
+      - 'Before vs After' Story
+      - '3 Quick Tips' Listicle
+      - 'Unpopular Opinion'
+      - 'Personal Story' Bridge
+      - 'Common Myth' Buster
+      - 'How-To' Walkthrough
   - Caption with TikTok SEO:
     * Hook (first line, attention-grabbing)
     * Body (1-3 sentences explaining value)
+    * Use line breaks and paragraph breaks for better readability
     * Soft CTA (e.g., "link's in my bio if you're curious")
     * Hashtags: 1-2 specific + 1-2 broad (3-5 total)
     * Health disclaimer at end
+  - VISUAL FORMATTING (CRITICAL for Headless Content):
+    * The 'script' you generate will effectively be used as ON-SCREEN TEXT for headless videos
+    * CAP THE WORD COUNT: Max 7-10 words per sentence/phrase to prevent crowding on screen
+    * Use clean, punchy phrasing suitable for text overlay
+    * If a longer script is needed for voiceover, providing a simplified 'visual_summary' is preferred, but for now ensure the script itself is visually digestible if read on screen.
   - Shot plan (3-6 shots, clear visual descriptions optimized for stock video/image search)
     * ALIGN WITH UNICITY WELLNESS THEMES: Include wellness, healthy lifestyle, metabolic health keywords
     * Each description: 4-6 specific keywords including wellness/healthy terms

@@ -98,6 +98,44 @@ def _is_near_duplicate(
     return False
 
 
+import random
+
+# Diverse angles/frameworks to ensure variety in batch generation
+CONTENT_FRAMEWORKS = [
+    {
+        "name": "The 'Did You Know' Hook",
+        "instruction": "Start with a surprising fact ('Did you know...?') related to the topic, then explain why it matters."
+    },
+    {
+        "name": "The 'Before vs After'",
+        "instruction": "Structure the script as a transformation story: describe a common struggle (Before) and then the improved state (After) using this topic."
+    },
+    {
+        "name": "The '3 Quick Tips' Listicle",
+        "instruction": "Create a punchy listicle content style: 'Here are 3 quick ways to [achieve benefit]...'."
+    },
+    {
+        "name": "The 'Unpopular Opinion'",
+        "instruction": "Frame the script as a contrarian or unique take: 'Most people think X, but actually Y...' to stop the scroll."
+    },
+    {
+        "name": "The 'Personal Story' Bridge",
+        "instruction": "Start with a relatable 'I used to struggle with...' micro-story that bridges into the educational point."
+    },
+    {
+        "name": "The 'Common Myth' buster",
+        "instruction": "Identify a common misconception about this topic and debunk it immediately."
+    },
+    {
+        "name": "The 'How-To' Walkthrough",
+        "instruction": "A direct, step-by-step instructional style: 'Step 1, Step 2, Step 3'."
+    },
+    {
+        "name": "The 'Direct Question' Opener",
+        "instruction": "Start with a qualifying question like 'Do you ever feel like...?' that targets the audience directly."
+    }
+]
+
 async def generate_batch_content(
     db: Session,
     *,
@@ -160,15 +198,30 @@ async def generate_batch_content(
         f"count={count}, cluster='{topic_cluster}'"
     )
     
+    # Shuffle frameworks to ensure random selection without immediate repeats if possible
+    available_frameworks = list(CONTENT_FRAMEWORKS)
+    random.shuffle(available_frameworks)
+    
     for i in range(count):
         # Rotate through pillars if multiple provided
         pillar = content_pillars[i % len(content_pillars)] if content_pillars else "education"
         
+        # Pick a framework (cycling through if we run out)
+        framework = available_frameworks[i % len(available_frameworks)]
+        
         try:
-            # Build a brief that encourages variety
+            # Build a brief that encourages variety using the framework
+            user_topic_with_framework = (
+                f"{topic_theme} - {pillar} perspective.\n"
+                f"STRICTLY FOLLOW THIS CONTENT ANGLE: {framework['instruction']}"
+            )
+
+            if series_name:
+                user_topic_with_framework += f"\nPart of series: '{series_name}'"
+
             brief = ContentBrief(
                 mode="manual",
-                user_topic=f"{topic_theme} - {pillar} perspective",
+                user_topic=user_topic_with_framework,
                 platforms=["TikTok", "Instagram"],
                 tone=tone,
                 length_seconds=(min_length_seconds + max_length_seconds) // 2,
@@ -216,7 +269,7 @@ async def generate_batch_content(
             
             logger.info(
                 f"Generated bank item {i+1}/{count}: id={created.id}, "
-                f"title='{created.title[:50]}...', pillar={pillar}"
+                f"framework='{framework['name']}', title='{created.title[:50]}...'"
             )
             
         except Exception as e:

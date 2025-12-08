@@ -355,9 +355,11 @@ Generate:
 1. A new script (15-45 seconds) following TikTok structure: Hook (1-3s) → Context/Empathy → Value Steps → Soft CTA
    - Include on-screen text suggestions (especially first 3 seconds with main keyword)
    - Ensure main keyword is spoken near the start
+   - VISUAL FORMATTING: Cap text density to max 7-10 words per phrase for on-screen readability. Use line breaks.
 2. A new caption with:
    - Hook (first line, attention-grabbing)
    - Body (1-3 sentences)
+   - Use line breaks for better readability
    - Soft CTA (e.g., "link's in my bio if you're curious")
    - Hashtags: 1-2 specific + 1-2 broad (3-5 total)
    - Health disclaimer at end

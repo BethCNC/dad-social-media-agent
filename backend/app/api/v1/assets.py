@@ -408,6 +408,13 @@ async def serve_image_for_creatomate(filename: str):
             "Access-Control-Allow-Headers": "*",
         }
         
+        cors_headers = {
+            "Cache-Control": "public, max-age=3600",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+        
         # Serve the file with CORS headers
         return FileResponse(
             path=str(image_path),
@@ -419,3 +426,84 @@ async def serve_image_for_creatomate(filename: str):
     except Exception as e:
         logger.error(f"Failed to serve image {filename}: {e}")
         raise HTTPException(status_code=500, detail="Failed to serve image")
+
+
+# --- Asset Library Management ---
+
+@router.post("/populate", response_model=dict)
+async def populate_assets(
+    type: str = Body(..., regex="^(video|image)$"),
+    topic: str = Body(..., min_length=2),
+    count: int = Body(5, ge=1, le=20),
+    db: Session = Depends(get_db)
+):
+    """
+    Batch fetch or generate assets and save to local library.
+    
+    - type="video": Fetches from Pexels
+    - type="image": Generates via AI
+    """
+    try:
+        from app.services.asset_library_service import batch_fetch_pexels_videos, batch_generate_ai_images
+        
+        if type == "video":
+            assets = await batch_fetch_pexels_videos(db, topic, count)
+        else:
+            assets = await batch_generate_ai_images(db, topic, count)
+            
+        return {
+            "message": f"Successfully added {len(assets)} {type}s to library",
+            "count": len(assets),
+            "assets": assets
+        }
+    except Exception as e:
+        logger.error(f"Failed to populate assets: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/images", response_model=List[dict])
+async def list_user_images(
+    db: Session = Depends(get_db)
+) -> List[dict]:
+    """
+    List all images in the asset library.
+    """
+    from app.database.models import UserImage
+    images = db.query(UserImage).order_by(UserImage.created_at.desc()).all()
+    
+    return [
+        {
+            "id": str(img.id),
+            "filename": img.filename,
+            "image_url": img.image_url,
+            "thumbnail_url": img.thumbnail_url,
+            "tags": img.tags or [],
+            "description": img.description,
+            "use_count": img.use_count,
+            "source": img.source,
+            "created_at": img.created_at.isoformat()
+        }
+        for img in images
+    ]
+
+
+@router.delete("/images/{image_id}")
+async def delete_user_image(
+    image_id: int,
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    Delete an image from the library.
+    """
+    from app.database.models import UserImage
+    image = db.query(UserImage).filter(UserImage.id == image_id).first()
+    
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    # Ideally delete file from disk too if it's local, but for Pexels/Gen it might be remote or shared
+    # For now just remove DB record
+    db.delete(image)
+    db.commit()
+    
+    return {"message": "Image deleted successfully"}

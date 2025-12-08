@@ -15,6 +15,8 @@ from app.services.holiday_service import (
     get_holiday_context_for_date,
     get_upcoming_holidays,
 )
+from app.database.database import SessionLocal
+from app.services.knowledge_service import search_knowledge
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +142,25 @@ async def create_content_plan(brief: ContentBrief, image_bytes: Optional[bytes] 
             except Exception as e:
                 logger.warning(f"Failed to fetch holiday context for date: {e}, continuing without holidays")
         
-        return await generate_content_plan_gemini(brief, holiday_context=holiday_context, image_bytes=image_bytes)
+        # Perform RAG retrieval if a topic exists
+        rag_context = None
+        if brief.user_topic:
+            db = SessionLocal()
+            try:
+                results = await search_knowledge(db, brief.user_topic, limit=3)
+                if results:
+                    rag_text = []
+                    for r in results:
+                        source_text = f" (Source: {r['source']})" if r['source'] else ""
+                        rag_text.append(f"- {r['content']}{source_text}")
+                    rag_context = "\n".join(rag_text)
+                    logger.info(f"Retrieved {len(results)} knowledge items for topic: {brief.user_topic}")
+            except Exception as e:
+                logger.warning(f"RAG retrieval failed: {e}")
+            finally:
+                db.close()
+
+        return await generate_content_plan_gemini(brief, holiday_context=holiday_context, image_bytes=image_bytes, rag_context=rag_context)
     except ValueError as e:
         logger.error(f"Content generation validation error: {e}")
         raise HTTPException(

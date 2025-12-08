@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Video, Plus, Calendar, Settings } from "lucide-react";
+import { Home, Video, Plus, Calendar, Settings, Brain } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { NavTabs, NavTabItem } from "@/components/ui/nav-tabs";
@@ -7,8 +7,10 @@ import { NavTabs, NavTabItem } from "@/components/ui/nav-tabs";
 const NAV_ITEMS = [
   { path: "/", label: "Home", icon: Home },
   { path: "/wizard", label: "Create Post", icon: Plus },
-  { path: "/bank", label: "Content Bank", icon: Video },
-  { path: "/weekly", label: "Planning", icon: Calendar },
+  { path: "/brain", label: "Brand Brain", icon: Brain }, // New item
+  { path: "/bank", label: "Content Bank", icon: Calendar },
+  { path: "/videos", label: "Video Assets", icon: Video },
+  { path: "/weekly", label: "Weekly Plan", icon: Calendar },
   { path: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -44,7 +46,10 @@ export const NavBar = () => {
                 const isActive = location.pathname === item.path ||
                   (item.path === "/" && location.pathname === "/") ||
                   (item.path === "/bank" && location.pathname.startsWith("/bank")) ||
+                  (item.path === "/videos" && location.pathname.startsWith("/videos")) ||
+                  (item.path === "/settings" && location.pathname.startsWith("/settings")) ||
                   (item.path === "/wizard" && location.pathname.startsWith("/wizard")) ||
+                  (item.path === "/brain" && location.pathname.startsWith("/brain")) ||
                   (item.path === "/weekly" && location.pathname.startsWith("/weekly"));
                 return (
                   <NavTabItem

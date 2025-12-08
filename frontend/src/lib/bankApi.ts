@@ -93,3 +93,16 @@ export const renderFromBank = async (itemId: number, templateType: string = 'vid
   );
   return response.data;
 };
+export interface BatchGenerateRequest {
+  topic_theme: string;
+  content_pillars: string[];
+  count: number;
+  tone?: string;
+  topic_cluster?: string;
+  series_name?: string;
+}
+
+export const generateBatchContent = async (req: BatchGenerateRequest): Promise<any> => {
+  const response = await api.post('/api/content/bank/batch-generate', req);
+  return response.data;
+};

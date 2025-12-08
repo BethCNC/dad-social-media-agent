@@ -44,6 +44,13 @@ async def ensure_voiceover_for_bank_item(db: Session, item_id: int) -> Optional[
         logger.info(f"Bank item {item_id} already has voiceover_url: {item.voiceover_url[:80]}...")
         return item.voiceover_url
 
+    # Check if external TTS is configured
+    from app.core.config import get_settings
+    settings = get_settings()
+    if not getattr(settings, "TTS_API_URL", None):
+        logger.info(f"External TTS not configured, skipping voiceover generation for bank item {item_id}")
+        return None
+
     # Only generate for approved items (safety check)
     if item.status != "approved":
         logger.warning(

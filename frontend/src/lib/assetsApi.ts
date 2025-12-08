@@ -77,11 +77,11 @@ export const uploadVideo = async (
 ): Promise<{ id: string; video_url: string; filename: string; original_filename: string }> => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const params = new URLSearchParams();
   if (tags) params.append('tags', tags);
   if (description) params.append('description', description);
-  
+
   const response = await api.post<{ id: string; video_url: string; filename: string; original_filename: string }>(
     `/api/assets/upload?${params.toString()}`,
     formData,
@@ -117,5 +117,42 @@ export const regenerateImage = async (prompt: string): Promise<AssetResult> => {
     prompt,
   });
   return response.data;
+};
+
+export interface UserImage {
+  id: string;
+  filename: string;
+  image_url: string;
+  thumbnail_url?: string;
+  tags: string[];
+  description?: string;
+  use_count: number;
+  source: string;
+  created_at: string;
+}
+
+/**
+ * Batch fetch/generate assets into library.
+ */
+export const populateAssets = async (
+  type: 'video' | 'image',
+  topic: string,
+  count: number
+): Promise<{ count: number; assets: any[] }> => {
+  const response = await api.post('/api/assets/populate', {
+    type,
+    topic,
+    count,
+  });
+  return response.data;
+};
+
+export const listUserImages = async (): Promise<UserImage[]> => {
+  const response = await api.get<UserImage[]>('/api/assets/images');
+  return response.data;
+};
+
+export const deleteUserImage = async (imageId: number): Promise<void> => {
+  await api.delete(`/api/assets/images/${imageId}`);
 };
 

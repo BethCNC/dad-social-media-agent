@@ -203,9 +203,19 @@ async def start_render(request: VideoRenderRequest) -> RenderJob:
         # If we have a dedicated voiceover track, map it to a Voiceover element.
         # NOTE: Your Creatomate template must have an audio element named "Voiceover"
         # for this to take effect. See docs/creatomate-setup.md.
-        if getattr(request, "voiceover_url", None):
-            modifications["Voiceover.source"] = request.voiceover_url  # type: ignore[assignment]
-            logger.info(f"Using voiceover track for Voiceover.source: {request.voiceover_url[:80]}...")
+        # If we have a dedicated voiceover track, map it to a Voiceover element.
+        # NOTE: Your Creatomate template must have an audio element named "Voiceover"
+        # for this to take effect. See docs/creatomate-setup.md.
+        voiceover_url = getattr(request, "voiceover_url", None)
+        if voiceover_url:
+            modifications["Voiceover.source"] = voiceover_url
+            logger.info(f"Using voiceover track for Voiceover.source: {voiceover_url[:80]}...")
+        elif request.script:
+            # Fallback: Pass script to Voiceover element for internal Creatomate TTS
+            # (Requires template to have Audio element named 'Voiceover' with TTS provider enabled)
+            cleaned_script = strip_voiceover_timing_markers(request.script)
+            modifications["Voiceover.text"] = cleaned_script
+            logger.info("Using script for Voiceover.text (Creatomate internal TTS)")
 
         # Map assets to Background elements (Background-1, Background-2)
         # Template expects exactly 2 video clips: Background-1 and Background-2

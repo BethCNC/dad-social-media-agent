@@ -136,14 +136,10 @@ async def render_video_from_bank_item(
         # Step 1: Ensure voiceover exists
         logger.info(f"Ensuring voiceover for bank item {item_id}...")
         voiceover_url = await ensure_voiceover_for_bank_item(db, item_id)
-        if not voiceover_url:
-            logger.error(f"Failed to generate voiceover for bank item {item_id}")
-            update_bank_item(
-                db,
-                item_id,
-                BankItemUpdate(last_render_status="failed: voiceover_generation_failed"),
-            )
-            return None
+        if voiceover_url:
+            logger.info(f"Using external voiceover for bank item {item_id}")
+        else:
+            logger.info(f"No external voiceover generated for bank item {item_id}, will rely on Creatomate internal TTS")
 
         # Step 2: Select visuals
         logger.info(f"Selecting visuals for bank item {item_id}...")

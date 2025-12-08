@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     CREATOMATE_IMAGE_TEMPLATE_ID: str
     CREATOMATE_VIDEO_TEMPLATE_ID: str
     AYRSHARE_API_KEY: str
+    PEXELS_API_KEY: str = ""  # Optional: For stock video search
     APIFY_API_TOKEN: str = ""  # Optional: For trend surveillance feature
     
     # Optional: Default background music for Creatomate videos

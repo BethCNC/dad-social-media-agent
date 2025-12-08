@@ -5,6 +5,7 @@ import {
   updateBankItem,
   generateVoiceover,
   renderFromBank,
+  generateBatchContent,
   type BankItem,
 } from '@/lib/bankApi';
 import {
@@ -25,11 +26,29 @@ import {
   Video,
   Settings,
   Download,
+  Sparkles,
+  Info
 } from 'lucide-react';
 import { ComplianceQuickRef } from '@/components/compliance/ComplianceQuickRef';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const ContentBankPage = () => {
   const navigate = useNavigate();
@@ -42,29 +61,38 @@ export const ContentBankPage = () => {
   const [editForm, setEditForm] = useState({ title: '', script: '', caption: '' });
   const [processingItemId, setProcessingItemId] = useState<number | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        // For main user view: prioritize unused items for variety (non-repeating content)
-        // For admin: show all statuses, newest first
-        const filters: any = {
-          status: isAdminMode ? undefined : 'approved',
-          limit: 20,
-          prioritize_unused: !isAdminMode, // Prioritize unused for dad's daily view to avoid repetition
-        };
-        const data = await fetchBankItems(filters);
-        setItems(data);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Could not load content bank. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Batch Generation State
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
+  const [batchForm, setBatchForm] = useState({
+    topic_theme: '',
+    count: '5',
+    content_pillar: 'education'
+  });
 
-    void load();
+  useEffect(() => {
+    loadItems();
   }, [isAdminMode]);
+
+  const loadItems = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      // For main user view: prioritize unused items for variety (non-repeating content)
+      // For admin: show all statuses, newest first
+      const filters: any = {
+        status: isAdminMode ? undefined : 'approved',
+        limit: 20,
+        prioritize_unused: !isAdminMode, // Prioritize unused for dad's daily view to avoid repetition
+      };
+      const data = await fetchBankItems(filters);
+      setItems(data);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Could not load content bank. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleCreateFromBankItem = (item: BankItem) => {
     // For v1, send the script + caption into the existing wizard as a pre-filled plan.
@@ -102,14 +130,7 @@ export const ContentBankPage = () => {
         description: 'Content updated successfully.',
       });
       setEditingItem(null);
-      // Reload items
-      const filters: any = {
-        status: isAdminMode ? undefined : 'approved',
-        limit: 20,
-        prioritize_unused: !isAdminMode,
-      };
-      const data = await fetchBankItems(filters);
-      setItems(data);
+      loadItems();
     } catch (err: any) {
       toast({
         title: 'Error',
@@ -129,14 +150,7 @@ export const ContentBankPage = () => {
         title: 'Status updated',
         description: `Item marked as ${newStatus}.`,
       });
-      // Reload items
-      const filters: any = {
-        status: isAdminMode ? undefined : 'approved',
-        limit: 20,
-        prioritize_unused: !isAdminMode,
-      };
-      const data = await fetchBankItems(filters);
-      setItems(data);
+      loadItems();
     } catch (err: any) {
       toast({
         title: 'Error',
@@ -156,14 +170,7 @@ export const ContentBankPage = () => {
         title: 'Voiceover generated!',
         description: 'Voiceover audio is ready.',
       });
-      // Reload items
-      const filters: any = {
-        status: isAdminMode ? undefined : 'approved',
-        limit: 20,
-        prioritize_unused: !isAdminMode,
-      };
-      const data = await fetchBankItems(filters);
-      setItems(data);
+      loadItems();
     } catch (err: any) {
       toast({
         title: 'Error',
@@ -184,14 +191,7 @@ export const ContentBankPage = () => {
           title: 'Video rendered!',
           description: 'Your video is ready to download.',
         });
-        // Reload items
-        const filters: any = {
-          status: isAdminMode ? undefined : 'approved',
-          limit: 20,
-          prioritize_unused: !isAdminMode,
-        };
-        const data = await fetchBankItems(filters);
-        setItems(data);
+        loadItems();
       }
     } catch (err: any) {
       toast({
@@ -201,6 +201,53 @@ export const ContentBankPage = () => {
       });
     } finally {
       setProcessingItemId(null);
+    }
+  };
+
+  const handleBatchGenerate = async () => {
+    if (!batchForm.topic_theme.trim()) {
+      toast({
+        title: "Topic required",
+        description: "Please enter a topic or theme.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsGeneratingBatch(true);
+      await generateBatchContent({
+        topic_theme: batchForm.topic_theme,
+        content_pillars: [batchForm.content_pillar],
+        count: parseInt(batchForm.count),
+      });
+
+      toast({
+        title: "Generation started",
+        description: `Generating ${batchForm.count} new ideas. This may take a moment.`,
+      });
+
+      setShowBatchModal(false);
+      setBatchForm({ topic_theme: '', count: '5', content_pillar: 'education' });
+
+      // Since it's synchronous in backend currently, we can reload to see drafts
+      // If it were async, we'd poll or wait.
+      loadItems();
+
+      if (!isAdminMode) {
+        toast({
+          title: "Switch to Admin Mode",
+          description: "New items are created as 'Drafts'. Switch to Admin Mode to review and approve them.",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Generation failed",
+        description: err.response?.data?.detail || "Could not generate batch.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingBatch(false);
     }
   };
 
@@ -229,254 +276,210 @@ export const ContentBankPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-fg-headings">Content Bank</h1>
-          <p className="text-fg-subtle text-base">
-            {isAdminMode
-              ? 'Review, edit, and manage all content bank items.'
-              : 'Pick a ready-made script and caption, then we\'ll walk you through creating the video.'}
-          </p>
+
+      {/* Header Section */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-fg-headings flex items-center gap-2">
+              Content Bank
+              <span className="text-sm font-normal text-fg-subtle bg-bg-secondary px-2 py-1 rounded-full">
+                {items.length} items
+              </span>
+            </h1>
+            <p className="text-fg-subtle text-base mt-2">
+              {isAdminMode
+                ? 'Review drafts, approve scripts, and manage your library.'
+                : 'Pick a ready-made script to start filming instantly.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAdminMode(!isAdminMode)}
+              className="gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              {isAdminMode ? 'User Mode' : 'Admin Mode'}
+            </Button>
+            {isAdminMode && (
+              <Button onClick={() => setShowBatchModal(true)} className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Generate Ideas
+              </Button>
+            )}
+          </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsAdminMode(!isAdminMode)}
-          className="gap-2"
-        >
-          <Settings className="w-4 h-4" />
-          {isAdminMode ? 'User Mode' : 'Admin Mode'}
-        </Button>
+
+        {/* User Instructions */}
+        <Card className="bg-bg-subtle border-none">
+          <CardContent className="flex items-start gap-3 py-4">
+            <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div className="space-y-1 text-sm text-fg-body">
+              <p className="font-medium text-fg-headings">How to use the Content Bank:</p>
+              <ul className="list-disc list-inside space-y-0.5 ml-1">
+                {isAdminMode ? (
+                  <>
+                    <li>Use <strong>Generate Ideas</strong> to bulk-create scripts based on a theme.</li>
+                    <li>Review <strong>Drafts</strong>, edit them if needed, and hit <strong>Approve</strong>.</li>
+                    <li>Only <strong>Approved</strong> items show up for the daily user view.</li>
+                  </>
+                ) : (
+                  <>
+                    <li>These scripts are pre-approved and ready for you.</li>
+                    <li>Click <strong>Use This Script</strong> to load it into the creator workspace.</li>
+                  </>
+                )}
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {items.length === 0 ? (
-        <Card>
-          <CardHeader>
+        <Card className="border-dashed">
+          <CardHeader className="text-center py-12">
+            <div className="mx-auto w-12 h-12 bg-bg-secondary rounded-full flex items-center justify-center mb-4">
+              <Sparkles className="w-6 h-6 text-primary" />
+            </div>
             <CardTitle className="text-xl">
-              {isAdminMode ? 'No content items found' : 'No approved scripts yet'}
+              {isAdminMode ? 'Bank is empty' : 'No approved scripts yet'}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="max-w-md mx-auto mt-2">
               {isAdminMode
-                ? 'Try adjusting your filters or generate new content.'
-                : 'Once you add or approve scripts in the bank, they\'ll show up here for easy daily posting.'}
+                ? 'Get started by generating a batch of ideas based on trending topics or your pillars.'
+                : 'Ask your admin (or switch to Admin Mode) to generate and approve some scripts for you!'}
             </CardDescription>
+            {isAdminMode && (
+              <Button onClick={() => setShowBatchModal(true)} className="mt-6 mx-auto">
+                Generate First Batch
+              </Button>
+            )}
           </CardHeader>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="grid gap-4">
           {items.map((item) => {
             const isProcessing = processingItemId === item.id;
             const isEditing = editingItem?.id === item.id;
 
             return (
-              <Card key={item.id} className="border-border-default">
-                <CardHeader className="space-y-1">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      {isEditing ? (
-                        <Input
-                          value={editForm.title}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, title: e.target.value })
-                          }
-                          className="text-xl font-bold mb-2"
-                          placeholder="Title/Hook"
-                        />
-                      ) : (
-                        <CardTitle className="text-xl">{item.title}</CardTitle>
-                      )}
-                      <CardDescription className="text-sm text-fg-subtle mt-1">
-                        {item.content_pillar} • {item.tone}
-                        {item.length_seconds ? ` • ~${item.length_seconds}s` : ''}
-                        {item.topic_cluster && ` • ${item.topic_cluster}`}
-                        {item.series_name && ` • Series: ${item.series_name}`}
-                      </CardDescription>
-                    </div>
-                    {isAdminMode && (
-                      <div className="flex gap-2 ml-4">
-                        {item.status === 'draft' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleStatusChange(item.id, 'approved')}
-                            disabled={isProcessing}
-                            className="gap-1"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            Approve
-                          </Button>
-                        )}
-                        {item.status === 'approved' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleStatusChange(item.id, 'archived')}
-                            disabled={isProcessing}
-                            className="gap-1"
-                          >
-                            <Archive className="w-4 h-4" />
-                            Archive
-                          </Button>
-                        )}
+              <Card key={item.id} className="border-border-default overflow-hidden">
+                <CardHeader className="bg-bg-subtle/50 py-3 px-4 flex flex-row items-center justify-between space-y-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${item.status === 'approved' ? 'bg-green-500' :
+                      item.status === 'draft' ? 'bg-orange-400' : 'bg-gray-400'
+                      }`} />
+                    <span className="text-sm font-medium text-fg-subtle uppercase tracking-wider">
+                      {item.content_pillar}
+                    </span>
+                  </div>
+                  {isAdminMode && (
+                    <div className="flex gap-2">
+                      {item.status === 'draft' && (
                         <Button
                           size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(item)}
+                          variant="ghost"
+                          className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                          onClick={() => handleStatusChange(item.id, 'approved')}
                           disabled={isProcessing}
-                          className="gap-1"
                         >
-                          <Edit className="w-4 h-4" />
-                          Edit
+                          <CheckCircle className="w-4 h-4 mr-1.5" />
+                          Approve
                         </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-sm font-semibold text-fg-headings mb-1">Script</p>
-                    {isEditing ? (
-                      <Textarea
-                        value={editForm.script}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, script: e.target.value })
-                        }
-                        className="min-h-[100px] text-sm"
-                        placeholder="Script text..."
-                      />
-                    ) : (
-                      <p className="text-sm text-fg-body whitespace-pre-wrap line-clamp-4">
-                        {item.script}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-fg-headings mb-1">Caption</p>
-                    {isEditing ? (
-                      <Textarea
-                        value={editForm.caption}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, caption: e.target.value })
-                        }
-                        className="min-h-[80px] text-sm"
-                        placeholder="Caption text..."
-                      />
-                    ) : (
-                      <p className="text-sm text-fg-body whitespace-pre-wrap line-clamp-3">
-                        {item.caption}
-                      </p>
-                    )}
-                  </div>
-
-                  {isAdminMode && (
-                    <div className="pt-2 border-t border-border-default space-y-2">
-                      <div className="grid grid-cols-2 gap-2 text-xs text-fg-subtle">
-                        <div>
-                          Status: <span className="font-semibold">{item.status}</span>
-                        </div>
-                        <div>
-                          Used: <span className="font-semibold">{item.times_used}x</span>
-                        </div>
-                        {item.voiceover_url && (
-                          <div className="col-span-2">
-                            VO: <span className="font-mono text-xs">✓ Ready</span>
-                          </div>
-                        )}
-                        {item.rendered_video_url && (
-                          <div className="col-span-2">
-                            Video: <span className="font-mono text-xs">✓ Rendered</span>
-                          </div>
-                        )}
-                        {item.last_render_status && item.last_render_status !== 'succeeded' && (
-                          <div className="col-span-2 text-fg-error">
-                            Last render: {item.last_render_status}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {!item.voiceover_url && item.status === 'approved' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleGenerateVoiceover(item)}
-                            disabled={isProcessing}
-                            className="gap-1"
-                          >
-                            {isProcessing ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Volume2 className="w-4 h-4" />
-                            )}
-                            Generate VO
-                          </Button>
-                        )}
-                        {item.status === 'approved' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRenderVideo(item)}
-                            disabled={isProcessing}
-                            className="gap-1"
-                          >
-                            {isProcessing ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Video className="w-4 h-4" />
-                            )}
-                            Render Video
-                          </Button>
-                        )}
-                        {item.rendered_video_url && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              window.open(item.rendered_video_url!, '_blank');
-                            }}
-                            className="gap-1"
-                          >
-                            <Download className="w-4 h-4" />
-                            Download
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {isEditing && (
-                    <div className="flex gap-2 pt-2 border-t border-border-default">
-                      <Button size="sm" onClick={handleSaveEdit} disabled={isProcessing}>
-                        {isProcessing ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          'Save'
-                        )}
-                      </Button>
+                      )}
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => setEditingItem(null)}
+                        variant="ghost"
+                        className="h-8"
+                        onClick={() => handleEdit(item)}
                         disabled={isProcessing}
                       >
-                        Cancel
+                        <Edit className="w-4 h-4" />
                       </Button>
                     </div>
                   )}
+                </CardHeader>
 
-                  {!isAdminMode && !isEditing && (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                      <Button
-                        size="lg"
-                        className="w-full sm:w-auto gap-2"
-                        onClick={() => handleCreateFromBankItem(item)}
-                      >
-                        <PlayCircle className="w-5 h-5" />
-                        Use This Script
-                      </Button>
-                      <p className="text-xs text-fg-subtle text-right sm:text-left">
-                        Used {item.times_used} {item.times_used === 1 ? 'time' : 'times'}
-                      </p>
+                <CardContent className="p-4 space-y-4">
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      <Input
+                        value={editForm.title}
+                        onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                        placeholder="Hook/Title"
+                        className="font-bold"
+                      />
+                      <Textarea
+                        value={editForm.script}
+                        onChange={(e) => setEditForm({ ...editForm, script: e.target.value })}
+                        placeholder="Script..."
+                        className="min-h-[100px]"
+                      />
+                      <Textarea
+                        value={editForm.caption}
+                        onChange={(e) => setEditForm({ ...editForm, caption: e.target.value })}
+                        placeholder="Caption..."
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setEditingItem(null)}>Cancel</Button>
+                        <Button onClick={handleSaveEdit}>Save Changes</Button>
+                      </div>
                     </div>
+                  ) : (
+                    <>
+                      <div>
+                        <h3 className="text-lg font-bold text-fg-headings mb-1 leading-tight">{item.title}</h3>
+                        <p className="text-sm text-fg-subtle">{item.tone} • ~{item.length_seconds}s</p>
+                      </div>
+
+                      <div className="bg-bg-subtle rounded-md p-3 text-sm text-fg-body whitespace-pre-wrap">
+                        {item.script}
+                      </div>
+
+                      {!isAdminMode && (
+                        <Button
+                          className="w-full gap-2"
+                          size="lg"
+                          onClick={() => handleCreateFromBankItem(item)}
+                        >
+                          <PlayCircle className="w-5 h-5" />
+                          Use This Script
+                        </Button>
+                      )}
+
+                      {isAdminMode && (
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-border-default">
+                          {item.status === 'approved' && !item.voiceover_url && (
+                            <Button size="sm" variant="outline" onClick={() => handleGenerateVoiceover(item)} disabled={isProcessing}>
+                              <Volume2 className="w-4 h-4 mr-2" />
+                              Gen VO
+                            </Button>
+                          )}
+                          {item.status === 'approved' && (
+                            <Button size="sm" variant="outline" onClick={() => handleRenderVideo(item)} disabled={isProcessing}>
+                              <Video className="w-4 h-4 mr-2" />
+                              Render
+                            </Button>
+                          )}
+                          {item.rendered_video_url && (
+                            <Button size="sm" variant="outline" onClick={() => window.open(item.rendered_video_url!, '_blank')}>
+                              <Download className="w-4 h-4 mr-2" />
+                              Download
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="ml-auto text-fg-subtle hover:text-fg-error"
+                            onClick={() => handleStatusChange(item.id, 'archived')}
+                          >
+                            <Archive className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -485,7 +488,75 @@ export const ContentBankPage = () => {
         </div>
       )}
 
-      <div className="mt-6">
+      {/* Batch Generation Modal */}
+      <Dialog open={showBatchModal} onOpenChange={setShowBatchModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Content Ideas</DialogTitle>
+            <DialogDescription>
+              We'll use AI to brainstorm scripts based on a theme. These will be saved as drafts for you to review.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="theme">Topic / Theme</Label>
+              <Input
+                id="theme"
+                placeholder="e.g., Afternoon Energy Slump, Healthy Breakfasts..."
+                value={batchForm.topic_theme}
+                onChange={(e) => setBatchForm({ ...batchForm, topic_theme: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Pillar</Label>
+                <Select
+                  value={batchForm.content_pillar}
+                  onValueChange={(val) => setBatchForm({ ...batchForm, content_pillar: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="education">Education</SelectItem>
+                    <SelectItem value="routine">Routine</SelectItem>
+                    <SelectItem value="story">Story</SelectItem>
+                    <SelectItem value="product_integration">Product</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Count</Label>
+                <Select
+                  value={batchForm.count}
+                  onValueChange={(val) => setBatchForm({ ...batchForm, count: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3 Ideas</SelectItem>
+                    <SelectItem value="5">5 Ideas</SelectItem>
+                    <SelectItem value="10">10 Ideas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBatchModal(false)}>Cancel</Button>
+            <Button onClick={handleBatchGenerate} disabled={isGeneratingBatch} className="gap-2">
+              {isGeneratingBatch ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              Generate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="mt-8">
         <ComplianceQuickRef />
       </div>
     </div>

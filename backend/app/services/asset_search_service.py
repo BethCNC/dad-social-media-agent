@@ -69,7 +69,7 @@ async def generate_campaign_assets(
     suggested_keywords: Optional[List[str]] = None,
     max_results: int = 12,
     db: Optional[Session] = None,
-    mode: str = "ai_generation"  # 'pexels' or 'ai_generation'
+    mode: str = "pexels"  # 'pexels' or 'ai_generation'
 ) -> List[AssetResult]:
     """
     Generate assets based on shot plan descriptions using either Pexels videos or AI-generated images.
@@ -179,7 +179,7 @@ async def generate_relevant_assets(
     suggested_keywords: Optional[List[str]] = None,
     max_results: int = 12,
     db: Optional[Session] = None,
-    mode: str = "ai_generation"
+    mode: str = "pexels"
 ) -> List[AssetResult]:
     """
     Backward compatibility wrapper - redirects to generate_campaign_assets.
@@ -207,7 +207,7 @@ async def search_relevant_assets(
     suggested_keywords: Optional[List[str]] = None,
     max_results: int = 12,
     db: Optional[Session] = None,
-    mode: str = "ai_generation"
+    mode: str = "pexels"
 ) -> List[AssetResult]:
     """
     Backward compatibility wrapper - redirects to generate_campaign_assets.

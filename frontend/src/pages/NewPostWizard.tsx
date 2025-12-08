@@ -27,6 +27,12 @@ interface WizardLocationState {
     thumbnail_url?: string;
     duration_seconds?: number;
   };
+  preselectedImage?: {
+    id: string;
+    image_url: string;
+    thumbnail_url?: string;
+    description: string;
+  };
 }
 
 interface StepIndicatorProps {
@@ -96,6 +102,7 @@ export const NewPostWizard = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
   const { toast } = useToast();
 
   const handlePlanGenerated = (plan: GeneratedPlan, templateTypeFromBrief?: 'image' | 'video') => {
@@ -129,13 +136,14 @@ export const NewPostWizard = () => {
     const trendIdea = state?.trendIdea;
     const prefillTopic = state?.prefillTopic;
     const preselectedVideo = state?.preselectedVideo;
+    const preselectedImage = state?.preselectedImage;
 
     if (preselectedVideo) {
       // Map UserVideo to AssetResult
       const asset: AssetResult = {
         id: preselectedVideo.id,
         thumbnail_url: preselectedVideo.thumbnail_url || '',
-        video_url: preselectedVideo.video_url || '', // Ensure video_url exists on UserVideo or handle it
+        video_url: preselectedVideo.video_url || '',
         duration_seconds: preselectedVideo.duration_seconds || 0,
       };
 
@@ -144,6 +152,23 @@ export const NewPostWizard = () => {
       setSelectedAssetIds(new Set([asset.id]));
       setSelectedAssetOrder([asset.id]);
       setSelectedAssets([asset]);
+      setTemplateType('video'); // Ensure video template
+
+      setCurrentStep(1);
+    } else if (preselectedImage) {
+      // Handle preselected image
+      const asset: AssetResult = {
+        id: preselectedImage.id,
+        thumbnail_url: preselectedImage.thumbnail_url || preselectedImage.image_url || '',
+        video_url: preselectedImage.image_url || '', // Use image URL as video URL for consistent handling
+        duration_seconds: 5, // Default duration for image
+      };
+
+      setAssets([asset]);
+      setSelectedAssetIds(new Set([asset.id]));
+      setSelectedAssetOrder([asset.id]);
+      setSelectedAssets([asset]);
+      setTemplateType('image'); // Force image template
 
       setCurrentStep(1);
     } else if (trendIdea) {
@@ -181,7 +206,7 @@ export const NewPostWizard = () => {
     if (videoUrl && !isRendering) {
       const audio = new Audio('/success.mp3');
       audio.volume = 0.3;
-      audio.play().catch(() => {});
+      audio.play().catch(() => { });
     }
   }, [videoUrl, isRendering]);
 
@@ -469,6 +494,30 @@ export const NewPostWizard = () => {
         }
         return (
           <div className="space-y-8">
+            <div className="flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDebug(!showDebug)}
+                className="text-fg-subtle"
+              >
+                {showDebug ? 'Hide Debug' : 'Show Debug'}
+              </Button>
+            </div>
+
+            {showDebug && (
+              <Card className="bg-slate-950 text-slate-50 border-slate-800">
+                <CardHeader>
+                  <CardTitle className="text-base text-slate-400">Raw Plan Data (Debug)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <pre className="text-xs overflow-auto max-h-[400px] p-4 bg-black/50 rounded-md">
+                    {JSON.stringify(generatedPlan, null, 2)}
+                  </pre>
+                </CardContent>
+              </Card>
+            )}
+
             <ScriptPreview
               script={script}
               onScriptChange={setScript}
@@ -873,13 +922,13 @@ export const NewPostWizard = () => {
               currentStep === 1
                 ? undefined
                 : () => {
-                    if (currentStep === 2) {
-                      setCurrentStep(3);
-                    } else if (currentStep === 3 && selectedAssetIds.size === 1) {
-                      startRender();
-                      setCurrentStep(4);
-                    }
+                  if (currentStep === 2) {
+                    setCurrentStep(3);
+                  } else if (currentStep === 3 && selectedAssetIds.size === 1) {
+                    startRender();
+                    setCurrentStep(4);
                   }
+                }
             }
             disabled={
               (currentStep === 1 && isGeneratingPlan) ||

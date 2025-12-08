@@ -15,6 +15,7 @@ export const WeeklySchedulePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+  const [showDebug, setShowDebug] = useState(false);
 
   // Get current week's Monday
   const getCurrentWeekMonday = () => {
@@ -119,6 +120,14 @@ export const WeeklySchedulePage = () => {
           {/* View Mode Toggle */}
           <div className="flex justify-end gap-4">
             <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDebug(!showDebug)}
+              className="text-fg-subtle"
+            >
+              {showDebug ? 'Hide Debug' : 'Show Debug'}
+            </Button>
+            <Button
               variant={viewMode === 'calendar' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setViewMode('calendar')}
@@ -135,6 +144,19 @@ export const WeeklySchedulePage = () => {
               List
             </Button>
           </div>
+
+          {showDebug && (
+            <Card className="bg-slate-950 text-slate-50 border-slate-800">
+              <CardHeader>
+                <CardTitle className="text-base text-slate-400">Raw Schedule Data (Debug)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-xs overflow-auto max-h-[400px] p-4 bg-black/50 rounded-md">
+                  {JSON.stringify(currentSchedule, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Calendar or List View */}
           {viewMode === 'calendar' ? (
@@ -178,6 +200,15 @@ export const WeeklySchedulePage = () => {
             <CardDescription className="text-base">
               Create a complete week of AI-generated posts for planning. You'll download and post each video manually with trending audio.
             </CardDescription>
+            <div className="bg-bg-secondary/40 max-w-lg mx-auto p-4 rounded-md text-left text-sm space-y-2">
+              <p className="font-semibold text-fg-headings">How it works:</p>
+              <ol className="list-decimal list-inside space-y-1 text-fg-body">
+                <li>Click <strong>Generate This Week</strong> to create 7 drafts.</li>
+                <li>Click a day to review the script and generated video.</li>
+                <li><strong>Download</strong> the video to your phone.</li>
+                <li>Post to TikTok/Instagram using the suggested caption and a trending sound.</li>
+              </ol>
+            </div>
           </CardHeader>
           <CardContent>
             <Button
