@@ -19,6 +19,7 @@ services:
       - AYRSHARE_API_KEY=${AYRSHARE_API_KEY}
 
       # Optional API Keys
+      - PEXELS_API_KEY=${PEXELS_API_KEY:-}
       - APIFY_API_TOKEN=${APIFY_API_TOKEN:-}
       - TTS_API_URL=${TTS_API_URL:-}
       - TTS_API_KEY=${TTS_API_KEY:-}
