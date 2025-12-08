@@ -83,3 +83,61 @@ async def search_knowledge(request: SearchRequest, db: Session = Depends(get_db)
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class SmartIngestRequest(BaseModel):
+    raw_input: str
+    source: Optional[str] = None
+
+class SmartIngestResponse(BaseModel):
+    items_added: int
+    items: List[KnowledgeItemResponse]
+
+@router.post("/ingest", response_model=SmartIngestResponse)
+async def smart_ingest(request: SmartIngestRequest, db: Session = Depends(get_db)):
+    """
+    Intelligently ingest knowledge from raw input.
+    Accepts: URLs, emails, or plain text.
+    Automatically extracts structured knowledge using AI.
+    """
+    from app.services.knowledge_extraction_service import smart_add_knowledge
+    
+    try:
+        # Extract knowledge chunks
+        chunks = await smart_add_knowledge(
+            raw_input=request.raw_input,
+            source=request.source
+        )
+        
+        if not chunks:
+            raise HTTPException(
+                status_code=400, 
+                detail="No knowledge could be extracted from the input. Try providing more specific information."
+            )
+        
+        # Add each chunk to database
+        added_items = []
+        for chunk in chunks:
+            db_item = await knowledge_service.add_knowledge_item(
+                db,
+                content=chunk.get('content'),
+                source=request.source or chunk.get('source', 'smart_ingest'),
+                category=chunk.get('category')
+            )
+            added_items.append({
+                "id": db_item.id,
+                "content": db_item.content,
+                "source": db_item.source,
+                "category": db_item.category,
+                "created_at": db_item.created_at.isoformat()
+            })
+        
+        return {
+            "items_added": len(added_items),
+            "items": added_items
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

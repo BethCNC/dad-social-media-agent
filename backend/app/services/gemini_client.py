@@ -234,20 +234,120 @@ VIDEO STRUCTURE (CRITICAL - MUST FOLLOW):
 
 1. HOOK (0-3 seconds) - ABSOLUTELY CRITICAL:
    - MUST grab attention in first 1-3 seconds or viewers scroll
-   - Use pain points: "If you crash every day at 3pm, watch this."
-   - Examples: "Here are 3 things I changed about my mornings after 40."
    - Focus on high retention, not clickbait
-   - Make it clear what value the video provides
-   - Common pain points: energy crashes, cravings, habit struggles
+   
+   **PROVEN VIRAL HOOK PATTERNS (Use these frameworks):**
+   
+   A. PAIN POINT HOOKS (Most effective):
+      - "If you [specific struggle], watch this."
+      - "Still struggling with [problem]? Here's why."
+      - "This changed everything about my [problem area]."
+      Examples:
+      • "If you crash every day at 3pm, watch this."
+      • "Still feeling tired after 8 hours of sleep? Here's why."
+      • "This changed everything about my energy levels."
+   
+   B. NUMBERED LIST HOOKS (High completion rate):
+      - "3 things I changed about [topic] after [age/event]"
+      - "The [number] mistakes everyone makes with [topic]"
+      - "Here are [number] signs you need to [action]"
+      Examples:
+      • "3 things I changed about my mornings after turning 40."
+      • "The 4 mistakes everyone makes with intermittent fasting."
+      • "Here are 5 signs you need to reset your metabolism."
+   
+   C. PATTERN INTERRUPT HOOKS (Stop the scroll):
+      - "Nobody talks about this [topic], but..."
+      - "I wish someone told me this about [topic]"
+      - "You're doing [common thing] wrong. Here's why."
+      Examples:
+      • "Nobody talks about this energy trick, but it works."
+      • "I wish someone told me this about coffee and energy."
+      • "You're drinking water wrong. Here's why it matters."
+   
+   D. BEFORE/AFTER HOOKS (Emotional connection):
+      - "I used to [bad state], until I [discovered X]"
+      - "From [bad] to [good] in [timeframe]"
+      - "What finally worked after trying everything for [problem]"
+      Examples:
+      • "I used to crash every afternoon, until I learned this."
+      • "From exhausted to energized in 30 days."
+      • "What finally worked after trying everything for brain fog."
+   
+   E. CURIOSITY GAP HOOKS (Algorithm friendly):
+      - "The [thing] that changed my [area of life]"
+      - "Why [counterintuitive claim] actually works"
+      - "What I learned about [topic] that nobody tells you"
+      Examples:
+      • "The morning habit that changed my entire day."
+      • "Why eating breakfast later actually helps energy."
+      • "What I learned about metabolism that doctors don't mention."
+   
+   **HOOK QUALITY CHECKLIST:**
+   - [ ] Creates immediate curiosity or relatability
+   - [ ] Promises clear value within 3 seconds
+   - [ ] Uses specific pain point or benefit (not vague)
+   - [ ] Natural spoken language (not formal or scripted-sounding)
+   - [ ] Searchable keyword included for SEO
 
 2. CONTEXT/EMPATHY (3-8 seconds):
    - Build connection: "I used to feel wiped by mid-afternoon..."
    - Create "me too" moment
+   - Validate the struggle before providing solution
+   - Examples:
+     • "I get it. I was stuck in the same cycle for years."
+     • "This is exactly how I felt before I changed my routine."
+     • "Sound familiar? I used to think I just needed more coffee."
 
 3. VALUE STEPS (8-30 seconds):
-   - Tip 1, 2, 3 with clear structure
-   - Show B-roll of daily life (via shot plan)
+   **CONTENT DELIVERY FRAMEWORKS (Choose based on topic):**
+   
+   A. 3-STEP TIP FORMAT (Most versatile):
+      Structure: "Here's what worked..."
+      - Tip 1: [Specific, actionable advice]
+      - Tip 2: [Build on first tip]
+      - Tip 3: [Complete the system]
+      Example flow:
+      • "First, I moved my eating window to..."
+      • "Second, I started my morning with..."
+      • "Third, I added this one thing before bed..."
+   
+   B. PROBLEM/SOLUTION FORMAT:
+      Structure: "Here's what I was doing wrong..."
+      - The mistake everyone makes
+      - Why it backfires
+      - What to do instead
+      Example:
+      • "I was drinking coffee first thing. Here's the problem..."
+      • "Your body needs X before caffeine..."
+      • "Now I do this instead, and it changed everything."
+   
+   C. STORY BRIDGE FORMAT:
+      Structure: "Let me tell you what happened..."
+      - Specific situation or moment
+      - What you discovered
+      - How it changed things
+      - What you do now
+      Example:
+      • "Last month I hit a wall at 2pm every day..."
+      • "Then I learned about metabolic timing..."
+      • "Once I adjusted my schedule, my energy stabilized..."
+   
+   D. MYTH-BUSTING FORMAT:
+      Structure: "Everyone thinks [X], but..."
+      - Common belief
+      - Why it's actually wrong
+      - What science/experience shows
+      - Better approach
+   
+   **VALUE DELIVERY CHECKLIST:**
+   - [ ] Information is specific and actionable (not vague)
+   - [ ] Each step builds on the previous one
+   - [ ] Uses simple language (8th-9th grade level)
+   - [ ] Includes "why it works" briefly (credibility)
+   - [ ] Focuses on one clear takeaway
    - Keep it actionable and simple
+   - Show B-roll of daily life (via shot plan)
 
 4. SOFT CTA (last 3-5 seconds):
    - "If this was helpful, save this for later."
