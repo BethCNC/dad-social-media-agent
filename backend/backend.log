@@ -1,26 +1,7 @@
 INFO:     Will watch for changes in these directories: ['/Users/bethcartrette/REPOS/unicity-agent/backend']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [88122] using WatchFiles
-INFO:     Started server process [88209]
+INFO:     Started reloader process [92568] using WatchFiles
+INFO:     Started server process [92652]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:51658 - "GET /knowledge/ HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:51658 - "GET /knowledge/ HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:51658 - "GET /knowledge/ HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:51658 - "GET /knowledge/ HTTP/1.1" 404 Not Found
-WARNING:  WatchFiles detected changes in 'app/services/gemini_client.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [88209]
-INFO:     Started server process [88683]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-WARNING:  WatchFiles detected changes in 'app/services/gemini_client.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [88683]
-INFO:     Started server process [88694]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
+INFO:     127.0.0.1:52255 - "GET /api/knowledge/ HTTP/1.1" 200 OK
