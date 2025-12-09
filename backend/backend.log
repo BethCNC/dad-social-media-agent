@@ -5,3 +5,19 @@ INFO:     Started server process [92652]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     127.0.0.1:52255 - "GET /api/knowledge/ HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app/scripts/batch_populate_bank.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [92652]
+INFO:     Started server process [99593]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/scripts/batch_populate_bank.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [99593]
+INFO:     Started server process [99953]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
