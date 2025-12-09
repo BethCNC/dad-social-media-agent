@@ -21,3 +21,7 @@ INFO:     Finished server process [99593]
 INFO:     Started server process [99953]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
+INFO:     127.0.0.1:65171 - "GET /api/bank/items HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65216 - "GET /api/bank HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65239 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65292 - "GET /api/bank?status=approved&limit=5 HTTP/1.1" 404 Not Found

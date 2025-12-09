@@ -490,10 +490,10 @@ export const ContentBankPage = () => {
 
       {/* Batch Generation Modal */}
       <Dialog open={showBatchModal} onOpenChange={setShowBatchModal}>
-        <DialogContent>
+        <DialogContent className="bg-white text-gray-900">
           <DialogHeader>
             <DialogTitle>Generate Content Ideas</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-gray-600">
               We'll use AI to brainstorm scripts based on a theme. These will be saved as drafts for you to review.
             </DialogDescription>
           </DialogHeader>
@@ -540,6 +540,7 @@ export const ContentBankPage = () => {
                     <SelectItem value="3">3 Ideas</SelectItem>
                     <SelectItem value="5">5 Ideas</SelectItem>
                     <SelectItem value="10">10 Ideas</SelectItem>
+                    <SelectItem value="20">20 Ideas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
